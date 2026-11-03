@@ -153,9 +153,13 @@ export function PurchaseFlow({
             </button>
           )}
         </div>
-        {data.canPayCash && (
+        {data.canPayCash ? (
           <p className="text-muted text-xs mt-3">
             Готівка: тренер побачить запит і підтвердить, коли отримає гроші. Ціна зафіксована зараз.
+          </p>
+        ) : (
+          <p className="text-muted text-xs mt-3">
+            Оплата готівкою з&apos;явиться, коли за вами закріплять тренера. Попросіть про це в залі.
           </p>
         )}
         {error && (

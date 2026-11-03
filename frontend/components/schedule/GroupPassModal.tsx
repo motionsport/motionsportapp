@@ -98,7 +98,7 @@ export function GroupPassModal({
                       Купити абонемент · {pass.optionLabel} · {formatUah(pass.amountUah)}
                     </button>
                   )}
-                  {data.canPayCash && (
+                  {data.canPayCash ? (
                     <button
                       type="button"
                       onClick={() => setStep("cash")}
@@ -107,6 +107,10 @@ export function GroupPassModal({
                     >
                       Оплатити готівкою
                     </button>
+                  ) : (
+                    <p className="text-muted text-xs">
+                      Оплата готівкою з&apos;явиться, коли за вами закріплять тренера. Попросіть про це в залі.
+                    </p>
                   )}
                 </>
               ) : (
