@@ -251,9 +251,16 @@ export interface CancelFeePreview {
   refundUah: number | null;
 }
 
-// Half refund of a late-cancelled single assigned training; the trainer pays it out
+// Half refund of a late-cancelled single assigned training. Online: sent from the app («Повернути»),
+// SENDING until LiqPay confirms; cash: handed over
 export interface CancelRefund {
   id: string;
+  bookingId: string;
+  status: "DUE" | "SENDING";
+  // Error code of the last failed attempt (ERROR_TEXT)
+  lastError: string | null;
+  // To find the payment in the cabinet while SENDING
+  liqpayPaymentId: string | null;
   memberId: string;
   displayName: string;
   amountUah: number;

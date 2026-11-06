@@ -178,6 +178,9 @@ export const api = {
   waiveCancelFee: (bookingId: string) => post(`/admin/bookings/${bookingId}/waive-fee`),
   getPendingCancelRefunds: () => get<CancelRefund[]>("/admin/cancel-refunds/pending"),
   markCancelRefundDone: (id: string) => post(`/admin/cancel-refunds/${id}/done`),
+  refundCancelRefund: (id: string) =>
+    post<{ status: "DUE" | "SENDING" | "DONE" }>(`/admin/cancel-refunds/${id}/refund`),
+  checkCancelRefund: (id: string) => post<{ status: "DUE" | "SENDING" | "DONE" }>(`/admin/cancel-refunds/${id}/check`),
 
   getPendingFreezes: () => get<FreezeRequest[]>("/admin/freezes/pending"),
   decideFreeze: (freeze: FreezeRequest, approve: boolean) =>
