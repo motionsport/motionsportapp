@@ -9,8 +9,8 @@ describe('liqpayRefund', () => {
   it('sends a signed refund of the amount for the order', async () => {
     const fetchMock = jest
       .fn()
-      .mockResolvedValue({ ok: true, json: async () => ({ result: 'ok', status: 'reversed' }) });
-    global.fetch = fetchMock as unknown as typeof fetch;
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ result: 'ok', status: 'reversed' }) });
+    global.fetch = fetchMock;
 
     const resp = await liqpayRefund('pub', 'priv', 'mg-1', 300);
 
@@ -30,7 +30,7 @@ describe('liqpayRefund', () => {
   });
 
   it('throws when LiqPay answers with an HTTP error, so the outcome stays unknown', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 502 }) as unknown as typeof fetch;
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 502 });
     await expect(liqpayRefund('pub', 'priv', 'mg-1', 300)).rejects.toThrow();
   });
 });

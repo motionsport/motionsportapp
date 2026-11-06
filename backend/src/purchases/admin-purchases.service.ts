@@ -6,7 +6,6 @@ import {
   admins,
   attendance,
   bookings,
-  cancelRefunds,
   trainingDays,
   clubCards,
   members,
@@ -149,49 +148,6 @@ export class AdminPurchasesService {
         });
       }
     }
-    return { ok: true };
-  }
-
-  // «Повернути гроші»: half refunds for late cancellations (booking/cancel-fee.ts). Paid out by hand
-  async pendingCancelRefunds(trainerId: string) {
-    const rows = await this.database.db
-      .select({
-        id: cancelRefunds.id,
-        memberId: cancelRefunds.memberId,
-        displayName: members.displayName,
-        amountUah: cancelRefunds.amountUah,
-        method: purchases.method,
-        createdAt: cancelRefunds.createdAt,
-        localDate: trainingDays.localDate,
-        slotTime: trainingSlots.slotTime,
-        trainingType: trainingSlots.trainingType,
-      })
-      .from(cancelRefunds)
-      .innerJoin(members, eq(members.id, cancelRefunds.memberId))
-      .innerJoin(purchases, eq(purchases.id, cancelRefunds.purchaseId))
-      .innerJoin(bookings, eq(bookings.id, cancelRefunds.bookingId))
-      .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
-      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
-      .where(and(eq(cancelRefunds.status, 'DUE'), visibleTo(trainerId)))
-      .orderBy(asc(cancelRefunds.createdAt));
-    return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
-  }
-
-  // «Повернено». Compare-and-set
-  async markCancelRefundDone(trainerId: string, refundId: string) {
-    const [refund] = await this.database.db
-      .select({ memberId: cancelRefunds.memberId })
-      .from(cancelRefunds)
-      .where(eq(cancelRefunds.id, refundId))
-      .limit(1);
-    if (!refund) throw new NotFoundException('Refund not found');
-    await requireVisibleMember(this.database.db, trainerId, refund.memberId);
-    const [done] = await this.database.db
-      .update(cancelRefunds)
-      .set({ status: 'DONE', doneAt: this.clock.now().toJSDate(), doneBy: trainerId })
-      .where(and(eq(cancelRefunds.id, refundId), eq(cancelRefunds.status, 'DUE')))
-      .returning({ id: cancelRefunds.id });
-    if (!done) throw new ConflictException('Refund was already handled');
     return { ok: true };
   }
 

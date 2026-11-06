@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, ParseUUIDPipe } from '@nestjs/common';
 import { AdminPurchasesService } from './admin-purchases.service';
+import { CancelRefundsService } from './cancel-refunds.service';
 import { SessionGuard, SessionUser } from '../auth/session.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -8,7 +9,10 @@ import { AddClubCardDto } from './dto/add-club-card.dto';
 @Controller('admin')
 @UseGuards(SessionGuard, AdminGuard)
 export class AdminPurchasesController {
-  constructor(private readonly adminPurchasesService: AdminPurchasesService) {}
+  constructor(
+    private readonly adminPurchasesService: AdminPurchasesService,
+    private readonly cancelRefunds: CancelRefundsService,
+  ) {}
 
   @Get('purchases/pending')
   pendingCash(@CurrentUser() user: SessionUser) {
@@ -26,15 +30,28 @@ export class AdminPurchasesController {
     return this.adminPurchasesService.markPaymentHandled(user.id, id);
   }
 
+  // «Повернути гроші»: the training's trainer only
   @Get('cancel-refunds/pending')
   pendingCancelRefunds(@CurrentUser() user: SessionUser) {
-    return this.adminPurchasesService.pendingCancelRefunds(user.id);
+    return this.cancelRefunds.pending(user.id);
+  }
+
+  @Post('cancel-refunds/:id/refund')
+  @HttpCode(200)
+  refundCancelRefund(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: SessionUser) {
+    return this.cancelRefunds.refund(user.id, id);
+  }
+
+  @Post('cancel-refunds/:id/check')
+  @HttpCode(200)
+  checkCancelRefund(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: SessionUser) {
+    return this.cancelRefunds.check(user.id, id);
   }
 
   @Post('cancel-refunds/:id/done')
   @HttpCode(200)
   markCancelRefundDone(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: SessionUser) {
-    return this.adminPurchasesService.markCancelRefundDone(user.id, id);
+    return this.cancelRefunds.markDone(user.id, id);
   }
 
   @Post('purchases/:id/confirm')
