@@ -140,8 +140,10 @@ export class NotificationService {
     }
   }
 
+  // No trainer (a club card bought by a member without one): every trainer, the first to confirm takes it
   private async sendCashRequested(payload: Record<string, unknown>) {
-    const subscriptions = await this.subs.findAdminByAdminId(payload.trainerId as string);
+    const trainerId = payload.trainerId as string | null;
+    const subscriptions = trainerId ? await this.subs.findAdminByAdminId(trainerId) : await this.subs.findAllAdmin();
     const body = `${payload.displayName as string}: ${payload.totalUah as number} ₴`;
     for (const sub of subscriptions) {
       const result = await this.push.send(sub, { title: 'Оплата готівкою', body, icon: ICON, url: '/admin/clients' });

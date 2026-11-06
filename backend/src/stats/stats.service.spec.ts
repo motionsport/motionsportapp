@@ -1,4 +1,6 @@
-import { revenueKey, summarizeLoad } from './stats.service';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import { DateTime } from 'luxon';
+import { StatsService, revenueKey, summarizeLoad } from './stats.service';
 
 describe('stats — revenue columns', () => {
   it('club cards, group passes, and trainer services by type', () => {
@@ -6,6 +8,22 @@ describe('stats — revenue columns', () => {
     expect(revenueKey('group', 'group')).toBe('group');
     expect(revenueKey('assigned', 'personal')).toBe('personal');
     expect(revenueKey('assigned', 'split')).toBe('split');
+  });
+});
+
+describe('stats — whose revenue', () => {
+  it("the trainer's clients' purchases, and cash a member without a trainer paid to this trainer", async () => {
+    const wheres: unknown[] = [];
+    const chain: any = { then: (resolve: (v: unknown) => void) => resolve([]) };
+    for (const m of ['from', 'innerJoin', 'leftJoin', 'groupBy', 'orderBy']) chain[m] = () => chain;
+    chain.where = (cond: unknown) => (wheres.push(cond), chain);
+    const db = { select: () => chain, selectDistinct: () => chain };
+    await new StatsService({ db } as any, { now: () => DateTime.fromISO('2026-10-23') }).forTrainer('t1');
+    const { sql, params } = new PgDialect().sqlToQuery(wheres[0] as any);
+    expect(sql).toContain(
+      '("purchases"."trainer_id" = $1 or ("purchases"."trainer_id" is null and "purchases"."decided_by" = $2))',
+    );
+    expect(params.slice(0, 2)).toEqual(['t1', 't1']);
   });
 });
 

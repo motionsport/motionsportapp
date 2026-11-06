@@ -1,5 +1,5 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, ne, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
 import {
@@ -26,6 +26,9 @@ import { apiError } from '../common/api-error';
 
 const MEMBER_PURCHASES_LIMIT = 20;
 
+// Cash requests a trainer decides: their clients', and those of members without a trainer (any trainer)
+const cashFor = (trainerId: string) => or(eq(purchases.trainerId, trainerId), isNull(purchases.trainerId));
+
 type Db = DatabaseService['db'];
 type Q = Db | Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -43,7 +46,7 @@ export class AdminPurchasesService {
       .select({ id: purchases.id, memberId: purchases.memberId, displayName: members.displayName })
       .from(purchases)
       .innerJoin(members, eq(members.id, purchases.memberId))
-      .where(and(eq(purchases.trainerId, trainerId), eq(purchases.method, 'CASH'), eq(purchases.status, 'PENDING')))
+      .where(and(cashFor(trainerId), eq(purchases.method, 'CASH'), eq(purchases.status, 'PENDING')))
       .orderBy(asc(purchases.createdAt));
     const views = await purchaseViews(
       this.database.db,
@@ -192,9 +195,10 @@ export class AdminPurchasesService {
     return { ok: true };
   }
 
-  // Compare-and-set: a double tap can't activate twice. Another trainer's or a LiqPay purchase: 404
+  // Compare-and-set: a double tap, or two trainers on a no-trainer request, can't decide twice.
+  // Another trainer's or a LiqPay purchase: 404
   private async decideCash(tx: Q, trainerId: string, purchaseId: string, status: 'PAID' | 'REJECTED') {
-    const mine = and(eq(purchases.id, purchaseId), eq(purchases.trainerId, trainerId), eq(purchases.method, 'CASH'));
+    const mine = and(eq(purchases.id, purchaseId), cashFor(trainerId), eq(purchases.method, 'CASH'));
     const [decided] = await tx
       .update(purchases)
       .set({ status, decidedBy: trainerId, decidedAt: this.clock.now().toJSDate() })

@@ -109,6 +109,23 @@ describe('Trainer push — member cancelled / moved', () => {
   });
 });
 
+describe('Trainer push — cash requested', () => {
+  it("goes to the member's trainer", async () => {
+    const { svc, subs } = makeNotifications();
+    await (svc as any).sendCashRequested({ trainerId: 'trainer-2', displayName: 'Оля', totalUah: 1400 });
+    expect(subs.findAdminByAdminId).toHaveBeenCalledWith('trainer-2');
+    expect(subs.findAllAdmin).not.toHaveBeenCalled();
+  });
+
+  it('a member without a trainer: goes to every trainer', async () => {
+    const { svc, push, subs } = makeNotifications();
+    await (svc as any).sendCashRequested({ trainerId: null, displayName: 'Оля', totalUah: 1400 });
+    expect(subs.findAllAdmin).toHaveBeenCalled();
+    expect(subs.findAdminByAdminId).not.toHaveBeenCalled();
+    expect(push.send).toHaveBeenCalledWith(adminSub, expect.objectContaining({ body: 'Оля: 1400 ₴' }));
+  });
+});
+
 describe('Booking-open push', () => {
   it('goes only to clients of trainers with group trainings today (and unassigned ones when asked)', async () => {
     const { svc, subs } = makeNotifications();

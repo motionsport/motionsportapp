@@ -183,7 +183,7 @@ export interface MyPurchases {
     | null;
   packages: TrainingPackage[];
   pending: Purchase | null;
-  canPayCash: boolean; // only a member with a trainer
+  canPayCash: boolean; // has a trainer: cash for anything; without one only a club card alone
 }
 
 // until = last frozen day; null until the trainer approves

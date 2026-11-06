@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { DateTime } from 'luxon';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { AdminPurchasesService } from './admin-purchases.service';
 import { AdminPurchasesController } from './admin-purchases.controller';
 import { AdminGuard } from '../common/guards/admin.guard';
@@ -80,6 +81,18 @@ describe('Trainer — cash requests', () => {
     const { svc, entitlements } = makeService(db);
     await expect(svc.confirmCash('trainer-2', 'purchase-1')).rejects.toThrow(NotFoundException);
     expect(entitlements.activate).not.toHaveBeenCalled();
+  });
+
+  it("a member without a trainer: any trainer sees and decides the request (the update's condition)", async () => {
+    const { db } = makeDb([[]]);
+    const { svc } = makeService(db);
+    await svc.pendingCash('trainer-2');
+    await svc.confirmCash('trainer-2', 'purchase-1');
+    const where = (chain: any) => new PgDialect().sqlToQuery(chain.where.mock.calls[0][0]);
+    for (const { sql, params } of [where(db.select.mock.results[0].value), where(db.update.mock.results[0].value)]) {
+      expect(sql).toMatch(/\("purchases"\."trainer_id" = \$\d+ or "purchases"\."trainer_id" is null\)/);
+      expect(params).toContain('trainer-2');
+    }
   });
 
   it('rejecting ends the purchase and activates nothing', async () => {

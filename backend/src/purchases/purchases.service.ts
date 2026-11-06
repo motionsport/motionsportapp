@@ -104,7 +104,7 @@ export class PurchasesService {
         : null,
       packages: await this.entitlements.packagesOf(memberId),
       pending: pending ? (await purchaseViews(this.database.db, [pending.id]))[0] : null,
-      // Cash is paid to the member's trainer
+      // Cash for anything; without a trainer only for a club card alone (see insertPurchase)
       canPayCash: !!member?.trainerId,
     };
   }
@@ -121,7 +121,7 @@ export class PurchasesService {
       return { purchaseId, checkout: await this.payments.checkoutPurchase(purchaseId, memberId) };
     }
     await this.notifications.enqueueAndProcess('CASH_REQUESTED', `cash-requested:${purchaseId}`, {
-      trainerId: trainerId!,
+      trainerId,
       displayName,
       totalUah,
     });
@@ -196,7 +196,10 @@ export class PurchasesService {
       if (await openFreeze(tx, memberId, this.clock.now().toISODate()!)) {
         throw new ConflictException(apiError('MEMBERSHIP_FROZEN'));
       }
-      if (dto.method === 'CASH' && !member.trainerId) throw new BadRequestException('No trainer to pay cash to');
+      // Without a trainer cash is only for a club card alone: every trainer sees that request
+      if (dto.method === 'CASH' && !member.trainerId && lines.some((l) => l.section !== 'club_card')) {
+        throw new BadRequestException('No trainer to pay cash to');
+      }
 
       const [created] = await tx
         .insert(purchases)

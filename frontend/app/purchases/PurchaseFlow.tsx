@@ -62,6 +62,9 @@ export function PurchaseFlow({
   const pass = data.catalog.groupPasses.find((p) => p.id === passId);
   const lines = [club, service, pass].filter((x): x is CatalogItem => !!x);
   const total = lines.reduce((sum, l) => sum + l.amountUah, 0);
+  // Without a trainer, cash only for a club card alone: every trainer sees that request (backend checks the same)
+  const cardOnly = !!club && !service && !pass;
+  const canPayCash = data.canPayCash || cardOnly;
   const groups = SERVICE_GROUPS.filter((g) => !startType || g.type === startType);
 
   const pay = async (method: PurchaseMethod) => {
@@ -99,7 +102,9 @@ export function PurchaseFlow({
       <div>
         <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">Запит надіслано</h1>
         <p className="rounded-xl border border-teal bg-teal/10 px-4 py-3 text-sm text-accent mb-5">
-          Тренер побачить запит «оплата готівкою». Віддайте йому гроші на тренуванні, і він підтвердить оплату.
+          {data.canPayCash
+            ? "Тренер побачить запит «оплата готівкою». Віддайте йому гроші на тренуванні, і він підтвердить оплату."
+            : "Тренери побачать запит «оплата готівкою». Віддайте гроші тренеру в залі, і він підтвердить оплату."}
         </p>
         <button
           type="button"
@@ -142,7 +147,7 @@ export function PurchaseFlow({
           >
             {busy ? "Завантаження..." : "Оплатити онлайн"}
           </button>
-          {data.canPayCash && (
+          {canPayCash && (
             <button
               type="button"
               onClick={() => pay("CASH")}
@@ -153,13 +158,13 @@ export function PurchaseFlow({
             </button>
           )}
         </div>
-        {data.canPayCash ? (
+        {canPayCash ? (
           <p className="text-muted text-xs mt-3">
             Готівка: тренер побачить запит і підтвердить, коли отримає гроші. Ціна зафіксована зараз.
           </p>
         ) : (
           <p className="text-muted text-xs mt-3">
-            Оплата готівкою з&apos;явиться, коли за вами закріплять тренера. Попросіть про це в залі.
+            Оплата тренувань готівкою з&apos;явиться, коли за вами закріплять тренера. Попросіть про це в залі.
           </p>
         )}
         {error && (

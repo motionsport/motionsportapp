@@ -261,12 +261,26 @@ describe('Purchases — create', () => {
     ).rejects.toThrow(ConflictException);
   });
 
-  it('400 for cash when the member has no trainer, and nothing is created', async () => {
+  it('400 for cash with a trainer service when the member has no trainer, and nothing is created', async () => {
     const { db, inserts } = makeDb([[CARD, PERSONAL], [{ trainerId: null, displayName: 'Катя' }], []]);
     await expect(
       makeService(db).svc.create('m1', { priceItemIds: ['price-card', 'price-p8'], method: 'CASH' }),
     ).rejects.toThrow('No trainer to pay cash to');
     expect(inserts).toEqual([]);
+  });
+
+  it('cash for a club card alone without a trainer: allowed, every trainer is told', async () => {
+    const { db, inserts } = makeDb([[CARD], [{ trainerId: null, displayName: 'Катя' }], []]);
+    const { svc, notifications } = makeService(db);
+    await expect(svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH' })).resolves.toEqual({
+      purchaseId: 'purchase-1',
+    });
+    expect(inserts[0]).toMatchObject({ table: purchases, values: { trainerId: null, method: 'CASH' } });
+    expect(notifications.enqueueAndProcess).toHaveBeenCalledWith('CASH_REQUESTED', 'cash-requested:purchase-1', {
+      trainerId: null,
+      displayName: 'Катя',
+      totalUah: 1400,
+    });
   });
 
   it('copies the price list amounts into the purchase and starts a LiqPay checkout', async () => {

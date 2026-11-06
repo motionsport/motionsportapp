@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { DateTime } from 'luxon';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
@@ -57,7 +57,13 @@ export class StatsService {
       .from(purchaseItems)
       .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
       .innerJoin(priceItems, eq(priceItems.id, purchaseItems.priceItemId))
-      .where(and(eq(purchases.trainerId, trainerId), eq(purchases.status, 'PAID')))
+      // Their clients' purchases, and cash a member without a trainer paid to them
+      .where(
+        and(
+          or(eq(purchases.trainerId, trainerId), and(isNull(purchases.trainerId), eq(purchases.decidedBy, trainerId))),
+          eq(purchases.status, 'PAID'),
+        ),
+      )
       .groupBy(month, priceItems.section, priceItems.trainingType);
 
     const byMonth = new Map<string, Revenue>();
