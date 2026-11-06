@@ -36,6 +36,11 @@ export const ERROR_TEXT: Record<string, string> = {
   ATTENDANCE_MARKED: "Цій людині вже поставили відмітку, її не можна прибрати",
   MEMBER_FROZEN: "Абонемент клієнта заморожено на цей день",
   MONEY_RETURNED: "Гроші вже повернено, списання не скасувати.",
+  REFUND_IN_PROGRESS: "Повернення вже відправлено.",
+  REFUNDED_ELSEWHERE: "З цієї оплати вже повертали гроші. Перевірте в кабінеті оплат.",
+  REFUND_DECLINED: "Повернення не прийняли. Спробуйте пізніше або «Не списувати».",
+  PAYMENT_PROVIDER_UNREACHABLE: "Не вдалося зв'язатися з оплатою. Спробуйте ще раз.",
+  NOT_ONLINE_PAYMENT: "Ця покупка оплачена готівкою.",
 };
 
 export const DEFAULT_ERROR = "Помилка. Спробуйте ще раз.";

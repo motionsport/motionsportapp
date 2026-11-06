@@ -586,7 +586,9 @@ export const freezeItems = pgTable(
   ],
 );
 
-// Half refund for a cancel_fee HALF. The app never sends money: the trainer refunds by hand and marks it DONE
+// Half refund for a cancel_fee HALF. Online: the training's trainer presses «Повернути», DUE → SENDING
+// (compare-and-set, the one refund request), then DONE by the response, the reversed callback or «Перевірити».
+// Cash: handed over, then DONE
 export const cancelRefunds = pgTable(
   'cancel_refunds',
   {
@@ -606,9 +608,26 @@ export const cancelRefunds = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     doneAt: timestamp('done_at', { withTimezone: true }),
     doneBy: uuid('done_by').references(() => admins.id),
+    // The training's trainer, who refunds or waives; moves to another trainer when this one is disabled
+    trainerId: uuid('trainer_id')
+      .notNull()
+      .references(() => admins.id),
+    // The paid payment the refund was sent for, and LiqPay's refund_amount on the order once ours is in
+    paymentId: uuid('payment_id').references(() => payments.id),
+    expectedRefundedUah: integer('expected_refunded_uah'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    sentBy: uuid('sent_by').references(() => admins.id),
+    // LIQPAY = confirmed by LiqPay, CASH = handed over, MANUAL = trainer checked the cabinet; null = before 2026-11
+    doneVia: text('done_via'),
+    // Error code (API_ERRORS) of the last failed attempt
+    lastError: text('last_error'),
+    // Safe field subset of the refund API response
+    liqpayResponse: jsonb('liqpay_response'),
   },
-  () => [
-    oneOf('cancel_refunds_status_check', 'status', ['DUE', 'DONE', 'CANCELLED']),
+  (table) => [
+    oneOf('cancel_refunds_status_check', 'status', ['DUE', 'SENDING', 'DONE', 'CANCELLED']),
+    oneOf('cancel_refunds_done_via_check', 'done_via', ['LIQPAY', 'CASH', 'MANUAL']),
     check('cancel_refunds_amount_check', sql`amount_uah > 0`),
+    index('cancel_refunds_trainer_id_idx').on(table.trainerId),
   ],
 );

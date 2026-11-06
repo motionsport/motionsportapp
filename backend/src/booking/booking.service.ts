@@ -135,7 +135,15 @@ export class BookingService {
         .update(bookings)
         .set({ status: 'CANCELLED', cancelledAt: now, cancellationReason: reason })
         .where(and(eq(bookings.id, booking.id), eq(bookings.status, 'ACTIVE')));
-      await this.chargeLateCancel(tx, booking.id, memberId, booking.trainingType, booking.localDate, booking.slotTime);
+      await this.chargeLateCancel(
+        tx,
+        booking.id,
+        memberId,
+        booking.trainingType,
+        booking.localDate,
+        booking.slotTime,
+        booking.trainerId,
+      );
       // The guest goes with the booking
       const seats = 1 + (await cancelGuests(tx, [booking.id], now)).size;
       return freeSeats(tx, slotId, seats);
@@ -289,6 +297,7 @@ export class BookingService {
     trainingType: string,
     localDate: string,
     slotTime: string,
+    trainerId: string,
   ) {
     const msBefore = slotStartsAt(localDate, slotTime).toMillis() - this.clock.now().toMillis();
     const payer = await this.entitlements.payerFor(tx, { memberId, trainingType, localDate }, bookingId);
@@ -311,6 +320,7 @@ export class BookingService {
         memberId,
         purchaseId: spent.purchaseId,
         amountUah: halfBack(spent.amountUah),
+        trainerId,
       });
     }
   }

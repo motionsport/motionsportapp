@@ -35,6 +35,11 @@ export const API_ERRORS = {
   ATTENDANCE_MARKED: 'Attendance already marked',
   MEMBER_FROZEN: 'Member is frozen',
   MONEY_RETURNED: 'Money already returned',
+  REFUND_IN_PROGRESS: 'Refund is in progress',
+  REFUNDED_ELSEWHERE: 'Order already has a refund',
+  REFUND_DECLINED: 'Refund declined',
+  PAYMENT_PROVIDER_UNREACHABLE: 'Payment provider unreachable',
+  NOT_ONLINE_PAYMENT: 'Not an online payment',
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERRORS;
