@@ -26,7 +26,7 @@ describe("feeWarning (the member's «Скасувати»)", () => {
 });
 
 describe("feeLabel (the trainer's «Скасували»)", () => {
-  const fee = { kind: "FULL" as const, waived: false, refundUah: null, refundDone: false };
+  const fee = { kind: "FULL" as const, waived: false, refundUah: null, refundDone: false, refundSending: false };
 
   it("a spent training", () => {
     expect(feeLabel(fee)).toBe("списано");
@@ -35,6 +35,7 @@ describe("feeLabel (the trainer's «Скасували»)", () => {
   it("half to return, then returned", () => {
     expect(feeLabel({ ...fee, kind: "HALF", refundUah: 300 })).toBe("повернути 300 ₴");
     expect(feeLabel({ ...fee, kind: "HALF", refundUah: 300, refundDone: true })).toBe("повернено 300 ₴");
+    expect(feeLabel({ ...fee, kind: "HALF", refundUah: 300, refundSending: true })).toBe("очікує повернення 300 ₴");
   });
 
   it("half without a sum reads as spent", () => {

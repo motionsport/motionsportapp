@@ -57,10 +57,10 @@ beforeEach(() => {
 });
 
 describe('CancelRefundsService.refund', () => {
-  it('sends one refund for the half and marks it DONE', async () => {
-    mockRefund.mockResolvedValue({ result: 'ok', status: 'reversed', wait_amount: true });
+  it('sends one refund for the half; accepted by LiqPay it waits in SENDING for the money to go', async () => {
+    mockRefund.mockResolvedValue({ result: 'ok', status: 'reversed', wait_amount: true, payment_id: 9 });
 
-    await expect(makeService().refund('t1', 'r1')).resolves.toEqual({ status: 'DONE' });
+    await expect(makeService().refund('t1', 'r1')).resolves.toEqual({ status: 'SENDING' });
 
     expect(mockRefund).toHaveBeenCalledTimes(1);
     expect(mockRefund).toHaveBeenCalledWith('pub', 'priv', 'mg-1', 300);
@@ -71,8 +71,9 @@ describe('CancelRefundsService.refund', () => {
     expect(moves()).toContainEqual(['SENDING', expect.objectContaining({ expectedRefundedUah: 300 })]);
     expect(moves()).toContainEqual([
       'SENDING',
-      expect.objectContaining({ status: 'DONE', doneVia: 'LIQPAY', doneBy: 't1' }),
+      { liqpayResponse: { result: 'ok', status: 'reversed', wait_amount: true, payment_id: 9 } },
     ]);
+    expect(moves()).not.toContainEqual(['SENDING', expect.objectContaining({ status: 'DONE' })]);
   });
 
   it('does not send again while SENDING', async () => {
@@ -143,18 +144,6 @@ describe('CancelRefundsService.refund', () => {
       'SENDING',
       expect.objectContaining({ status: 'DUE', lastError: 'PAYMENT_PROVIDER_UNREACHABLE' }),
     ]);
-  });
-
-  it('late response after callback changes nothing', async () => {
-    mockRefund.mockResolvedValue({ result: 'ok', status: 'reversed' });
-    // claim, save expected and the response win; SENDING → DONE was taken by the callback
-    mockMove
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
-
-    await expect(makeService().refund('t1', 'r1')).resolves.toEqual({ status: 'DONE' });
   });
 
   it('another trainer gets 404', async () => {

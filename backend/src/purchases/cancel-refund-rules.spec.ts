@@ -1,8 +1,8 @@
 import { precheckError, refundOutcome, refundedSoFar } from './cancel-refund-rules';
 
 describe('refundOutcome — what the refund API answer means', () => {
-  it('reversed with result ok is a done refund', () => {
-    expect(refundOutcome({ result: 'ok', status: 'reversed' })).toBe('DONE');
+  it('reversed with result ok means LiqPay accepted it, not that the money went (it may wait for new payments)', () => {
+    expect(refundOutcome({ result: 'ok', status: 'reversed' })).toBe('ACCEPTED');
   });
 
   it('an explicit refusal is declined', () => {

@@ -55,10 +55,11 @@ export function CancelRefunds({ refunds, onDone }: { refunds: CancelRefund[]; on
 
               {r.status === "SENDING" ? (
                 <>
-                  <p className="text-warn text-sm mt-3">Повертаємо {formatUah(r.amountUah)}…</p>
+                  <p className="text-warn text-sm mt-3">Очікує повернення {formatUah(r.amountUah)}</p>
                   <p className="text-subtle text-xs mt-1">
-                    {r.liqpayPaymentId && <>Платіж {r.liqpayPaymentId}. </>}
-                    Якщо довго, знайдіть його в кабінеті оплат → Повернення.
+                    Повернення відправлено. Гроші підуть на картку клієнта, коли його виконає платіжна система: це може
+                    зайняти кілька днів.
+                    {r.liqpayPaymentId && <> Платіж {r.liqpayPaymentId} у кабінеті оплат → Повернення.</>}
                   </p>
                   <button
                     type="button"

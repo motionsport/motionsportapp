@@ -1,10 +1,12 @@
 // Decisions on LiqPay answers for a half refund (cancel-refunds.service.ts). Only `result === 'ok'` counts
 
-// DONE: refunded. DECLINED: explicit refusal, safe to try again. UNKNOWN: may have gone through, never resend
-export function refundOutcome(resp: Record<string, unknown>): 'DONE' | 'DECLINED' | 'UNKNOWN' {
+// ACCEPTED: LiqPay took the refund (`reversed` comes at once, even when it waits for new payments: the money
+// goes later, confirmed by the reversed callback). DECLINED: explicit refusal, safe to try again.
+// UNKNOWN: may have gone through, never resend
+export function refundOutcome(resp: Record<string, unknown>): 'ACCEPTED' | 'DECLINED' | 'UNKNOWN' {
   if (resp.result === 'error') return 'DECLINED';
   if (resp.result !== 'ok') return 'UNKNOWN';
-  if (resp.status === 'reversed') return 'DONE';
+  if (resp.status === 'reversed') return 'ACCEPTED';
   if (resp.status === 'failure' || resp.status === 'error') return 'DECLINED';
   return 'UNKNOWN';
 }

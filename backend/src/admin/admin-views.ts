@@ -34,6 +34,7 @@ export function toCancellationView(r: CancellationRow) {
           waived: !!r.feeWaivedAt,
           refundUah: r.refundStatus === 'CANCELLED' ? null : (r.refundUah ?? null),
           refundDone: r.refundStatus === 'DONE',
+          refundSending: r.refundStatus === 'SENDING',
         }
       : null,
   };

@@ -241,7 +241,13 @@ export interface Cancellation {
   cancelledAt: string | null;
   switchedToTime: string | null; // null = cancelled, otherwise moved to that time
   // Late-cancellation fee: FULL = spent; HALF = spent, half a single training refunded
-  fee: { kind: "FULL" | "HALF"; waived: boolean; refundUah: number | null; refundDone: boolean } | null;
+  fee: {
+    kind: "FULL" | "HALF";
+    waived: boolean;
+    refundUah: number | null;
+    refundDone: boolean;
+    refundSending: boolean;
+  } | null;
 }
 
 // Fee if cancelled now (null = free); single = a single training rather than a pass

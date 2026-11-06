@@ -11,7 +11,10 @@ export function feeWarning(p: CancelFeePreview | null) {
 export function feeLabel(fee: NonNullable<Cancellation["fee"]>) {
   if (fee.waived) return "не списано";
   if (fee.kind === "HALF" && fee.refundUah) {
-    return `${fee.refundDone ? "повернено" : "повернути"} ${fee.refundUah} ₴`;
+    if (fee.refundDone) return `повернено ${fee.refundUah} ₴`;
+    // Sent, the money not gone yet (LiqPay may wait for new payments)
+    if (fee.refundSending) return `очікує повернення ${fee.refundUah} ₴`;
+    return `повернути ${fee.refundUah} ₴`;
   }
   return "списано";
 }

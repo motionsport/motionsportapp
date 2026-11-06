@@ -75,7 +75,7 @@ export function CancellationList({ title, items, withDate = false }: Cancellatio
               {fee && (
                 <div className="flex items-center justify-between space-x-2 mt-1">
                   <Badge tone={fee.waived ? "none" : "warn"}>{feeLabel(fee)}</Badge>
-                  {!fee.waived && !fee.refundDone && (
+                  {!fee.waived && !fee.refundDone && !fee.refundSending && (
                     <button
                       type="button"
                       onClick={() => waive(c.bookingId)}

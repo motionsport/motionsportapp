@@ -7,7 +7,16 @@ import { precheckError, refundedSoFar, refundOutcome } from './cancel-refund-rul
 import { appRefundedUah, loadRefund, moveRefund, pendingRefunds } from './cancel-refund.store';
 
 // Logged and kept from LiqPay answers: no names, phones or card masks
-const SAFE_FIELDS = ['result', 'status', 'action', 'err_code', 'err_description', 'payment_id', 'order_id'];
+const SAFE_FIELDS = [
+  'result',
+  'status',
+  'action',
+  'err_code',
+  'err_description',
+  'payment_id',
+  'order_id',
+  'wait_amount',
+];
 // Longer than one refund() run (status API 3 s + refund API 10 s + DB)
 const UNSENT_AFTER_MS = 2 * 60 * 1000;
 
@@ -85,13 +94,8 @@ export class CancelRefundsService {
     this.logger.log(`Refund: ${id} order=${row.orderId} answer ${JSON.stringify(safe(resp))}`);
     await moveRefund(db, id, 'SENDING', { liqpayResponse: safe(resp) });
 
-    const outcome = refundOutcome(resp);
-    if (outcome === 'DONE') {
-      // Lost to the reversed callback: already DONE
-      await moveRefund(db, id, 'SENDING', { status: 'DONE', doneVia: 'LIQPAY', doneAt: now, doneBy: trainerId });
-      return { status: 'DONE' };
-    }
-    if (outcome === 'DECLINED') return this.giveBack(id, 'REFUND_DECLINED');
+    // Accepted or unknown: stays SENDING until the reversed callback or «Перевірити» sees the money go
+    if (refundOutcome(resp) === 'DECLINED') return this.giveBack(id, 'REFUND_DECLINED');
     return { status: 'SENDING' };
   }
 
