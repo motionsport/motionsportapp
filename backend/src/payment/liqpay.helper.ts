@@ -39,3 +39,22 @@ export async function liqpayStatus(
   if (!res.ok) throw new Error(`LiqPay status API returned ${res.status}`);
   return (await res.json()) as Record<string, unknown>;
 }
+
+// https://www.liqpay.ua/doc/api/internet_acquiring/refund. No idempotency key on LiqPay's side: the caller
+// sends once per refund row. Throws on network error / timeout / HTTP error: the refund may have gone through
+export async function liqpayRefund(
+  publicKey: string,
+  privateKey: string,
+  orderId: string,
+  amount: number,
+  timeoutMs = 10000,
+): Promise<Record<string, unknown>> {
+  const data = liqpayEncode({ version: 3, public_key: publicKey, action: 'refund', order_id: orderId, amount });
+  const res = await fetch(LIQPAY_API_URL, {
+    method: 'POST',
+    body: new URLSearchParams({ data, signature: liqpaySign(privateKey, data) }),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`LiqPay refund API returned ${res.status}`);
+  return (await res.json()) as Record<string, unknown>;
+}
