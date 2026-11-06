@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { bookings, cancelRefunds, members, payments, purchases, trainingDays, trainingSlots } from '../database/schema';
 
@@ -17,6 +17,8 @@ export async function loadRefund(q: Q, id: string, trainerId: string) {
       purchaseId: cancelRefunds.purchaseId,
       method: purchases.method,
       expectedRefundedUah: cancelRefunds.expectedRefundedUah,
+      sentAt: cancelRefunds.sentAt,
+      lastError: cancelRefunds.lastError,
       paymentId: payments.id,
       orderId: payments.orderId,
       paymentAmount: payments.amount,
@@ -30,17 +32,25 @@ export async function loadRefund(q: Q, id: string, trainerId: string) {
   return row ? { ...row, status: row.status as RefundStatus } : null;
 }
 
-// Compare-and-set: false when the row is no longer in `from`
+// Compare-and-set: false when the row is no longer in `from`. expectedNull: also only while no expected total
+// is saved, i.e. the refund request was certainly not sent
 export async function moveRefund(
   q: Q,
   id: string,
   from: RefundStatus,
   set: Partial<typeof cancelRefunds.$inferInsert>,
+  opts: { expectedNull?: boolean } = {},
 ): Promise<boolean> {
   const rows = await q
     .update(cancelRefunds)
     .set(set)
-    .where(and(eq(cancelRefunds.id, id), eq(cancelRefunds.status, from)))
+    .where(
+      and(
+        eq(cancelRefunds.id, id),
+        eq(cancelRefunds.status, from),
+        opts.expectedNull ? isNull(cancelRefunds.expectedRefundedUah) : undefined,
+      ),
+    )
     .returning({ id: cancelRefunds.id });
   return rows.length > 0;
 }

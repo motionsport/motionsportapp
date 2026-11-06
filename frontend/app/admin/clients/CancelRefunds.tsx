@@ -84,6 +84,16 @@ export function CancelRefunds({ refunds, onDone }: { refunds: CancelRefund[]; on
                       {ERROR_TEXT[r.lastError] ?? SAVE_FAILED}
                     </p>
                   )}
+                  {r.lastError === "REFUNDED_ELSEWHERE" && (
+                    <button
+                      type="button"
+                      onClick={() => act(r.id, () => api.markCancelRefundDone(r.id))}
+                      disabled={busy}
+                      className="block text-subtle text-xs underline hover:text-body py-2 transition-colors disabled:opacity-60"
+                    >
+                      Повернено (є в кабінеті оплат)
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => (online ? setConfirming(r) : act(r.id, () => api.markCancelRefundDone(r.id)))}

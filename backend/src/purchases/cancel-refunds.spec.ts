@@ -179,6 +179,40 @@ describe('CancelRefundsService.refund', () => {
   });
 });
 
+describe('CancelRefundsService — a row that never reached LiqPay', () => {
+  it('refund sends nothing when the row was taken back before the expected total was saved', async () => {
+    // claim wins; saving expected loses (check() gave the row back meanwhile)
+    mockMove.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    mockLoad.mockResolvedValueOnce({ ...ROW }).mockResolvedValueOnce({ ...ROW, status: 'DUE' });
+
+    await expect(makeService().refund('t1', 'r1')).resolves.toEqual({ status: 'DUE' });
+    expect(mockRefund).not.toHaveBeenCalled();
+  });
+
+  it('check gives back a SENDING row with no expected total once it is 2 minutes old: nothing was sent', async () => {
+    const sentAt = NOW.minus({ minutes: 3 }).toJSDate();
+    mockLoad.mockResolvedValue({ ...ROW, status: 'SENDING', expectedRefundedUah: null, sentAt });
+
+    await expect(makeService().check('t1', 'r1')).resolves.toEqual({ status: 'DUE' });
+    expect(mockStatus).not.toHaveBeenCalled();
+    expect(mockMove).toHaveBeenCalledWith(
+      {},
+      'r1',
+      'SENDING',
+      { status: 'DUE', lastError: null },
+      { expectedNull: true },
+    );
+  });
+
+  it('check leaves a fresh SENDING row with no expected total alone: its request may still be on the way', async () => {
+    const sentAt = NOW.minus({ seconds: 30 }).toJSDate();
+    mockLoad.mockResolvedValue({ ...ROW, status: 'SENDING', expectedRefundedUah: null, sentAt });
+
+    await expect(makeService().check('t1', 'r1')).resolves.toEqual({ status: 'SENDING' });
+    expect(mockMove).not.toHaveBeenCalled();
+  });
+});
+
 describe('CancelRefundsService.check', () => {
   it('marks DONE once refund_amount reaches the expected total', async () => {
     mockLoad.mockResolvedValue({ ...ROW, status: 'SENDING', expectedRefundedUah: 300 });
@@ -217,6 +251,12 @@ describe('CancelRefundsService.markDone', () => {
     expect(moves()).toEqual([['SENDING', expect.objectContaining({ status: 'DONE', doneVia: 'MANUAL' })]]);
   });
 
+  it('online DUE refused as REFUNDED_ELSEWHERE → DONE by MANUAL (returned in the cabinet)', async () => {
+    mockLoad.mockResolvedValue({ ...ROW, lastError: 'REFUNDED_ELSEWHERE' });
+    await makeService().markDone('t1', 'r1');
+    expect(moves()).toEqual([['DUE', expect.objectContaining({ status: 'DONE', doneVia: 'MANUAL' })]]);
+  });
+
   it('online DUE → 400: the refund is sent from the app', async () => {
     await expect(makeService().markDone('t1', 'r1')).rejects.toBeInstanceOf(BadRequestException);
     expect(mockMove).not.toHaveBeenCalled();
@@ -229,6 +269,20 @@ describe('CancelRefundsService.markDone', () => {
 });
 
 describe('cancel-refund.store', () => {
+  it('moveRefund with expectedNull also requires no expected total', async () => {
+    const chain: any = {
+      set: jest.fn(() => chain),
+      where: jest.fn(() => chain),
+      returning: jest.fn(() => Promise.resolve([])),
+    };
+    const db: any = { update: jest.fn(() => chain) };
+    await jest
+      .requireActual('./cancel-refund.store')
+      .moveRefund(db, 'r1', 'SENDING', { status: 'DUE' }, { expectedNull: true });
+    const { sql } = new PgDialect().sqlToQuery(chain.where.mock.calls[0][0]);
+    expect(sql).toMatch(/"cancel_refunds"\."expected_refunded_uah" is null/);
+  });
+
   it('moveRefund is a compare-and-set on the status it moves from', async () => {
     const chain: any = {
       set: jest.fn(() => chain),

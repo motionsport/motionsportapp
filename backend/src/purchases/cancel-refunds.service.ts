@@ -8,6 +8,9 @@ import { appRefundedUah, loadRefund, moveRefund, pendingRefunds } from './cancel
 
 // Logged and kept from LiqPay answers: no names, phones or card masks
 const SAFE_FIELDS = ['result', 'status', 'action', 'err_code', 'err_description', 'payment_id', 'order_id'];
+// Longer than one refund() run (status API 3 s + refund API 10 s + DB)
+const UNSENT_AFTER_MS = 2 * 60 * 1000;
+
 const safe = (r: Record<string, unknown>) =>
   Object.fromEntries(SAFE_FIELDS.filter((k) => r[k] !== undefined).map((k) => [k, r[k]]));
 
@@ -66,7 +69,10 @@ export class CancelRefundsService {
       this.logger.warn(`Refund: ${id} order=${row.orderId} already refunded ${baseline} — nothing sent`);
       return this.giveBack(id, refusal);
     }
-    await moveRefund(db, id, 'SENDING', { expectedRefundedUah: baseline + row.amountUah });
+    // Saved before sending: from here on the request may have gone. Lost = check() gave the row back, don't send
+    if (!(await moveRefund(db, id, 'SENDING', { expectedRefundedUah: baseline + row.amountUah }))) {
+      return { status: (await this.load(trainerId, id)).status };
+    }
 
     this.logger.log(`Refund: ${id} order=${row.orderId} sending ${row.amountUah} by ${trainerId}`);
     let resp: Record<string, unknown>;
@@ -93,6 +99,7 @@ export class CancelRefundsService {
   async check(trainerId: string, id: string): Promise<{ status: 'DUE' | 'SENDING' | 'DONE' }> {
     const row = await this.load(trainerId, id);
     if (row.status !== 'SENDING' || !row.orderId) return { status: row.status };
+    if (row.expectedRefundedUah === null) return this.giveBackUnsent(trainerId, row);
     let refunded: number;
     try {
       refunded = refundedSoFar(await liqpayStatus(...this.keys, row.orderId));
@@ -101,7 +108,7 @@ export class CancelRefundsService {
       return { status: 'SENDING' };
     }
     this.logger.log(`Refund: ${id} check order=${row.orderId} refund_amount=${refunded}`);
-    if (row.expectedRefundedUah === null || refunded < row.expectedRefundedUah) return { status: 'SENDING' };
+    if (refunded < row.expectedRefundedUah) return { status: 'SENDING' };
     const at = this.clock.now().toJSDate();
     await moveRefund(this.database.db, id, 'SENDING', {
       status: 'DONE',
@@ -117,7 +124,8 @@ export class CancelRefundsService {
     const row = await this.load(trainerId, id);
     if (row.status === 'DONE') throw new ConflictException(apiError('MONEY_RETURNED'));
     const online = row.method === 'LIQPAY';
-    const from = online ? 'SENDING' : 'DUE';
+    // Online: a stuck SENDING row, or one refused because the cabinet already had a refund
+    const from = online && row.lastError !== 'REFUNDED_ELSEWHERE' ? 'SENDING' : 'DUE';
     if (row.status !== from) {
       if (online) throw new BadRequestException('Send the refund first');
       throw new ConflictException(apiError('MONEY_RETURNED'));
@@ -131,6 +139,22 @@ export class CancelRefundsService {
     });
     if (!done) throw new ConflictException(apiError('MONEY_RETURNED'));
     return { ok: true };
+  }
+
+  // SENDING with no expected total: stopped before the request (an error, a killed function). Given back to DUE
+  // only after UNSENT_AFTER_MS, so a refund() still running is not overtaken (it then sends nothing either)
+  private async giveBackUnsent(
+    trainerId: string,
+    row: { id: string; sentAt: Date | null },
+  ): Promise<{ status: 'DUE' | 'SENDING' | 'DONE' }> {
+    const age = this.clock.now().toMillis() - (row.sentAt?.getTime() ?? 0);
+    if (age < UNSENT_AFTER_MS) return { status: 'SENDING' };
+    const db = this.database.db;
+    if (await moveRefund(db, row.id, 'SENDING', { status: 'DUE', lastError: null }, { expectedNull: true })) {
+      this.logger.warn(`Refund: ${row.id} was never sent — back to DUE`);
+      return { status: 'DUE' };
+    }
+    return { status: (await this.load(trainerId, row.id)).status };
   }
 
   private async load(trainerId: string, id: string) {
