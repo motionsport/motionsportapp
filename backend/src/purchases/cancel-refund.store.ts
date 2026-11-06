@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { bookings, cancelRefunds, members, payments, purchases, trainingDays, trainingSlots } from '../database/schema';
 
@@ -81,4 +81,21 @@ export async function pendingRefunds(q: Q, trainerId: string) {
     .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
     .where(and(eq(cancelRefunds.trainerId, trainerId), inArray(cancelRefunds.status, ['DUE', 'SENDING'])))
     .orderBy(asc(cancelRefunds.createdAt));
+}
+
+// LiqPay's reversed callback: refund_amount = all refunds on the order, so every SENDING row of the purchase
+// whose expected total is covered went through. Returns how many rows closed
+export async function confirmRefundsFromCallback(q: Q, purchaseId: string, refundAmount: number, at: Date) {
+  const rows = await q
+    .update(cancelRefunds)
+    .set({ status: 'DONE', doneVia: 'LIQPAY', doneAt: at })
+    .where(
+      and(
+        eq(cancelRefunds.purchaseId, purchaseId),
+        eq(cancelRefunds.status, 'SENDING'),
+        lte(cancelRefunds.expectedRefundedUah, refundAmount),
+      ),
+    )
+    .returning({ id: cancelRefunds.id });
+  return rows.length;
 }

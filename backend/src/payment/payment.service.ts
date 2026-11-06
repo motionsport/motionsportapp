@@ -5,6 +5,7 @@ import { payments, purchases, purchaseItems } from '../database/schema';
 import { ClockService } from '../clock/clock.service';
 import { EntitlementsService } from '../purchases/entitlements.service';
 import { liqpaySign, liqpayEncode, liqpayDecode, liqpayVerify, liqpayStatus } from './liqpay.helper';
+import { confirmRefundsFromCallback } from '../purchases/cancel-refund.store';
 
 const SUCCESS_STATUSES = ['success', 'sandbox'];
 const FAILED_STATUSES = ['failure', 'error', 'reversed'];
@@ -188,15 +189,23 @@ export class PaymentService {
         await this.needsManualHandling(payment, decoded);
       }
     }
-    // Refund: not handled in the app yet, keep the payload and leave the purchase as is
+    // Refund: a half refund sent from «Повернути гроші» is confirmed; anything else (a full refund in the
+    // cabinet) isn't handled in the app yet, so the payload is kept and the purchase left as is
     if (decoded.status === 'reversed' && payment.status === 'PAID') {
-      this.logger.warn(
-        `LiqPay callback: order=${orderId} was refunded (reversed) — purchase left as is, needs manual handling`,
-      );
+      const now = this.clock.now().toJSDate();
       await this.database.db
         .update(payments)
-        .set({ refundCallback: decoded, updatedAt: this.clock.now().toJSDate() })
+        .set({ refundCallback: decoded, updatedAt: now })
         .where(eq(payments.id, payment.id));
+      const refundAmount = Number(decoded.refund_amount) || 0;
+      const confirmed = await confirmRefundsFromCallback(this.database.db, payment.purchaseId, refundAmount, now);
+      if (confirmed > 0) {
+        this.logger.log(`Refund: callback order=${orderId} refund_amount=${refundAmount} confirmed=${confirmed}`);
+      } else {
+        this.logger.warn(
+          `LiqPay callback: order=${orderId} was refunded (reversed) — purchase left as is, needs manual handling`,
+        );
+      }
     }
     return { ok: true };
   }

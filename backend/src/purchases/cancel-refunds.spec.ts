@@ -244,4 +244,24 @@ describe('cancel-refund.store', () => {
     expect(sql).toMatch(/"cancel_refunds"\."id" = \$\d+ and "cancel_refunds"\."status" = \$\d+/);
     expect(params).toEqual(['r1', 'SENDING']);
   });
+
+  it('confirmRefundsFromCallback closes SENDING rows of the purchase whose expected total is reached', async () => {
+    const chain: any = {
+      set: jest.fn(() => chain),
+      where: jest.fn(() => chain),
+      returning: jest.fn(() => Promise.resolve([{ id: 'r1' }])),
+    };
+    const db: any = { update: jest.fn(() => chain) };
+    const at = new Date('2026-11-06T10:00:00Z');
+
+    await expect(
+      jest.requireActual('./cancel-refund.store').confirmRefundsFromCallback(db, 'p1', 300, at),
+    ).resolves.toBe(1);
+    expect(chain.set).toHaveBeenCalledWith({ status: 'DONE', doneVia: 'LIQPAY', doneAt: at });
+    const { sql, params } = new PgDialect().sqlToQuery(chain.where.mock.calls[0][0]);
+    expect(sql).toMatch(
+      /"cancel_refunds"\."purchase_id" = \$\d+ and "cancel_refunds"\."status" = \$\d+ and "cancel_refunds"\."expected_refunded_uah" <= \$\d+/,
+    );
+    expect(params).toEqual(['p1', 'SENDING', 300]);
+  });
 });

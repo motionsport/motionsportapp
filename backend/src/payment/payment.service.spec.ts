@@ -2,12 +2,15 @@ import { BadRequestException, ConflictException, Logger, NotFoundException } fro
 import { DateTime } from 'luxon';
 import { liqpaySign, liqpayEncode, liqpayDecode, liqpayVerify, liqpayStatus } from './liqpay.helper';
 import { PaymentService } from './payment.service';
+import { confirmRefundsFromCallback } from '../purchases/cancel-refund.store';
 
 jest.mock('./liqpay.helper', () => ({
   ...jest.requireActual('./liqpay.helper'),
   liqpayStatus: jest.fn(),
 }));
 const mockLiqpayStatus = liqpayStatus as jest.MockedFunction<typeof liqpayStatus>;
+jest.mock('../purchases/cancel-refund.store', () => ({ confirmRefundsFromCallback: jest.fn().mockResolvedValue(0) }));
+const mockConfirmRefunds = confirmRefundsFromCallback as jest.Mock;
 
 describe('liqpay helper', () => {
   const privateKey = 'test_private_key';
@@ -450,6 +453,15 @@ describe('PaymentService — refund of a paid payment', () => {
     expect(sets[0]).not.toHaveProperty('status');
     expect(sets[0]).not.toHaveProperty('rawCallback');
     expect(svc.mockEntitlements.activate).not.toHaveBeenCalled();
+  });
+
+  it('confirms the half refunds sent for this purchase up to refund_amount', async () => {
+    mockConfirmRefunds.mockClear();
+    const { db } = makeDb([[{ id: 'pay-1', purchaseId: 'purchase-1', status: 'PAID' }]]);
+    const svc = makeService(db);
+    const data = liqpayEncode({ order_id: 'mg-1', status: 'reversed', refund_amount: 300 });
+    await svc.handleCallback(data, liqpaySign('priv_key', data));
+    expect(mockConfirmRefunds).toHaveBeenCalledWith(db, 'purchase-1', 300, expect.any(Date));
   });
 });
 
