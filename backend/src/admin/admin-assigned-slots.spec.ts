@@ -890,6 +890,27 @@ describe('Late cancellation — «Не списувати»', () => {
     await expect(makeAttendance(db).waiveCancelFee('b1', TRAINER)).rejects.toThrow(NotFoundException);
   });
 
+  it('not while the refund is being sent', async () => {
+    const entitlements = { syncSpend: jest.fn() };
+    const { db, sets } = makeDb([[{ id: 'b1', refundStatus: 'SENDING' }]]);
+    await expect(makeAttendance(db, entitlements).waiveCancelFee('b1', TRAINER)).rejects.toThrow(
+      'Refund is in progress',
+    );
+    expect(sets).toEqual([]);
+    expect(entitlements.syncSpend).not.toHaveBeenCalled();
+  });
+
+  it('the trainer who took over the refund (the training is another trainer’s) may waive', async () => {
+    const { db } = makeDb();
+    const where = jest.fn(() => ({ limit: () => Promise.resolve([{ id: 'b1', refundStatus: 'DUE' }]) }));
+    const join: any = { innerJoin: () => join, leftJoin: () => join, where };
+    db.select = jest.fn(() => ({ from: () => join }));
+    await makeAttendance(db, { syncSpend: jest.fn() }).waiveCancelFee('b1', TRAINER);
+    const { sql, params } = new PgDialect().sqlToQuery((where.mock.calls[0] as unknown[])[0] as any);
+    expect(sql).toMatch(/\("training_slots"\."trainer_id" = \$\d+ or "cancel_refunds"\."trainer_id" = \$\d+\)/);
+    expect(params).toEqual(['b1', TRAINER, TRAINER]);
+  });
+
   it('nothing to waive (no fee, or waived already) answers 409', async () => {
     const { db } = makeDb([[{ id: 'b1', refundStatus: null }]], () => []);
     await expect(makeAttendance(db).waiveCancelFee('b1', TRAINER)).rejects.toThrow('Nothing to waive');

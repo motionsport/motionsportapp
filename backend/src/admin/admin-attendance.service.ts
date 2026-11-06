@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { eq, and, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { eq, and, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { trainingSlots, bookings, attendance, bookingGuests, cancelRefunds } from '../database/schema';
 import type { UpdateAttendanceDto } from './dto/update-attendance.dto';
@@ -60,10 +60,14 @@ export class AdminAttendanceService {
       .from(bookings)
       .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
       .leftJoin(cancelRefunds, eq(cancelRefunds.bookingId, bookings.id))
-      .where(and(eq(bookings.id, bookingId), eq(trainingSlots.trainerId, adminId)))
+      // The training's trainer, or the one a disabled trainer's refund was handed to
+      .where(
+        and(eq(bookings.id, bookingId), or(eq(trainingSlots.trainerId, adminId), eq(cancelRefunds.trainerId, adminId))),
+      )
       .limit(1);
     if (!booking) throw new NotFoundException('Booking not found');
     if (booking.refundStatus === 'DONE') throw new ConflictException(apiError('MONEY_RETURNED'));
+    if (booking.refundStatus === 'SENDING') throw new ConflictException(apiError('REFUND_IN_PROGRESS'));
 
     await this.database.db.transaction(async (tx) => {
       const [done] = await tx

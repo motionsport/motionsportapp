@@ -9,6 +9,7 @@ import {
   admins,
   sessions,
   purchases,
+  cancelRefunds,
   trainerSchedules,
   adminPushSubscriptions,
 } from '../database/schema';
@@ -99,6 +100,11 @@ export class AdminTrainersService {
         .update(purchases)
         .set({ trainerId: transferToId })
         .where(and(eq(purchases.trainerId, trainerId), eq(purchases.status, 'PENDING'), eq(purchases.method, 'CASH')));
+      // The half refunds they still had to return (or had sent) go with the clients
+      await tx
+        .update(cancelRefunds)
+        .set({ trainerId: transferToId })
+        .where(and(eq(cancelRefunds.trainerId, trainerId), inArray(cancelRefunds.status, ['DUE', 'SENDING'])));
       await tx
         .update(adminPushSubscriptions)
         .set({ disabledAt: at })

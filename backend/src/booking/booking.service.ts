@@ -129,13 +129,13 @@ export class BookingService {
     // After the start a booked no-show loses the training
     this.validateBeforeStart(booking.localDate, booking.slotTime);
 
-    const wasFull = await this.database.db.transaction(async (tx) => {
+    const { wasFull, refundUah } = await this.database.db.transaction(async (tx) => {
       const now = this.clock.now().toJSDate();
       await tx
         .update(bookings)
         .set({ status: 'CANCELLED', cancelledAt: now, cancellationReason: reason })
         .where(and(eq(bookings.id, booking.id), eq(bookings.status, 'ACTIVE')));
-      await this.chargeLateCancel(
+      const refundUah = await this.chargeLateCancel(
         tx,
         booking.id,
         memberId,
@@ -146,7 +146,7 @@ export class BookingService {
       );
       // The guest goes with the booking
       const seats = 1 + (await cancelGuests(tx, [booking.id], now)).size;
-      return freeSeats(tx, slotId, seats);
+      return { wasFull: await freeSeats(tx, slotId, seats), refundUah };
     });
 
     if (wasFull) {
@@ -166,6 +166,7 @@ export class BookingService {
       booking.localDate,
       reason,
       null,
+      refundUah,
     );
     return { ok: true };
   }
@@ -262,6 +263,7 @@ export class BookingService {
       localDate,
       reason,
       target.slotTime,
+      null,
     );
 
     return { ok: true };
@@ -288,7 +290,7 @@ export class BookingService {
     };
   }
 
-  // Spends the training like a mark; HALF also records a refund. The final fee is decided from what was actually
+  // Spends the training like a mark; HALF also records a refund (returned: its amount, for the trainer push). The final fee is decided from what was actually
   // spent, so a race with another spend can't charge for something nothing paid for
   private async chargeLateCancel(
     tx: Tx,
@@ -298,10 +300,10 @@ export class BookingService {
     localDate: string,
     slotTime: string,
     trainerId: string,
-  ) {
+  ): Promise<number | null> {
     const msBefore = slotStartsAt(localDate, slotTime).toMillis() - this.clock.now().toMillis();
     const payer = await this.entitlements.payerFor(tx, { memberId, trainingType, localDate }, bookingId);
-    if (!cancelFee(trainingType, msBefore, payer?.total ?? null)) return;
+    if (!cancelFee(trainingType, msBefore, payer?.total ?? null)) return null;
 
     await tx.update(bookings).set({ cancelFee: 'FULL' }).where(eq(bookings.id, bookingId));
     await this.entitlements.syncSpend(tx, bookingId);
@@ -322,7 +324,9 @@ export class BookingService {
         amountUah: halfBack(spent.amountUah),
         trainerId,
       });
+      return halfBack(spent.amountUah);
     }
+    return null;
   }
 
   // One free guest per group booking; takes a seat. Only while booking is open for that slot
@@ -446,6 +450,7 @@ export class BookingService {
     localDate: string,
     reason: string,
     switchedToTime: string | null,
+    refundUah: number | null,
   ) {
     try {
       const [member] = await this.database.db
@@ -460,6 +465,7 @@ export class BookingService {
         localDate,
         reason,
         switchedToTime,
+        refundUah,
       });
     } catch (err) {
       this.logger.error(`Trainer push for booking ${bookingId} failed`, err);

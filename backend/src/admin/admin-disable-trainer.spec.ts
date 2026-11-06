@@ -10,6 +10,7 @@ import {
   adminPushSubscriptions,
   admins,
   bookings,
+  cancelRefunds,
   members,
   purchases,
   sessions,
@@ -218,6 +219,13 @@ describe('Disabling a trainer', () => {
     const [p] = writesTo(log, purchases);
     expect(p.payload).toEqual({ trainerId: NEW });
     expect(p.where.params).toEqual(expect.arrayContaining([GONE, 'PENDING', 'CASH']));
+  });
+
+  it('hands the half refunds still to return or on their way to the chosen trainer', async () => {
+    const { log } = await disable();
+    const [r] = writesTo(log, cancelRefunds);
+    expect(r.payload).toEqual({ trainerId: NEW });
+    expect(r.where.params).toEqual([GONE, 'DUE', 'SENDING']);
   });
 
   it('cancels the trainings not over yet (going on and ahead), not the one that is over; the day stays', async () => {

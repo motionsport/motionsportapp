@@ -52,6 +52,22 @@ describe('Trainer push — member cancelled / moved', () => {
     );
   });
 
+  it('adds what to return when the cancellation owes a half refund', async () => {
+    const { svc, push } = makeNotifications();
+    await (svc as any).sendMemberCancelled({
+      displayName: 'Оля',
+      slotTime: '19:00',
+      localDate: '2026-10-22',
+      reason: 'Захворіла',
+      switchedToTime: null,
+      refundUah: 300,
+    });
+    expect(push.send).toHaveBeenCalledWith(
+      adminSub,
+      expect.objectContaining({ body: 'Оля: Захворіла\nПовернути 300 ₴: Клієнти' }),
+    );
+  });
+
   it('names both times for a move', async () => {
     const { svc, push } = makeNotifications();
     await (svc as any).sendMemberCancelled({

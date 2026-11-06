@@ -372,6 +372,7 @@ describe('BookingService — trainer push with the reason', () => {
         localDate: TODAY,
         reason: 'Захворіла',
         switchedToTime: null,
+        refundUah: null,
       },
     );
   });
@@ -595,6 +596,28 @@ describe('BookingService — late cancellation', () => {
     expect(sets).toContainEqual({ cancelFee: 'HALF' });
     expect((service as any).entitlements.syncSpend).toHaveBeenCalledWith(db, 'b1');
     expect(db.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("the half refund belongs to the training's trainer and the cancel push says what to return", async () => {
+    const { db, service, run } = cancelAt(kyivAt(15), single, [single]);
+    await run();
+    const values = db.insert.mock.results[0].value.values.mock.calls[0][0];
+    expect(values).toMatchObject({ trainerId: 'trainer-1', amountUah: 350, purchaseId: 'purchase-1' });
+    expect((service as any).notifications.enqueueAndProcess).toHaveBeenCalledWith(
+      'MEMBER_CANCELLED',
+      'member-cancelled:b1',
+      expect.objectContaining({ trainerId: 'trainer-1', refundUah: 350 }),
+    );
+  });
+
+  it('no half refund: the cancel push carries refundUah null', async () => {
+    const { service, run } = cancelAt(kyivAt(17, 30), single, [single]);
+    await run();
+    expect((service as any).notifications.enqueueAndProcess).toHaveBeenCalledWith(
+      'MEMBER_CANCELLED',
+      'member-cancelled:b1',
+      expect.objectContaining({ refundUah: null }),
+    );
   });
 
   it('a single personal training under 2 hours before: spent, nothing back', async () => {

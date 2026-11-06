@@ -128,6 +128,7 @@ export class NotificationService {
     const reason = payload.reason as string;
     const switchedToTime = payload.switchedToTime as string | null;
     const trainerId = payload.trainerId as string | null | undefined;
+    const refundUah = payload.refundUah as number | null | undefined;
 
     const title = switchedToTime
       ? `Перенесення ${slotTime} → ${switchedToTime}, ${this.fmtDate(localDate)}`
@@ -135,7 +136,8 @@ export class NotificationService {
     // Older events without trainerId go to every trainer
     const subscriptions = trainerId ? await this.subs.findAdminByAdminId(trainerId) : await this.subs.findAllAdmin();
     for (const sub of subscriptions) {
-      const result = await this.push.send(sub, { title, body: `${displayName}: ${reason}`, icon: ICON, url: '/admin' });
+      const body = `${displayName}: ${reason}` + (refundUah ? `\nПовернути ${refundUah} ₴: Клієнти` : '');
+      const result = await this.push.send(sub, { title, body, icon: ICON, url: '/admin' });
       if (result === 'expired') await this.subs.disableAdminByEndpoint(sub.endpoint);
     }
   }
