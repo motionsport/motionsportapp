@@ -433,7 +433,7 @@ export const purchaseItems = pgTable('purchase_items', {
   amountUah: integer('amount_uah').notNull(),
 });
 
-const A_MONTH_FROM_TODAY = sql`(CURRENT_DATE + INTERVAL '1 month')::date`;
+const ACTIVATE_BY_DEFAULT = sql`(CURRENT_DATE + INTERVAL '3 months')::date`;
 
 // Waits (valid_from / valid_until null) until the trainer activates it; burns after activate_by
 export const clubCards = pgTable(
@@ -449,7 +449,7 @@ export const clubCards = pgTable(
     validUntil: date('valid_until'),
     durationMonths: integer('duration_months').notNull().default(0),
     // Code always sets it; the default only backfilled old rows
-    activateBy: date('activate_by').notNull().default(A_MONTH_FROM_TODAY),
+    activateBy: date('activate_by').notNull().default(ACTIVATE_BY_DEFAULT),
     addedBy: uuid('added_by').references(() => admins.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -473,7 +473,7 @@ export const packages = pgTable(
     durationMonths: integer('duration_months').notNull().default(1),
     // Code always sets both; the defaults only backfilled old rows
     purchasedOn: date('purchased_on').notNull().defaultNow(),
-    activateBy: date('activate_by').notNull().default(A_MONTH_FROM_TODAY),
+    activateBy: date('activate_by').notNull().default(ACTIVATE_BY_DEFAULT),
     activatedOn: date('activated_on'),
     validUntil: date('valid_until'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

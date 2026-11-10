@@ -97,7 +97,7 @@ const line = (over: Record<string, unknown>) => ({
 const BOUGHT = new Date('2026-10-23T09:00:00Z');
 
 describe('Entitlements — buying', () => {
-  it('a paid club card waits for activation: no dates, a month from the purchase day to activate it', async () => {
+  it('a paid club card waits for activation: no dates, 3 months from the purchase day to activate it', async () => {
     const { db, inserts } = makeDb([[line({ createdAt: BOUGHT })]]);
     await makeService(db).activate(db, 'p1');
     expect(inserts).toEqual([
@@ -110,7 +110,7 @@ describe('Entitlements — buying', () => {
           validFrom: null,
           validUntil: null,
           durationMonths: 3,
-          activateBy: '2026-11-23',
+          activateBy: '2027-01-23',
         },
       },
     ]);
@@ -142,7 +142,7 @@ describe('Entitlements — buying', () => {
           total: 8,
           durationMonths: 1,
           purchasedOn: '2026-10-23',
-          activateBy: '2026-11-23',
+          activateBy: '2027-01-23',
         },
       },
     ]);
@@ -165,7 +165,7 @@ describe('Entitlements — buying', () => {
     await makeService(db).activate(db, 'p1');
     expect(inserts[0]).toMatchObject({
       table: packages,
-      values: { trainingType: 'group', total: 10, purchasedOn: '2026-10-23', activateBy: '2026-11-23' },
+      values: { trainingType: 'group', total: 10, purchasedOn: '2026-10-23', activateBy: '2027-01-23' },
     });
   });
 });
@@ -442,7 +442,7 @@ describe('Entitlements — manual club card', () => {
         validFrom: null,
         validUntil: null,
         durationMonths: 1,
-        activateBy: '2026-11-23',
+        activateBy: '2027-01-23',
         addedBy: 't1',
       },
     });

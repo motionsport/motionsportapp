@@ -182,7 +182,7 @@ export function PurchaseFlow({
         {back("close")}
         <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-1">Групові тренування</h1>
         <p className="text-muted text-xs mb-4">
-          Діє місяць від першого тренування. Якщо не почати протягом місяця від покупки, згорає.
+          Діє місяць від першого тренування. Якщо не почати протягом 3 місяців від покупки, згорає.
         </p>
         <div className="flex flex-col space-y-2">
           {data.catalog.groupPasses.map((p) => (
@@ -216,8 +216,8 @@ export function PurchaseFlow({
               Абонемент (клубна карта)
             </h1>
             <p className="rounded-xl border border-line bg-background px-4 py-3 text-sm text-body mb-2">
-              Абонемент активує тренер у залі, з того дня рахується строк. Якщо не активувати протягом місяця від
-              покупки, вона згорає.
+              Абонемент активує тренер у залі, з того дня рахується строк. Якщо не активувати протягом 3 місяців від
+              покупки, він згорає.
             </p>
           </>
         ) : (

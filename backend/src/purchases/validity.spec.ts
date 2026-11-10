@@ -2,8 +2,8 @@ import { activateByFor, cardState, passState, passUsableOn, validUntilFor } from
 
 describe('Validity — dates', () => {
   it('a month to activate, to the same date (or the month end)', () => {
-    expect(activateByFor('2026-10-23')).toBe('2026-11-23');
-    expect(activateByFor('2026-01-31')).toBe('2026-02-28');
+    expect(activateByFor('2026-10-23')).toBe('2027-01-23');
+    expect(activateByFor('2026-01-31')).toBe('2026-04-30');
   });
 
   it('valid for its months from activation; 0 months = that day only', () => {

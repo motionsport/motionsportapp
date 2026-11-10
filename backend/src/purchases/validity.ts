@@ -7,8 +7,9 @@ import { KY_ZONE } from '../schedule/training-types';
 const plusMonths = (date: string, months: number) =>
   DateTime.fromISO(date, { zone: KY_ZONE }).plus({ months }).toISODate()!;
 
-// Not activated by then: it burns
-export const activateByFor = (purchasedOn: string) => plusMonths(purchasedOn, 1);
+// Months to activate a club card or start a package; not activated by then: it burns
+export const ACTIVATE_WITHIN_MONTHS = 3;
+export const activateByFor = (purchasedOn: string) => plusMonths(purchasedOn, ACTIVATE_WITHIN_MONTHS);
 
 // From the activation day; 0 months = that day only
 export const validUntilFor = (activatedOn: string, months: number) => plusMonths(activatedOn, months);
