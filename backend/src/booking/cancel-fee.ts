@@ -2,12 +2,12 @@ import { GROUP_TYPE } from '../schedule/training-types';
 
 // Fee for a member's own cancellation (moves, trainer cancellations and unpaid bookings are free):
 // - group: under 2 h, the training is spent
-// - personal / split pass: under 24 h, one training is spent
-// - personal / split single: under 2 h spent; 2-24 h spent with half the price back
+// - personal / split pass: under 12 h, one training is spent
+// - personal / split single: under 2 h spent; 2-12 h spent with half the price back
 export type CancelFee = 'FULL' | 'HALF';
 
 export const GROUP_FREE_HOURS = 2;
-export const ASSIGNED_FREE_HOURS = 24;
+export const ASSIGNED_FREE_HOURS = 12;
 // Under this, a single assigned training gives nothing back
 export const NO_REFUND_HOURS = 2;
 

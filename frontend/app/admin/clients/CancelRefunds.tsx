@@ -12,7 +12,7 @@ const SAVE_FAILED = "Не вдалося зберегти. Оновіть сто
 // How long the message after an action stays
 const NOTICE_MS = 5000;
 
-// Half refunds after a late cancellation (2-24 h before), the training's trainer only. Online: «Повернути» sends
+// Half refunds after a late cancellation (2-12 h before), the training's trainer only. Online: «Повернути» sends
 // the refund once (the app never sends it twice); cash: handed over. Or «Не списувати» while nothing was sent
 export function CancelRefunds({ refunds, onDone }: { refunds: CancelRefund[]; onDone: () => void }) {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export function CancelRefunds({ refunds, onDone }: { refunds: CancelRefund[]; on
     <section>
       <h2 className="font-geologica font-semibold text-heading uppercase mb-1">Повернути гроші</h2>
       <p className="text-muted text-xs mb-3">
-        Клієнт скасував разове тренування менш ніж за добу: поверніть половину ціни або не списуйте.
+        Клієнт скасував разове тренування менш ніж за 12 годин: поверніть половину ціни або не списуйте.
       </p>
       <div className="flex flex-col space-y-3">
         {refunds.map((r) => {

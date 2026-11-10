@@ -9,15 +9,15 @@ describe('cancel fee', () => {
     expect(cancelFee('group', 30 * 60 * 1000, 10)).toBe('FULL');
   });
 
-  it('personal / split pass: free from a day before, one training spent under that', () => {
-    expect(cancelFee('personal', 24 * H, 8)).toBeNull();
-    expect(cancelFee('personal', 23 * H, 8)).toBe('FULL');
+  it('personal / split pass: free from 12 hours before, one training spent under that', () => {
+    expect(cancelFee('personal', 12 * H, 8)).toBeNull();
+    expect(cancelFee('personal', 12 * H - 1, 8)).toBe('FULL');
     expect(cancelFee('split', H, 6)).toBe('FULL');
   });
 
-  it('a single personal / split training: half back from 2 hours to a day, nothing under 2 hours', () => {
-    expect(cancelFee('personal', 24 * H, 1)).toBeNull();
-    expect(cancelFee('split', 23 * H, 1)).toBe('HALF');
+  it('a single personal / split training: half back from 2 to 12 hours, nothing under 2 hours', () => {
+    expect(cancelFee('personal', 12 * H, 1)).toBeNull();
+    expect(cancelFee('split', 12 * H - 1, 1)).toBe('HALF');
     expect(cancelFee('personal', 2 * H, 1)).toBe('HALF');
     expect(cancelFee('personal', 2 * H - 1, 1)).toBe('FULL');
   });

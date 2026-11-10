@@ -589,7 +589,7 @@ describe('BookingService — late cancellation', () => {
     return { db, sets, service, run: () => service.cancel('member-1', 'slot-p', 'захворіла') };
   }
 
-  it('a single personal training 2 hours to a day before: spent, half its price back', async () => {
+  it('a single personal training 2 to 12 hours before: spent, half its price back', async () => {
     const { db, sets, service, run } = cancelAt(kyivAt(15), single, [single]);
     await run();
     expect(sets).toContainEqual({ cancelFee: 'FULL' });
@@ -628,7 +628,7 @@ describe('BookingService — late cancellation', () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
-  it('a personal pass under a day before: one training spent', async () => {
+  it('a personal pass under 12 hours before: one training spent', async () => {
     const { db, sets, run } = cancelAt(kyivAt(15), pass, [pass]);
     await run();
     expect(sets).toContainEqual({ cancelFee: 'FULL' });

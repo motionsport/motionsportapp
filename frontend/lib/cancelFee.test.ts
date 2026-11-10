@@ -17,7 +17,7 @@ describe("feeWarning (the member's «Скасувати»)", () => {
     expect(feeWarning({ fee: "FULL", single: false, refundUah: null })).toBe("З пакета спишеться 1 тренування.");
   });
 
-  it("a single personal training 2–24 hours ahead gets half back, with the sum when known", () => {
+  it("a single personal training 2–12 hours ahead gets half back, with the sum when known", () => {
     expect(feeWarning({ fee: "HALF", single: true, refundUah: 300 })).toBe(
       "Тренування згорить, повернемо 50% (300 ₴).",
     );
