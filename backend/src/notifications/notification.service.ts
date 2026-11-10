@@ -176,12 +176,12 @@ export class NotificationService {
     const body =
       payload.kind === 'unfreeze'
         ? approved
-          ? 'Абонемент розморожено, можна записуватись'
+          ? 'Розморожено, можна записуватись'
           : 'Тренер не підтвердив розморозку'
         : approved
-          ? `Абонемент заморожено до ${this.fmtDate(payload.until as string)}`
+          ? `Заморожено до ${this.fmtDate(payload.until as string)}`
           : 'Тренер не підтвердив заморозку';
-    await this.sendToSubs(subscriptions, { title: 'Мій абонемент', body, icon: ICON, url: '/purchases' });
+    await this.sendToSubs(subscriptions, { title: 'Абонемент і пакети', body, icon: ICON, url: '/purchases' });
   }
 
   private async sendToSubs(subs: Array<{ endpoint: string; p256dh: string; auth: string }>, payload: PushPayload) {

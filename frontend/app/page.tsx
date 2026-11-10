@@ -155,7 +155,7 @@ export default function SchedulePage() {
   const scheduleAction = (
     <div className="flex items-center space-x-4">
       <Link href="/purchases" className="text-sm text-accent hover:underline">
-        Мій абонемент
+        Абонемент і пакети
       </Link>
       <button type="button" onClick={handleLogout} className="text-muted text-sm hover:text-body transition-colors">
         Вийти
@@ -191,7 +191,7 @@ export default function SchedulePage() {
               href="/purchases"
               className="block bg-warn-bg border border-warn-line rounded-xl px-4 py-3 mb-4 text-sm text-warn"
             >
-              Абонемент заморожено до {ddmm(schedule.frozenUntil)} включно
+              Заморожено до {ddmm(schedule.frozenUntil)} включно
             </Link>
           )}
 

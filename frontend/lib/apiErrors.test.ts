@@ -36,11 +36,11 @@ describe("errorText", () => {
   it("a place can word the same error its own way", () => {
     const own = { MEMBER_FROZEN: "Клієнт заморожений: активуйте після розморозки" };
     expect(errorText(coded("MEMBER_FROZEN"), "Не вдалося", own)).toBe("Клієнт заморожений: активуйте після розморозки");
-    expect(errorText(coded("MEMBER_FROZEN"))).toBe("Абонемент клієнта заморожено на цей день");
+    expect(errorText(coded("MEMBER_FROZEN"))).toBe("Клієнта заморожено на цей день");
   });
 
-  it("the unpaid purchase text keeps «Мій абонемент», which GroupPassModal turns into a link", () => {
-    expect(errorText(coded("UNPAID_PURCHASE"))).toContain("Мій абонемент");
+  it("the unpaid purchase text keeps «Абонемент і пакети», which GroupPassModal turns into a link", () => {
+    expect(errorText(coded("UNPAID_PURCHASE"))).toContain("Абонемент і пакети");
   });
 });
 

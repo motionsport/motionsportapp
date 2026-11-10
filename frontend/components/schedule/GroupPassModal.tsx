@@ -135,7 +135,7 @@ export function GroupPassModal({
           {error && (
             <p className="text-danger text-sm mt-3">
               {error}{" "}
-              {error.includes("Мій абонемент") && (
+              {error.includes("Абонемент і пакети") && (
                 <Link href="/purchases" className="underline">
                   Відкрити
                 </Link>

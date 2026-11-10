@@ -30,25 +30,25 @@ const CONTENT: Record<
     icon: "✕",
     iconClass: "text-danger",
     title: "Оплата не пройшла",
-    text: "Кошти не списано. Можете оформити покупку ще раз на сторінці «Мій абонемент».",
+    text: "Кошти не списано. Можете оформити покупку ще раз на сторінці «Абонемент і пакети».",
   },
   EXPIRED: {
     icon: "✕",
     iconClass: "text-danger",
     title: "Час оплати минув",
-    text: "Покупку скасовано. Можете оформити її ще раз на сторінці «Мій абонемент».",
+    text: "Покупку скасовано. Можете оформити її ще раз на сторінці «Абонемент і пакети».",
   },
   REPLACED: {
     icon: "?",
     iconClass: "text-muted",
     title: "Оплату перезапущено",
-    text: "Ви почали нову спробу оплати. Статус видно на сторінці «Мій абонемент».",
+    text: "Ви почали нову спробу оплати. Статус видно на сторінці «Абонемент і пакети».",
   },
   UNKNOWN: {
     icon: "?",
     iconClass: "text-muted",
     title: "Не вдалося перевірити оплату",
-    text: "Статус видно на сторінці «Мій абонемент».",
+    text: "Статус видно на сторінці «Абонемент і пакети».",
   },
 };
 
@@ -138,7 +138,7 @@ export function PaymentResult({ orderId }: { orderId?: string }) {
           href={booked ? "/" : "/purchases"}
           className="btn-primary w-full py-4 rounded-lg font-medium text-sm transition-colors text-center"
         >
-          {state === "REJECTED" ? "Спробувати ще раз" : booked ? "До розкладу" : "До мого абонемента"}
+          {state === "REJECTED" ? "Спробувати ще раз" : booked ? "До розкладу" : "До абонемента й пакетів"}
         </Link>
       </div>
     </PageLayout>

@@ -29,7 +29,7 @@ export default async function PricesPage() {
 
   const back = (
     <Link href="/purchases" className="text-muted text-sm hover:text-body transition-colors">
-      ← Мій абонемент
+      ← Абонемент і пакети
     </Link>
   );
 

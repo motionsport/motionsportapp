@@ -114,7 +114,7 @@ export function PurchaseFlow({
           }}
           className="btn-ghost w-full py-3 rounded-lg border text-sm transition-colors"
         >
-          До мого абонемента
+          До абонемента й пакетів
         </button>
       </div>
     );

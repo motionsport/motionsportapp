@@ -47,7 +47,7 @@ export class PurchasesService {
     private readonly notifications: NotificationService,
   ) {}
 
-  // «Мій абонемент»
+  // «Абонемент і пакети»
   async getForMember(memberId: string) {
     const catalog = await this.database.db
       .select({

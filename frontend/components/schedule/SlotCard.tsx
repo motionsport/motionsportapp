@@ -62,7 +62,7 @@ export function SlotCard({
         {slot.status === "CANCELLED" ? (
           <p className="text-danger text-sm font-medium">Скасовано</p>
         ) : frozen ? (
-          <p className="text-muted text-sm">Абонемент заморожено</p>
+          <p className="text-muted text-sm">Заморожено</p>
         ) : afterWindow || slot.started ? (
           <p className="text-muted text-sm">Запис закрито</p>
         ) : !bookingWindowOpen ? (

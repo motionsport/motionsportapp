@@ -35,11 +35,11 @@ export function FreezeBlock({ data, onChanged }: { data: MyFreeze; onChanged: ()
       <div className="rounded-xl border border-line bg-surface p-4">
         {!confirming ? (
           <button type="button" onClick={() => setConfirming(true)} className={link}>
-            Заморозити абонемент
+            Заморозити
           </button>
         ) : (
           <>
-            <span className="text-heading font-semibold">Заморозити абонемент?</span>
+            <span className="text-heading font-semibold">Заморозити?</span>
             <ul className="text-body text-sm mt-2 space-y-1 list-disc pl-5">
               <li>Заморожуються абонемент і всі тренування, до 30 днів.</li>
               <li>Заморозка почнеться, коли тренер підтвердить запит.</li>
@@ -90,8 +90,8 @@ export function FreezeBlock({ data, onChanged }: { data: MyFreeze; onChanged: ()
       {freeze.state === "active" && (
         <>
           <p className="text-subtle text-xs mt-2">
-            Абонемент заморожено до {ddmm(freeze.until)} включно. Записатися на тренування до того дня не можна; строки
-            вже подовжено.
+            Заморожено до {ddmm(freeze.until)} включно. Записатися на тренування до того дня не можна; строки вже
+            подовжено.
           </p>
           <button
             type="button"
