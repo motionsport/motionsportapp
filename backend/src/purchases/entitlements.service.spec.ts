@@ -353,6 +353,48 @@ describe('Entitlements — spends', () => {
   });
 });
 
+describe('Entitlements — «Не списувати» on the late cancellation that started a package', () => {
+  // Reads: the spend (before syncSpend drops it), the package locked, other spends, freeze moves
+  const spent = [{ packageId: 'p', localDate: '2026-10-20' }];
+  const started = (over: Record<string, unknown> = {}) => [
+    { activatedOn: '2026-10-20', activateBy: '2026-12-01', ...over },
+  ];
+
+  async function waive(results: unknown[][]) {
+    const { db, updates } = makeDb(results);
+    const service = makeService(db);
+    const sync = jest.spyOn(service, 'syncSpend').mockResolvedValue(undefined);
+    await service.waiveSpend(db, 'b1');
+    expect(sync).toHaveBeenCalledWith(db, 'b1');
+    return updates;
+  }
+
+  it('nothing else spent from it: the package waits for its first training again', async () => {
+    const updates = await waive([spent, started(), [], []]);
+    expect(updates).toEqual([{ table: packages, set: { activatedOn: null, validUntil: null } }]);
+  });
+
+  it('another training already spent from it: stays active', async () => {
+    expect(await waive([spent, started(), [{ bookingId: 'b2' }]])).toEqual([]);
+  });
+
+  it('started earlier, by another training: stays active', async () => {
+    expect(await waive([spent, started({ activatedOn: '2026-10-18' })])).toEqual([]);
+  });
+
+  it('waiting again would burn it (past activate_by): stays active', async () => {
+    expect(await waive([spent, started({ activateBy: '2026-10-22' })])).toEqual([]);
+  });
+
+  it('a freeze moved its end: stays active', async () => {
+    expect(await waive([spent, started(), [], [{ id: 'fi' }]])).toEqual([]);
+  });
+
+  it('nothing was spent: only syncSpend', async () => {
+    expect(await waive([[]])).toEqual([]);
+  });
+});
+
 describe('Entitlements — club card activation', () => {
   it('the trainer activates a waiting card from today for its months', async () => {
     const { db, updates } = makeDb([[{ id: 'c1' }]]);

@@ -315,6 +315,44 @@ export class EntitlementsService {
     }
   }
 
+  // «Не списувати»: gives the training back (syncSpend after the fee is waived). When that late cancellation is what
+  // started the package (activated on its date, nothing else spent from it), the package waits again for its first
+  // training. Kept active when waiting again would burn it (past activate_by) or a freeze moved its end (an early
+  // unfreeze must still find that date)
+  async waiveSpend(tx: Tx, bookingId: string) {
+    const [spent] = await tx
+      .select({ packageId: packageSpends.packageId, localDate: trainingDays.localDate })
+      .from(packageSpends)
+      .innerJoin(bookings, eq(bookings.id, packageSpends.bookingId))
+      .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
+      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
+      .where(eq(packageSpends.bookingId, bookingId))
+      .limit(1);
+    await this.syncSpend(tx, bookingId);
+    if (!spent) return;
+
+    // Locked, so a mark at the same moment either spends after this or is already counted below
+    const [pack] = await tx
+      .select({ activatedOn: packages.activatedOn, activateBy: packages.activateBy })
+      .from(packages)
+      .where(eq(packages.id, spent.packageId))
+      .for('update');
+    if (!pack || pack.activatedOn !== spent.localDate || pack.activateBy < this.today()) return;
+    const [otherSpend] = await tx
+      .select({ bookingId: packageSpends.bookingId })
+      .from(packageSpends)
+      .where(eq(packageSpends.packageId, spent.packageId))
+      .limit(1);
+    if (otherSpend) return;
+    const [movedByFreeze] = await tx
+      .select({ id: freezeItems.id })
+      .from(freezeItems)
+      .where(and(eq(freezeItems.packageId, spent.packageId), eq(freezeItems.field, 'valid_until')))
+      .limit(1);
+    if (movedByFreeze) return;
+    await tx.update(packages).set({ activatedOn: null, validUntil: null }).where(eq(packages.id, spent.packageId));
+  }
+
   // The package bought for this booking, else the oldest usable one with trainings left; null if none.
   // lock: lock first, count in a second statement (fresh READ COMMITTED snapshot), else two marks can both
   // take the last training. Lock packages only: payments lock purchase then packages, the reverse deadlocks

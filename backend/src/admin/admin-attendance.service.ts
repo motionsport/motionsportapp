@@ -90,7 +90,7 @@ export class AdminAttendanceService {
         .returning({ id: cancelRefunds.id });
       // Refunded meanwhile: keep the fee
       if (!refund && booking.refundStatus === 'DUE') throw new ConflictException(apiError('MONEY_RETURNED'));
-      await this.entitlements.syncSpend(tx, bookingId);
+      await this.entitlements.waiveSpend(tx, bookingId);
     });
     return { ok: true };
   }
