@@ -32,7 +32,7 @@ export function CashRequests({ requests, onDecided }: { requests: CashRequest[];
             <div className="text-heading font-semibold">{r.displayName}</div>
             {r.lines.map((l) => (
               <div key={lineName(l)} className="text-subtle text-xs mt-1">
-                {l.section === "club_card" ? `Клубна карта · ${lineName(l)}` : lineName(l)}
+                {l.section === "club_card" ? `Абонемент · ${lineName(l)}` : lineName(l)}
               </div>
             ))}
             <button

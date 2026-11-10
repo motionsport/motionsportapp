@@ -11,7 +11,7 @@ export function ClubCardBlock({ data }: { data: MyPurchases }) {
           "warn" as const,
           "Чекає активації",
           card.label,
-          `Тренер активує клубну карту, коли прийдете в зал. Встигніть до ${ddmm(card.activateBy)}`,
+          `Тренер активує абонемент, коли прийдете в зал. Встигніть до ${ddmm(card.activateBy)}`,
         ]
     : lastCard?.state === "burned"
       ? ["danger" as const, "Згоріла", lastCard.label, "Не активована вчасно. Купіть нову, щоб займатися в залі"]
@@ -22,7 +22,7 @@ export function ClubCardBlock({ data }: { data: MyPurchases }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
       <div className="flex items-center justify-between space-x-3">
-        <span className="text-heading font-semibold">Клубна карта</span>
+        <span className="text-heading font-semibold">Абонемент (клубна карта)</span>
         <Badge tone={badge} size="status" className="whitespace-nowrap">
           {badgeText}
         </Badge>

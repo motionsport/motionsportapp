@@ -4,7 +4,7 @@ import type { Cancellation, CancelFeePreview } from "@/lib/api";
 export function feeWarning(p: CancelFeePreview | null) {
   if (!p?.fee) return null;
   if (p.fee === "HALF") return `Тренування згорить, повернемо 50%${p.refundUah ? ` (${p.refundUah} ₴)` : ""}.`;
-  return p.single ? "Тренування згорить, гроші не повертаються." : "З абонемента спишеться 1 тренування.";
+  return p.single ? "Тренування згорить, гроші не повертаються." : "З пакета спишеться 1 тренування.";
 }
 
 // Trainer's fee tag on a cancellation

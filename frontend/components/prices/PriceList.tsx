@@ -5,8 +5,8 @@ import { formatUah, groupByTitle } from "@/lib/prices";
 // Shared by the admin and member price pages; the admin passes `renderOption` to make prices editable
 
 const SECTIONS: { key: PriceSection; title: string; note?: string }[] = [
-  { key: "club_card", title: "Клубні карти" },
-  { key: "assigned", title: "Послуги тренера", note: "Ціна без урахування вартості клубної карти" },
+  { key: "club_card", title: "Абонементи (клубні карти)" },
+  { key: "assigned", title: "Послуги тренера", note: "Ціна без урахування вартості абонемента" },
   { key: "group", title: "Групові заняття" },
 ];
 

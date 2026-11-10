@@ -22,10 +22,10 @@ const TYPE_FORMS: Record<AdminMember["packagesLeft"][number]["trainingType"], [s
 // Badges under the client's name: freeze, club card, trainings left per type
 export function PurchaseSummary({ m, className = "" }: { m: AdminMember; className?: string }) {
   const [text, cardTone] = !m.clubCard
-    ? ["Без клубної карти", "none" as const]
+    ? ["Без абонемента", "none" as const]
     : m.clubCard.state === "active"
-      ? [`Клубна карта до ${ddmm(m.clubCard.until)}`, "ok" as const]
-      : ["Клубна карта чекає активації", "warn" as const];
+      ? [`Абонемент до ${ddmm(m.clubCard.until)}`, "ok" as const]
+      : ["Абонемент чекає активації", "warn" as const];
   return (
     <div className={`flex flex-col items-start space-y-1.5 text-xs ${className}`}>
       {m.frozenUntil && (

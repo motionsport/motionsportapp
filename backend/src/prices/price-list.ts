@@ -180,7 +180,7 @@ export const DEFAULT_PRICE_LIST: PriceListItem[] = [
   {
     code: 'group_10',
     section: 'group',
-    title: 'Абонемент',
+    title: 'Пакет',
     optionLabel: '10 занять',
     amountUah: 2200,
     trainingType: 'group',

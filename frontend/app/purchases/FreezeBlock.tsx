@@ -41,7 +41,7 @@ export function FreezeBlock({ data, onChanged }: { data: MyFreeze; onChanged: ()
           <>
             <span className="text-heading font-semibold">Заморозити абонемент?</span>
             <ul className="text-body text-sm mt-2 space-y-1 list-disc pl-5">
-              <li>Заморожуються клубна карта і всі тренування, до 30 днів.</li>
+              <li>Заморожуються абонемент і всі тренування, до 30 днів.</li>
               <li>Заморозка почнеться, коли тренер підтвердить запит.</li>
               <li>Ваші записи на тренування в ці дні скасуються.</li>
               <li>Строки подовжаться на стільки днів, скільки тривала заморозка.</li>

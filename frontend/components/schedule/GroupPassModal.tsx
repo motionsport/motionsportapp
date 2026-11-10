@@ -95,7 +95,7 @@ export function GroupPassModal({
                       disabled={busy}
                       className="btn-primary w-full py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
                     >
-                      Купити абонемент · {pass.optionLabel} · {formatUah(pass.amountUah)}
+                      Купити пакет · {pass.optionLabel} · {formatUah(pass.amountUah)}
                     </button>
                   )}
                   {data.canPayCash ? (

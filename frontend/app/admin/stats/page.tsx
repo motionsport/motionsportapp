@@ -13,7 +13,7 @@ const label = "text-subtle text-xs font-semibold uppercase tracking-wide mb-2";
 
 // Dot colors: training types as in the calendar, club cards in the secondary text color
 const REVENUE_ROWS: [keyof Omit<Revenue, "total">, string, string][] = [
-  ["clubCards", "Клубні карти", ""], // bg-subtle class: theme colors aren't CSS variables here
+  ["clubCards", "Абонементи", ""], // bg-subtle class: theme colors aren't CSS variables here
   ["personal", "Персональні", TYPE_COLORS["personal"].border],
   ["split", "Спліт", TYPE_COLORS["split"].border],
   ["group", "Групові", TYPE_COLORS["group"].border],

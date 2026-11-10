@@ -212,17 +212,21 @@ export function PurchaseFlow({
         {back(mode === "card" ? "close" : "service")}
         {mode === "card" ? (
           <>
-            <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">Клубна карта</h1>
+            <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">
+              Абонемент (клубна карта)
+            </h1>
             <p className="rounded-xl border border-line bg-background px-4 py-3 text-sm text-body mb-2">
-              Клубну карту активує тренер у залі, з того дня рахується строк. Якщо не активувати протягом місяця від
+              Абонемент активує тренер у залі, з того дня рахується строк. Якщо не активувати протягом місяця від
               покупки, вона згорає.
             </p>
           </>
         ) : (
           <>
-            <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">Спершу клубна карта</h1>
+            <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">
+              Спершу абонемент (клубна карта)
+            </h1>
             <p className="rounded-xl border border-line bg-background px-4 py-3 text-sm text-body mb-2">
-              У вас немає діючої клубної карти. Вона потрібна, щоб займатись у залі, і купується окремо від тренувань.
+              У вас немає діючого абонемента. Він потрібен, щоб займатись у залі, і купується окремо від тренувань.
             </p>
           </>
         )}
@@ -252,7 +256,7 @@ export function PurchaseFlow({
     <div>
       {back("close")}
       <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-1">Послуги тренера</h1>
-      <p className="text-muted text-xs mb-4">Ціна без урахування вартості клубної карти</p>
+      <p className="text-muted text-xs mb-4">Ціна без урахування вартості абонемента</p>
       {groups.map((g) => (
         <section key={g.type}>
           <h2 className={sectionTitle}>{g.title}</h2>

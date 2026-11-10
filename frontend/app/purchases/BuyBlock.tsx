@@ -108,7 +108,7 @@ export function BuyBlock({
           {canBuyCard && (
             <BuyTile
               icon={<CardIcon />}
-              title="Клубна карта"
+              title="Абонемент (клубна карта)"
               price={fromPrice(data.catalog.clubCards)}
               onClick={() => onBuy("card")}
             />

@@ -204,7 +204,7 @@ export class AdminPurchasesService {
     };
   }
 
-  // «+ Додати клубну карту з рецепції»
+  // «+ Додати абонемент з рецепції»
   async addCard(trainerId: string, memberId: string, priceItemId: string, activate: boolean) {
     await requireVisibleMember(this.database.db, trainerId, memberId);
     await this.database.db.transaction(async (tx) => {

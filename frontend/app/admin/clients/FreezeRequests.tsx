@@ -40,8 +40,8 @@ export function FreezeRequests({ requests, onDecided }: { requests: FreezeReques
             {confirmId === r.id ? (
               <div className="rounded-lg border border-line bg-background p-4 space-y-3 mt-4">
                 <p className="text-body text-sm">
-                  Заморозка до {ddmm(r.until)}. Записи на ці дні скасуються, а клубна карта й тренування не згорять:
-                  строки подовжаться на час заморозки.
+                  Заморозка до {ddmm(r.until)}. Записи на ці дні скасуються, а абонемент і тренування не згорять: строки
+                  подовжаться на час заморозки.
                 </p>
                 <div className="flex space-x-2">
                   <button

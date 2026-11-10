@@ -67,7 +67,7 @@ export function StrayPayments() {
             <div className="text-subtle text-xs mt-1">{kyivDateTime(p.paidAt)}</div>
             {p.lines.map((l) => (
               <div key={lineName(l)} className="text-body text-xs mt-1">
-                {l.section === "club_card" ? `Клубна карта · ${lineName(l)}` : lineName(l)}
+                {l.section === "club_card" ? `Абонемент · ${lineName(l)}` : lineName(l)}
               </div>
             ))}
             {p.liqpayPaymentId && (

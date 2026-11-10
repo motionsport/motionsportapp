@@ -14,7 +14,7 @@ describe("feeWarning (the member's «Скасувати»)", () => {
   });
 
   it("a pass loses one training", () => {
-    expect(feeWarning({ fee: "FULL", single: false, refundUah: null })).toBe("З абонемента спишеться 1 тренування.");
+    expect(feeWarning({ fee: "FULL", single: false, refundUah: null })).toBe("З пакета спишеться 1 тренування.");
   });
 
   it("a single personal training 2–24 hours ahead gets half back, with the sum when known", () => {

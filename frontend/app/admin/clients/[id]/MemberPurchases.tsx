@@ -81,7 +81,7 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
     api
       .getPrices()
       .then(({ items }) => setCardItems(items.filter((i) => i.section === "club_card")))
-      .catch(() => setError("Не вдалося завантажити клубні карти"));
+      .catch(() => setError("Не вдалося завантажити абонементи"));
 
   const activate = async (id: string) => {
     setSaving(true);
@@ -92,7 +92,7 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
       onChanged();
     } catch (err) {
       setError(
-        errorText(err, "Не вдалося активувати клубну карту", {
+        errorText(err, "Не вдалося активувати абонемент", {
           MEMBER_FROZEN: "Клієнт заморожений: активуйте після розморозки",
         }),
       );
@@ -113,8 +113,8 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
       onChanged();
     } catch (err) {
       setError(
-        errorText(err, "Не вдалося додати клубну карту", {
-          MEMBER_FROZEN: "Клієнт заморожений: додайте клубну карту після розморозки",
+        errorText(err, "Не вдалося додати абонемент", {
+          MEMBER_FROZEN: "Клієнт заморожений: додайте абонемент після розморозки",
         }),
       );
     } finally {
@@ -133,7 +133,7 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
   return (
     <div className="flex flex-col">
       <section className="pb-4">
-        <h3 className={sectionTitle}>Клубна карта</h3>
+        <h3 className={sectionTitle}>Абонемент (клубна карта)</h3>
         {data.cards.length === 0 && <p className="text-subtle">Ще немає</p>}
         <div className="flex flex-col space-y-3">
           {data.cards.map((c) => (
@@ -170,12 +170,12 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
         {cardItems ? (
           <div className="flex flex-wrap items-center -m-1 mt-2">
             <select
-              aria-label="Клубна карта"
+              aria-label="Абонемент"
               value={cardId}
               onChange={(e) => setCardId(e.target.value)}
               className="input-field border rounded-lg px-2 py-1.5 text-xs focus:outline-none m-1"
             >
-              <option value="">Виберіть клубну карту</option>
+              <option value="">Виберіть абонемент</option>
               {cardItems.map((i) => (
                 <option key={i.id} value={i.id}>
                   {lineName(i)}
@@ -210,14 +210,14 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
           // Only without a current club card (none, expired or burned)
           !data.card && (
             <button type="button" onClick={openAddCard} className="text-accent text-xs hover:underline mt-2">
-              + Додати клубну карту з рецепції
+              + Додати абонемент з рецепції
             </button>
           )
         )}
       </section>
 
       <section className="py-4 border-t border-line">
-        <h3 className={sectionTitle}>Послуги тренера й абонементи</h3>
+        <h3 className={sectionTitle}>Пакети тренувань</h3>
         {data.packages.length === 0 && <p className="text-subtle">Ще немає</p>}
         <div className="flex flex-col space-y-2">
           {data.packages.map((p) => (
