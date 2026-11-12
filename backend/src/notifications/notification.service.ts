@@ -147,8 +147,9 @@ export class NotificationService {
     const trainerId = payload.trainerId as string | null;
     const subscriptions = trainerId ? await this.subs.findAdminByAdminId(trainerId) : await this.subs.findAllAdmin();
     const body = `${payload.displayName as string}: ${payload.totalUah as number} ₴`;
+    const title = payload.method === 'TRANSFER' ? 'Оплата переказом' : 'Оплата готівкою';
     for (const sub of subscriptions) {
-      const result = await this.push.send(sub, { title: 'Оплата готівкою', body, icon: ICON, url: '/admin/clients' });
+      const result = await this.push.send(sub, { title, body, icon: ICON, url: '/admin/clients' });
       if (result === 'expired') await this.subs.disableAdminByEndpoint(sub.endpoint);
     }
   }

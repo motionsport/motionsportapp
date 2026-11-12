@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
-import { api, AssignedType, CatalogItem, MyPurchases, PurchaseMethod } from "@/lib/api";
+import { api, AssignedType, CatalogItem, MyPurchases, PurchaseMethod, TransferDetails as Details } from "@/lib/api";
 import { submitLiqPay } from "@/lib/liqpay";
 import { errorText } from "@/lib/apiErrors";
 import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { formatUah, groupByTitle, lineName } from "@/lib/prices";
+import { TransferDetails } from "@/components/purchases/TransferDetails";
 
-type Step = "service" | "club" | "group" | "checkout" | "sent";
+type Step = "service" | "club" | "group" | "checkout" | "sent" | "transfer";
 
 // service: a trainer service, plus a club card if the member has none
 export type PurchaseMode = "service" | "card" | "group";
@@ -55,6 +56,7 @@ export function PurchaseFlow({
   const [passId, setPassId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [transfer, setTransfer] = useState<Details | null>(null);
 
   const needsCard = !data.card;
   const service = data.catalog.services.find((s) => s.id === serviceId);
@@ -65,18 +67,24 @@ export function PurchaseFlow({
   // Without a trainer, cash only for a club card alone: every trainer sees that request (backend checks the same)
   const cardOnly = !!club && !service && !pass;
   const canPayCash = data.canPayCash || cardOnly;
+  const cashOn = data.methods.cash && canPayCash;
+  const noMethod = !data.methods.liqpay && !data.methods.transfer && !cashOn;
   const groups = SERVICE_GROUPS.filter((g) => !startType || g.type === startType);
 
   const pay = async (method: PurchaseMethod) => {
     setBusy(true);
     setError("");
     try {
-      const { checkout } = await api.createPurchase(
+      const { checkout, transfer } = await api.createPurchase(
         lines.map((l) => l.id),
         method,
       );
       if (method === "CASH") {
         setStep("sent");
+        setBusy(false);
+      } else if (method === "TRANSFER" && transfer) {
+        setTransfer(transfer);
+        setStep("transfer");
         setBusy(false);
       } else if (checkout && !("status" in checkout)) {
         submitLiqPay(checkout);
@@ -120,6 +128,29 @@ export function PurchaseFlow({
     );
   }
 
+  if (step === "transfer" && transfer) {
+    return (
+      <div>
+        <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">Переказ на рахунок</h1>
+        <p className="text-body text-sm mb-4">
+          Перекажіть {formatUah(transfer.amountUah)} з будь-якого банку. Тренер підтвердить, коли гроші прийдуть на
+          рахунок. Реквізити залишаться на сторінці «Абонемент і пакети».
+        </p>
+        <TransferDetails transfer={transfer} />
+        <button
+          type="button"
+          onClick={() => {
+            onCashSent();
+            onClose();
+          }}
+          className="btn-ghost w-full py-3 rounded-lg border text-sm transition-colors mt-5"
+        >
+          До абонемента й пакетів
+        </button>
+      </div>
+    );
+  }
+
   if (step === "checkout") {
     return (
       <div>
@@ -139,15 +170,27 @@ export function PurchaseFlow({
           </div>
         </div>
         <div className="flex flex-col space-y-2">
-          <button
-            type="button"
-            onClick={() => pay("LIQPAY")}
-            disabled={busy}
-            className="btn-primary w-full py-4 rounded-lg font-medium text-sm transition-colors disabled:opacity-60"
-          >
-            {busy ? "Завантаження..." : "Оплатити онлайн"}
-          </button>
-          {canPayCash && (
+          {data.methods.liqpay && (
+            <button
+              type="button"
+              onClick={() => pay("LIQPAY")}
+              disabled={busy}
+              className="btn-primary w-full py-4 rounded-lg font-medium text-sm transition-colors disabled:opacity-60"
+            >
+              {busy ? "Завантаження..." : "Оплатити онлайн"}
+            </button>
+          )}
+          {data.methods.transfer && (
+            <button
+              type="button"
+              onClick={() => pay("TRANSFER")}
+              disabled={busy}
+              className={`${data.methods.liqpay ? "btn-ghost border" : "btn-primary font-medium"} w-full py-4 rounded-lg text-sm transition-colors disabled:opacity-60`}
+            >
+              Переказ на рахунок
+            </button>
+          )}
+          {cashOn && (
             <button
               type="button"
               onClick={() => pay("CASH")}
@@ -158,15 +201,23 @@ export function PurchaseFlow({
             </button>
           )}
         </div>
-        {canPayCash ? (
+        {noMethod && <p className="text-body text-sm">Оплата зараз недоступна. Зверніться до тренера в залі.</p>}
+        {data.methods.transfer && (
           <p className="text-muted text-xs mt-3">
-            Готівка: тренер побачить запит і підтвердить, коли отримає гроші. Ціна зафіксована зараз.
-          </p>
-        ) : (
-          <p className="text-muted text-xs mt-3">
-            Оплата тренувань готівкою з&apos;явиться, коли за вами закріплять тренера. Попросіть про це в залі.
+            Переказ: після «Переказ на рахунок» ви побачите реквізити й кнопку, що відкриє банк. Тренер підтвердить,
+            коли гроші прийдуть.
           </p>
         )}
+        {data.methods.cash &&
+          (canPayCash ? (
+            <p className="text-muted text-xs mt-3">
+              Готівка: тренер побачить запит і підтвердить, коли отримає гроші. Ціна зафіксована зараз.
+            </p>
+          ) : (
+            <p className="text-muted text-xs mt-3">
+              Оплата тренувань готівкою з&apos;явиться, коли за вами закріплять тренера. Попросіть про це в залі.
+            </p>
+          ))}
         {error && (
           <p role="alert" className="text-danger text-sm mt-3">
             {error}

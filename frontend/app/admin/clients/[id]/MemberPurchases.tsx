@@ -5,6 +5,7 @@ import { errorText } from "@/lib/apiErrors";
 import { ddmm } from "@/lib/dates";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { formatUah, lineName } from "@/lib/prices";
+import { METHOD_LABEL } from "@/lib/paymentMethods";
 
 type Card = MemberPurchasesData["cards"][number];
 type Pack = MemberPurchasesData["packages"][number];
@@ -250,7 +251,7 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
                 timeZone: "Europe/Kyiv",
               })}
               {" · "}
-              {p.method === "CASH" ? "готівка" : "онлайн"} · {STATUS[p.status]}
+              {METHOD_LABEL[p.method]} · {STATUS[p.status]}
               {p.decidedBy && ` · ${p.decidedBy}`}
             </p>
           </div>

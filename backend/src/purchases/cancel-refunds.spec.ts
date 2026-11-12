@@ -234,6 +234,12 @@ describe('CancelRefundsService.markDone', () => {
     expect(moves()).toEqual([['DUE', expect.objectContaining({ status: 'DONE', doneVia: 'CASH', doneBy: 't1' })]]);
   });
 
+  it('transfer DUE → DONE by TRANSFER (the trainer sent it back)', async () => {
+    mockLoad.mockResolvedValue({ ...ROW, method: 'TRANSFER', paymentId: null, orderId: null });
+    await makeService().markDone('t1', 'r1');
+    expect(moves()).toEqual([['DUE', expect.objectContaining({ status: 'DONE', doneVia: 'TRANSFER' })]]);
+  });
+
   it('online SENDING → DONE by MANUAL', async () => {
     mockLoad.mockResolvedValue({ ...ROW, status: 'SENDING' });
     await makeService().markDone('t1', 'r1');

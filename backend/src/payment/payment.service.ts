@@ -6,6 +6,8 @@ import { ClockService } from '../clock/clock.service';
 import { EntitlementsService } from '../purchases/entitlements.service';
 import { liqpaySign, liqpayEncode, liqpayDecode, liqpayVerify, liqpayStatus } from './liqpay.helper';
 import { confirmRefundsFromCallback } from '../purchases/cancel-refund.store';
+import { apiError } from '../common/api-error';
+import { methodEnabled } from './payment-methods';
 
 const SUCCESS_STATUSES = ['success', 'sandbox'];
 const FAILED_STATUSES = ['failure', 'error', 'reversed'];
@@ -60,8 +62,9 @@ export class PaymentService {
 
   // Amount is the purchase total fixed at purchase time. A retry continues the purchase with a new order id
   async checkoutPurchase(purchaseId: string, memberId: string) {
-    if (!this.publicKey || !this.privateKey) {
-      throw new BadRequestException('Payment is not configured');
+    // Switched off: no new orders; callbacks, status checks and refunds of old ones still work
+    if (!methodEnabled('LIQPAY') || !this.publicKey || !this.privateKey) {
+      throw new BadRequestException(apiError('PAYMENT_METHOD_OFF'));
     }
 
     const [purchase] = await this.database.db

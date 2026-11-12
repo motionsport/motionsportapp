@@ -24,6 +24,9 @@ export const ERROR_TEXT: Record<string, string> = {
   TRAININGS_LEFT: "Ще є тренування цього типу: нові можна купити, коли вони закінчаться.",
   CLUB_CARD_EXISTS: "Абонемент вже є.",
   CLUB_CARD_REQUIRED: "Спершу потрібен абонемент (клубна карта).",
+  PAYMENT_METHOD_OFF: "Цей спосіб оплати зараз вимкнено. Оновіть сторінку й оберіть інший.",
+  NO_TRAINER_FOR_CASH: "Готівкою можна заплатити лише своєму тренеру. Оберіть інший спосіб оплати.",
+  PURCHASE_DECIDED: "Цю оплату вже підтвердили або відхилили. Оновіть сторінку.",
   NOTHING_TO_FREEZE: "Немає чого заморожувати: абонемента чи тренувань.",
   FREEZE_REQUESTED: "Запит уже надіслано.",
   // Trainer: calendar, schedule, marks, refunds
@@ -40,7 +43,7 @@ export const ERROR_TEXT: Record<string, string> = {
   REFUNDED_ELSEWHERE: "З цієї оплати вже повертали гроші. Перевірте в кабінеті оплат.",
   REFUND_DECLINED: "Повернення не прийняли. Спробуйте пізніше або «Не списувати».",
   PAYMENT_PROVIDER_UNREACHABLE: "Не вдалося зв'язатися з оплатою. Спробуйте ще раз.",
-  NOT_ONLINE_PAYMENT: "Ця покупка оплачена готівкою.",
+  NOT_ONLINE_PAYMENT: "Ця покупка оплачена не онлайн.",
 };
 
 export const DEFAULT_ERROR = "Помилка. Спробуйте ще раз.";

@@ -399,7 +399,7 @@ export const purchases = pgTable(
     memberId: uuid('member_id')
       .notNull()
       .references(() => members.id),
-    // The member's trainer at purchase time: confirms cash
+    // The member's trainer at purchase time: confirms cash and transfers
     trainerId: uuid('trainer_id').references(() => admins.id),
     method: text('method').notNull(),
     status: text('status').notNull().default('PENDING'),
@@ -413,7 +413,7 @@ export const purchases = pgTable(
   },
   (table) => [
     index('purchases_member_id_idx').on(table.memberId),
-    oneOf('purchases_method_check', 'method', ['LIQPAY', 'CASH']),
+    oneOf('purchases_method_check', 'method', ['LIQPAY', 'CASH', 'TRANSFER']),
     oneOf('purchases_status_check', 'status', ['PENDING', 'PAID', 'REJECTED', 'FAILED', 'EXPIRED', 'CANCELLED']),
     check('purchases_total_check', sql`total_uah > 0`),
   ],
@@ -617,7 +617,8 @@ export const cancelRefunds = pgTable(
     expectedRefundedUah: integer('expected_refunded_uah'),
     sentAt: timestamp('sent_at', { withTimezone: true }),
     sentBy: uuid('sent_by').references(() => admins.id),
-    // LIQPAY = confirmed by LiqPay, CASH = handed over, MANUAL = trainer checked the cabinet; null = before 2026-11
+    // LIQPAY = confirmed by LiqPay, CASH = handed over, TRANSFER = sent back by the trainer, MANUAL = trainer checked
+    // the LiqPay cabinet; null = before 2026-11
     doneVia: text('done_via'),
     // Error code (API_ERRORS) of the last failed attempt
     lastError: text('last_error'),
@@ -626,7 +627,7 @@ export const cancelRefunds = pgTable(
   },
   (table) => [
     oneOf('cancel_refunds_status_check', 'status', ['DUE', 'SENDING', 'DONE', 'CANCELLED']),
-    oneOf('cancel_refunds_done_via_check', 'done_via', ['LIQPAY', 'CASH', 'MANUAL']),
+    oneOf('cancel_refunds_done_via_check', 'done_via', ['LIQPAY', 'CASH', 'TRANSFER', 'MANUAL']),
     check('cancel_refunds_amount_check', sql`amount_uah > 0`),
     index('cancel_refunds_trainer_id_idx').on(table.trainerId),
   ],

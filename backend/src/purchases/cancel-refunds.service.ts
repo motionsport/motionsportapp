@@ -123,7 +123,7 @@ export class CancelRefundsService {
     return { status: 'DONE' };
   }
 
-  // Cash handed over; or an online refund stuck in SENDING the trainer found in the LiqPay cabinet
+  // Cash handed over or sent back by transfer; or an online refund stuck in SENDING the trainer found in the LiqPay cabinet
   async markDone(trainerId: string, id: string) {
     const row = await this.load(trainerId, id);
     if (row.status === 'DONE') throw new ConflictException(apiError('MONEY_RETURNED'));
@@ -137,7 +137,7 @@ export class CancelRefundsService {
     const at = this.clock.now().toJSDate();
     const done = await moveRefund(this.database.db, id, from, {
       status: 'DONE',
-      doneVia: online ? 'MANUAL' : 'CASH',
+      doneVia: online ? 'MANUAL' : row.method === 'TRANSFER' ? 'TRANSFER' : 'CASH',
       doneAt: at,
       doneBy: trainerId,
     });

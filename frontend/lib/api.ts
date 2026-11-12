@@ -33,6 +33,7 @@ import type {
   TrainerSchedule,
   TrainerStats,
   TrainingType,
+  TransferDetails,
 } from "./apiTypes";
 
 // Callers import the types from here, together with `api`
@@ -207,9 +208,13 @@ export const api = {
   activateClubCard: (memberId: string, cardId: string) =>
     post(`/admin/members/${memberId}/club-cards/${cardId}/activate`),
 
-  // slotId: group pass bought while booking; cash books at once, LiqPay once paid
+  // slotId: group pass bought while booking; cash and transfer book at once, LiqPay once paid
   createPurchase: (priceItemIds: string[], method: PurchaseMethod, slotId?: string) =>
-    post<{ purchaseId: string; checkout?: LiqPayCheckout | { status: "PAID" } }>("/purchases", {
+    post<{
+      purchaseId: string;
+      checkout?: LiqPayCheckout | { status: "PAID" };
+      transfer?: TransferDetails | null;
+    }>("/purchases", {
       priceItemIds,
       method,
       slotId,

@@ -1,11 +1,19 @@
 "use client";
 import { useState } from "react";
-import { api, Purchase } from "@/lib/api";
+import { api, Purchase, TransferDetails as Details } from "@/lib/api";
 import { submitLiqPay } from "@/lib/liqpay";
+import { errorText } from "@/lib/apiErrors";
 import { formatUah, lineName } from "@/lib/prices";
+import { TransferDetails } from "@/components/purchases/TransferDetails";
 
 // `onChanged` reloads the page
-export function PendingPurchase({ pending, onChanged }: { pending: Purchase; onChanged: () => Promise<void> }) {
+export function PendingPurchase({
+  pending,
+  onChanged,
+}: {
+  pending: Purchase & { transfer: Details | null };
+  onChanged: () => Promise<void>;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,8 +28,13 @@ export function PendingPurchase({ pending, onChanged }: { pending: Purchase; onC
       } else {
         submitLiqPay(checkout);
       }
-    } catch {
-      setError("Не вдалося перейти до оплати. Спробуйте ще раз.");
+    } catch (err) {
+      // LiqPay switched off meanwhile: PAYMENT_METHOD_OFF says to cancel and pick another way
+      setError(
+        errorText(err, "Не вдалося перейти до оплати. Спробуйте ще раз.", {
+          PAYMENT_METHOD_OFF: "Онлайн-оплату зараз вимкнено. Скасуйте покупку й оберіть інший спосіб.",
+        }),
+      );
       setBusy(false);
     }
   };
@@ -53,6 +66,12 @@ export function PendingPurchase({ pending, onChanged }: { pending: Purchase; onC
         ))}
         {pending.method === "CASH" && (
           <p className="text-body text-sm mt-2">Тренер підтвердить, коли отримає готівку.</p>
+        )}
+        {pending.method === "TRANSFER" && (
+          <>
+            <p className="text-body text-sm mt-2 mb-3">Тренер підтвердить, коли гроші прийдуть на рахунок.</p>
+            {pending.transfer && <TransferDetails transfer={pending.transfer} />}
+          </>
         )}
         <div className="flex flex-col space-y-2 mt-3">
           {pending.method === "LIQPAY" && (

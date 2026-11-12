@@ -84,7 +84,18 @@ export interface PriceChange {
 // Purchases. Nothing starts on payment: a card waits for the trainer to activate it, a package for its first
 // attendance mark. Not activated within a month, it burns.
 
-export type PurchaseMethod = "LIQPAY" | "CASH";
+export type PurchaseMethod = "LIQPAY" | "CASH" | "TRANSFER";
+
+// The gym's account and what to put in the transfer; qrUrl = the NBU payment link, opens a bank app with the details filled in
+export interface TransferDetails {
+  recipient: string;
+  iban: string;
+  taxId: string;
+  amountUah: number;
+  code: string; // «MG-1A2B3C4D», the trainer finds the money by it
+  purpose: string;
+  qrUrl: string;
+}
 export type AssignedType = Exclude<TrainingType, "group">;
 
 export interface LiqPayCheckout {
@@ -160,9 +171,11 @@ export interface StrayPayment {
   lines: PurchaseLine[];
 }
 
+// Cash or transfer the trainer confirms
 export interface CashRequest extends Purchase {
   memberId: string;
   displayName: string;
+  code: string; // in the transfer purpose
 }
 
 export interface MemberPurchases {
@@ -182,8 +195,9 @@ export interface MyPurchases {
       ))
     | null;
   packages: TrainingPackage[];
-  pending: Purchase | null;
+  pending: (Purchase & { transfer: TransferDetails | null }) | null;
   canPayCash: boolean; // has a trainer: cash for anything; without one only a club card alone
+  methods: { liqpay: boolean; cash: boolean; transfer: boolean }; // switched on; cash also needs canPayCash
 }
 
 // until = last frozen day; null until the trainer approves

@@ -33,6 +33,19 @@ jest.mock('../booking/group-booking', () => ({
 const mockTryBook = tryBookGroup as jest.Mock;
 beforeEach(() => mockTryBook.mockReset());
 
+// Every method on, the gym's account set; a test switches one off
+const TRANSFER_ENV = {
+  PAYMENT_METHODS: 'LIQPAY,CASH,TRANSFER',
+  TRANSFER_RECIPIENT: 'ФОП Тренер',
+  TRANSFER_IBAN: 'UA213223130000026007233566001',
+  TRANSFER_TAX_ID: '1234567890',
+};
+const savedEnv = { ...process.env };
+beforeEach(() => Object.assign(process.env, TRANSFER_ENV));
+afterEach(() => {
+  process.env = { ...savedEnv };
+});
+
 const NOW = DateTime.fromISO('2026-10-23T12:00:00', { zone: KY_ZONE });
 
 // Drizzle chain mock: each awaited read takes the next result; inserts return `[{ id: 'purchase-1' }]`
@@ -274,12 +287,14 @@ describe('Purchases — create', () => {
     const { svc, notifications } = makeService(db);
     await expect(svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH' })).resolves.toEqual({
       purchaseId: 'purchase-1',
+      transfer: null,
     });
     expect(inserts[0]).toMatchObject({ table: purchases, values: { trainerId: null, method: 'CASH' } });
     expect(notifications.enqueueAndProcess).toHaveBeenCalledWith('CASH_REQUESTED', 'cash-requested:purchase-1', {
       trainerId: null,
       displayName: 'Катя',
       totalUah: 1400,
+      method: 'CASH',
     });
   });
 
@@ -338,13 +353,63 @@ describe('Purchases — create', () => {
     const { svc, payments, notifications } = makeService(db);
     await expect(svc.create('m1', { priceItemIds: ['price-card', 'price-p8'], method: 'CASH' })).resolves.toEqual({
       purchaseId: 'purchase-1',
+      transfer: null,
     });
     expect(payments.checkoutPurchase).not.toHaveBeenCalled();
     expect(notifications.enqueueAndProcess).toHaveBeenCalledWith('CASH_REQUESTED', 'cash-requested:purchase-1', {
       trainerId: 'trainer-1',
       displayName: 'Катя',
       totalUah: 5000,
+      method: 'CASH',
     });
+  });
+
+  it('transfer: any item without a trainer, every trainer is told, the member gets the details', async () => {
+    const { db, inserts } = makeDb([[CARD, PERSONAL], [{ trainerId: null, displayName: 'Катя' }], []]);
+    const { svc, payments, notifications } = makeService(db);
+    const result = await svc.create('m1', { priceItemIds: ['price-card', 'price-p8'], method: 'TRANSFER' });
+    expect(inserts[0]).toMatchObject({ table: purchases, values: { trainerId: null, method: 'TRANSFER' } });
+    expect(payments.checkoutPurchase).not.toHaveBeenCalled();
+    expect(notifications.enqueueAndProcess).toHaveBeenCalledWith('CASH_REQUESTED', 'cash-requested:purchase-1', {
+      trainerId: null,
+      displayName: 'Катя',
+      totalUah: 5000,
+      method: 'TRANSFER',
+    });
+    expect(result.transfer).toEqual({
+      recipient: 'ФОП Тренер',
+      iban: 'UA213223130000026007233566001',
+      taxId: '1234567890',
+      amountUah: 5000,
+      code: 'MG-PURCHASE',
+      purpose: 'Оплата послуг, MG-PURCHASE',
+      qrUrl: expect.stringMatching(/^https:\/\/qr\.bank\.gov\.ua\/[A-Za-z0-9_-]+$/),
+    });
+  });
+
+  it('transfer for a group pass books the slot at once, like cash', async () => {
+    mockTryBook.mockResolvedValueOnce({ ok: true, bookingId: 'b1' });
+    const { db, sets } = makeDb([[GROUP], GROUP_SLOT, MEMBER, []]);
+    await makeService(db).svc.create('m1', { priceItemIds: ['price-g'], method: 'TRANSFER', slotId: 'slot-1' });
+    expect(mockTryBook).toHaveBeenCalledWith(db, NOW, 'm1', 'slot-1');
+    expect(sets).toContainEqual({ bookingId: 'b1' });
+  });
+
+  it.each([
+    ['LIQPAY', { PAYMENT_METHODS: 'CASH,TRANSFER' }],
+    ['CASH', { PAYMENT_METHODS: 'LIQPAY' }],
+    ['TRANSFER', { PAYMENT_METHODS: 'LIQPAY,CASH' }],
+    ['TRANSFER', { TRANSFER_IBAN: '' }],
+  ] as const)('%s switched off (%j): 400 PAYMENT_METHOD_OFF, nothing read or created', async (method, env) => {
+    Object.assign(process.env, env);
+    const { db, inserts } = makeDb([[CARD], MEMBER, []]);
+    const err = await makeService(db)
+      .svc.create('m1', { priceItemIds: ['price-card'], method })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect((err as BadRequestException).getResponse()).toMatchObject({ code: 'PAYMENT_METHOD_OFF' });
+    expect(db.select).not.toHaveBeenCalled();
+    expect(inserts).toEqual([]);
   });
 });
 
@@ -365,6 +430,36 @@ describe('Purchases — what the member sees', () => {
       activateBy: '2026-10-22',
       validUntil: null,
     });
+  });
+});
+
+describe('Purchases — payment methods the member sees', () => {
+  // Reads: the catalog, the member, the pending purchase, the latest card, then the pending purchase's view
+  const pendingTransfer = () =>
+    makeDb([
+      [],
+      MEMBER,
+      [{ id: 'p1' }],
+      [],
+      [{ id: 'p1', method: 'TRANSFER', status: 'PENDING', totalUah: 2200, createdAt: new Date() }],
+      [],
+    ]);
+
+  it('says which methods are on; a pending transfer carries the details', async () => {
+    const result = await makeService(pendingTransfer().db).svc.getForMember('m1');
+    expect(result.methods).toEqual({ liqpay: true, cash: true, transfer: true });
+    expect(result.pending?.transfer).toMatchObject({
+      amountUah: 2200,
+      code: 'MG-P1',
+      iban: TRANSFER_ENV.TRANSFER_IBAN,
+    });
+  });
+
+  it('transfers switched off: no new ones, but a pending one keeps its details (the trainer still confirms it)', async () => {
+    process.env.PAYMENT_METHODS = 'CASH';
+    const result = await makeService(pendingTransfer().db).svc.getForMember('m1');
+    expect(result.methods).toEqual({ liqpay: false, cash: true, transfer: false });
+    expect(result.pending?.transfer).toMatchObject({ code: 'MG-P1' });
   });
 });
 

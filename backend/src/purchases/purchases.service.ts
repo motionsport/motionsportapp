@@ -13,6 +13,14 @@ import { GROUP_TYPE } from '../schedule/training-types';
 import { openFreeze } from '../freezes/freeze.store';
 import { purchaseViews } from './purchase-views';
 import { apiError } from '../common/api-error';
+import {
+  enabledMethods,
+  methodEnabled,
+  transferAccount,
+  transferCode,
+  transferPurpose,
+} from '../payment/payment-methods';
+import { nbuQrUrl } from '../payment/nbu-qr';
 
 // Same errors as BookingService.book
 function bookingError(reason: Extract<GroupBookingResult, { ok: false }>['reason']) {
@@ -87,6 +95,8 @@ export class PurchasesService {
       .orderBy(desc(clubCards.createdAt))
       .limit(1);
 
+    const methods = enabledMethods();
+    const pendingView = pending ? (await purchaseViews(this.database.db, [pending.id]))[0] : null;
     return {
       catalog: {
         clubCards: catalog.filter((c) => c.section === 'club_card'),
@@ -103,13 +113,22 @@ export class PurchasesService {
           }
         : null,
       packages: await this.entitlements.packagesOf(memberId),
-      pending: pending ? (await purchaseViews(this.database.db, [pending.id]))[0] : null,
+      pending: pendingView && { ...pendingView, transfer: transferDetails(pendingView) },
       // Cash for anything; without a trainer only for a club card alone (see insertPurchase)
       canPayCash: !!member?.trainerId,
+      // Switched on (PAYMENT_METHODS); cash also needs canPayCash, or a club card alone
+      methods: {
+        liqpay: methods.includes('LIQPAY'),
+        cash: methods.includes('CASH'),
+        transfer: methods.includes('TRANSFER') && !!transferAccount(),
+      },
     };
   }
 
   async create(memberId: string, dto: CreatePurchaseDto) {
+    if (!methodEnabled(dto.method) || (dto.method === 'TRANSFER' && !transferAccount())) {
+      throw new BadRequestException(apiError('PAYMENT_METHOD_OFF'));
+    }
     const items = await this.priceItemsOf(dto.priceItemIds);
     await this.checkCanBuy(memberId, dto, items);
 
@@ -120,12 +139,14 @@ export class PurchasesService {
     if (dto.method === 'LIQPAY') {
       return { purchaseId, checkout: await this.payments.checkoutPurchase(purchaseId, memberId) };
     }
+    // Cash or transfer: the trainer confirms when the money is there
     await this.notifications.enqueueAndProcess('CASH_REQUESTED', `cash-requested:${purchaseId}`, {
       trainerId,
       displayName,
       totalUah,
+      method: dto.method,
     });
-    return { purchaseId };
+    return { purchaseId, transfer: transferDetails({ id: purchaseId, method: dto.method, totalUah }) };
   }
 
   // Current amounts from the price list; the client never sends a price
@@ -196,9 +217,10 @@ export class PurchasesService {
       if (await openFreeze(tx, memberId, this.clock.now().toISODate()!)) {
         throw new ConflictException(apiError('MEMBERSHIP_FROZEN'));
       }
-      // Without a trainer cash is only for a club card alone: every trainer sees that request
+      // Without a trainer cash is only for a club card alone: every trainer sees that request.
+      // A transfer goes to the gym's one account, so any trainer confirms it
       if (dto.method === 'CASH' && !member.trainerId && lines.some((l) => l.section !== 'club_card')) {
-        throw new BadRequestException('No trainer to pay cash to');
+        throw new BadRequestException(apiError('NO_TRAINER_FOR_CASH'));
       }
 
       const [created] = await tx
@@ -221,8 +243,8 @@ export class PurchasesService {
           amountUah: l.amountUah,
         })),
       );
-      // Cash group pass: book now, paid in the hall. Can't book: the throw rolls the purchase back
-      if (dto.method === 'CASH' && dto.slotId) {
+      // Cash or transfer group pass: book now, the trainer confirms the money. Can't book: the throw rolls back
+      if (dto.method !== 'LIQPAY' && dto.slotId) {
         const booked = await tryBookGroup(tx, this.clock.now(), memberId, dto.slotId);
         if (!booked.ok) throw bookingError(booked.reason);
         await tx.update(purchases).set({ bookingId: booked.bookingId }).where(eq(purchases.id, created.id));
@@ -267,5 +289,20 @@ type PriceLine = {
   amountUah: number;
   trainingType: string | null;
 };
+
+// What a member needs to send a transfer; null for other methods or when transfers are switched off
+function transferDetails(p: { id: string; method: string; totalUah: number }) {
+  const account = transferAccount();
+  if (p.method !== 'TRANSFER' || !account) return null;
+  const code = transferCode(p.id);
+  const purpose = transferPurpose(p.id);
+  return {
+    ...account,
+    amountUah: p.totalUah,
+    code,
+    purpose,
+    qrUrl: nbuQrUrl({ ...account, amountUah: p.totalUah, reference: code, purpose }),
+  };
+}
 
 const sectionOf = (items: PriceLine[], section: string) => items.filter((i) => i.section === section);

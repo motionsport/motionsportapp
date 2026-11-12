@@ -15,6 +15,12 @@ const FULL = {
   PORT: '3001',
 };
 
+const TRANSFER = {
+  TRANSFER_RECIPIENT: 'ФОП Тренер',
+  TRANSFER_IBAN: 'UA213223130000026007233566001',
+  TRANSFER_TAX_ID: '12345678',
+};
+
 describe('envProblems', () => {
   it('a local setup needs only the database and the frontend address', () => {
     expect(envProblems(MINIMAL)).toEqual([]);
@@ -49,6 +55,32 @@ describe('envProblems', () => {
     expect(envProblems({ ...FULL, LIQPAY_SERVER_URL: 'https://api.example.com/api/payments/liqpay/callback' })).toEqual(
       ['LIQPAY_SERVER_URL must not start with /api (https://<backend>/payments/liqpay/callback)'],
     );
+  });
+
+  it('PAYMENT_METHODS: known names only, each switched-on method needs its settings', () => {
+    expect(envProblems({ ...FULL, PAYMENT_METHODS: 'CASH,CARD' })).toEqual([
+      'PAYMENT_METHODS: unknown CARD (use LIQPAY, CASH, TRANSFER)',
+    ]);
+    expect(envProblems({ ...MINIMAL, PAYMENT_METHODS: 'LIQPAY' })).toEqual([
+      'PAYMENT_METHODS has LIQPAY, but the LIQPAY_* keys are missing',
+    ]);
+    expect(envProblems({ ...MINIMAL, PAYMENT_METHODS: 'CASH,TRANSFER' })).toEqual([
+      'PAYMENT_METHODS has TRANSFER, but TRANSFER_RECIPIENT, TRANSFER_IBAN, TRANSFER_TAX_ID are missing',
+    ]);
+    // LiqPay keys kept while it is off
+    expect(envProblems({ ...FULL, ...TRANSFER, PAYMENT_METHODS: 'CASH,TRANSFER' })).toEqual([]);
+  });
+
+  it('transfer account: all or none, a valid IBAN and tax id', () => {
+    expect(envProblems({ ...MINIMAL, TRANSFER_IBAN: TRANSFER.TRANSFER_IBAN })).toEqual([
+      'Transfer: TRANSFER_RECIPIENT, TRANSFER_TAX_ID missing (set all of TRANSFER_RECIPIENT, TRANSFER_IBAN, TRANSFER_TAX_ID, or none)',
+    ]);
+    expect(
+      envProblems({ ...MINIMAL, ...TRANSFER, TRANSFER_IBAN: 'UA213223130000026007233566002', TRANSFER_TAX_ID: '123' }),
+    ).toEqual([
+      'TRANSFER_IBAN is not a valid Ukrainian IBAN (UA + 27 digits)',
+      'TRANSFER_TAX_ID must be 8 digits (ЄДРПОУ) or 10 (РНОКПП)',
+    ]);
   });
 
   it('PORT is a positive whole number', () => {

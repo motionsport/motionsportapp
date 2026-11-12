@@ -3,7 +3,7 @@ import { useState } from "react";
 import { api, CashRequest } from "@/lib/api";
 import { formatUah, lineName } from "@/lib/prices";
 
-// Confirming marks the purchase paid; rejecting drops it
+// Cash or a transfer to the gym's account. Confirming marks the purchase paid; rejecting drops it
 export function CashRequests({ requests, onDecided }: { requests: CashRequest[]; onDecided: () => void }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -29,7 +29,10 @@ export function CashRequests({ requests, onDecided }: { requests: CashRequest[];
       <div className="flex flex-col space-y-3">
         {requests.map((r) => (
           <div key={r.id} className="rounded-xl border border-line bg-surface p-4">
-            <div className="text-heading font-semibold">{r.displayName}</div>
+            <div className="flex items-baseline justify-between space-x-3">
+              <span className="text-heading font-semibold">{r.displayName}</span>
+              <span className="text-subtle text-xs">{r.method === "TRANSFER" ? `переказ · ${r.code}` : "готівка"}</span>
+            </div>
             {r.lines.map((l) => (
               <div key={lineName(l)} className="text-subtle text-xs mt-1">
                 {l.section === "club_card" ? `Абонемент · ${lineName(l)}` : lineName(l)}

@@ -23,6 +23,9 @@ export const API_ERRORS = {
   TRAININGS_LEFT: 'Member still has trainings of this type',
   CLUB_CARD_EXISTS: 'Member already has a club card',
   CLUB_CARD_REQUIRED: 'Club card required',
+  PAYMENT_METHOD_OFF: 'This payment method is switched off',
+  NO_TRAINER_FOR_CASH: 'No trainer to pay cash to',
+  PURCHASE_DECIDED: 'Purchase was already decided',
   NOTHING_TO_FREEZE: 'Nothing to freeze',
   FREEZE_REQUESTED: 'Freeze already requested',
   // Trainer: calendar, weekly schedule, marks, refunds

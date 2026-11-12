@@ -64,7 +64,11 @@ export function CancelRefunds({ refunds, onDone }: { refunds: CancelRefund[]; on
               </div>
               <div className="text-subtle text-xs mt-1">
                 {TYPE_LABEL[r.trainingType]} {ddmm(r.localDate)} о {r.slotTime} ·{" "}
-                {online ? "оплачено онлайн" : "оплачено готівкою: віддайте в руки"}
+                {online
+                  ? "оплачено онлайн"
+                  : r.method === "TRANSFER"
+                    ? "оплачено переказом: поверніть переказом на картку клієнта"
+                    : "оплачено готівкою: віддайте в руки"}
               </div>
 
               {r.status === "SENDING" ? (
@@ -115,7 +119,7 @@ export function CancelRefunds({ refunds, onDone }: { refunds: CancelRefund[]; on
                     disabled={busy}
                     className="btn-primary w-full py-3.5 rounded-lg font-semibold mt-4 transition-colors disabled:opacity-60"
                   >
-                    {online ? "Повернути" : "Віддано"} {formatUah(r.amountUah)}
+                    {online ? "Повернути" : r.method === "TRANSFER" ? "Повернено" : "Віддано"} {formatUah(r.amountUah)}
                   </button>
                   <button
                     type="button"

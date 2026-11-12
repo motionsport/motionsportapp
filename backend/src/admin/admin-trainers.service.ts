@@ -19,6 +19,7 @@ import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store'
 import { enabledTrainer, getDefaultTrainerId } from '../schedule/default-trainer';
 import { slotOverAt } from '../schedule/training-types';
 import { cancelSlotsTx, notifySlotsCancelled } from './slot-cancellation';
+import { MANUAL_METHODS } from '../payment/payment-methods';
 
 @Injectable()
 export class AdminTrainersService {
@@ -95,11 +96,17 @@ export class AdminTrainersService {
         .set({ trainerId: transferToId })
         .where(eq(members.trainerId, trainerId))
         .returning({ id: members.id });
-      // Only the member's trainer confirms cash
+      // Only the member's trainer confirms cash and transfers
       await tx
         .update(purchases)
         .set({ trainerId: transferToId })
-        .where(and(eq(purchases.trainerId, trainerId), eq(purchases.status, 'PENDING'), eq(purchases.method, 'CASH')));
+        .where(
+          and(
+            eq(purchases.trainerId, trainerId),
+            eq(purchases.status, 'PENDING'),
+            inArray(purchases.method, MANUAL_METHODS),
+          ),
+        );
       // The half refunds they still had to return (or had sent) go with the clients
       await tx
         .update(cancelRefunds)

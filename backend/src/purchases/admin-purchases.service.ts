@@ -1,5 +1,5 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
 import {
@@ -22,10 +22,11 @@ import { memberFrozenOn } from '../freezes/freeze.store';
 import { requireVisibleMember, visibleTo } from '../schedule/default-trainer';
 import { purchaseViews } from './purchase-views';
 import { apiError } from '../common/api-error';
+import { MANUAL_METHODS, transferCode } from '../payment/payment-methods';
 
 const MEMBER_PURCHASES_LIMIT = 20;
 
-// Cash requests a trainer decides: their clients', and those of members without a trainer (any trainer)
+// Cash and transfer requests a trainer decides: their clients', and those of members without a trainer (any trainer)
 const cashFor = (trainerId: string) => or(eq(purchases.trainerId, trainerId), isNull(purchases.trainerId));
 
 type Db = DatabaseService['db'];
@@ -45,7 +46,7 @@ export class AdminPurchasesService {
       .select({ id: purchases.id, memberId: purchases.memberId, displayName: members.displayName })
       .from(purchases)
       .innerJoin(members, eq(members.id, purchases.memberId))
-      .where(and(cashFor(trainerId), eq(purchases.method, 'CASH'), eq(purchases.status, 'PENDING')))
+      .where(and(cashFor(trainerId), inArray(purchases.method, MANUAL_METHODS), eq(purchases.status, 'PENDING')))
       .orderBy(asc(purchases.createdAt));
     const views = await purchaseViews(
       this.database.db,
@@ -53,7 +54,8 @@ export class AdminPurchasesService {
     );
     return views.map((v) => {
       const row = rows.find((r) => r.id === v.id)!;
-      return { ...v, memberId: row.memberId, displayName: row.displayName };
+      // The code the member puts in the transfer purpose
+      return { ...v, memberId: row.memberId, displayName: row.displayName, code: transferCode(v.id) };
     });
   }
 
@@ -113,7 +115,7 @@ export class AdminPurchasesService {
     return { ok: true };
   }
 
-  // A cash group pass booked its slot at once: cancel that booking and its mark (system cancellation)
+  // A cash or transfer group pass booked its slot at once: cancel that booking and its mark (system cancellation)
   async rejectCash(trainerId: string, purchaseId: string) {
     const freed = await this.database.db.transaction(async (tx) => {
       const { bookingId } = await this.decideCash(tx, trainerId, purchaseId, 'REJECTED');
@@ -154,7 +156,7 @@ export class AdminPurchasesService {
   // Compare-and-set: a double tap, or two trainers on a no-trainer request, can't decide twice.
   // Another trainer's or a LiqPay purchase: 404
   private async decideCash(tx: Q, trainerId: string, purchaseId: string, status: 'PAID' | 'REJECTED') {
-    const mine = and(eq(purchases.id, purchaseId), cashFor(trainerId), eq(purchases.method, 'CASH'));
+    const mine = and(eq(purchases.id, purchaseId), cashFor(trainerId), inArray(purchases.method, MANUAL_METHODS));
     const [decided] = await tx
       .update(purchases)
       .set({ status, decidedBy: trainerId, decidedAt: this.clock.now().toJSDate() })
@@ -163,7 +165,7 @@ export class AdminPurchasesService {
     if (decided) return decided;
     const [exists] = await tx.select({ status: purchases.status }).from(purchases).where(mine).limit(1);
     if (!exists) throw new NotFoundException('Purchase not found');
-    throw new ConflictException('Purchase was already decided');
+    throw new ConflictException(apiError('PURCHASE_DECIDED'));
   }
 
   async memberPurchases(trainerId: string, memberId: string) {
