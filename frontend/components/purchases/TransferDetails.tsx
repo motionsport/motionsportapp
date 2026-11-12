@@ -35,22 +35,33 @@ function CopyRow({ label, value, shown = value }: { label: string; value: string
   );
 }
 
-// The gym's account for a transfer. Members pay from the same phone, so no QR picture: the NBU link opens a bank app
-// with the details filled in, and each detail can be copied by hand
+// The gym's account for a transfer. Members pay from the same phone, so no QR picture: a bank's own link opens its app
+// with the details filled in (the generic NBU link only showed the NBU page); other banks: copy the details by hand
 export function TransferDetails({ transfer }: { transfer: Details }) {
   return (
     <div className="space-y-3">
       <p className="rounded-xl border border-warn-line bg-warn-bg px-4 py-3 text-sm text-warn">
         Обов&apos;язково вкажіть призначення з кодом {transfer.code}: за ним тренер знайде ваш переказ.
       </p>
-      <a
-        href={transfer.qrUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="btn-primary block w-full py-3 rounded-lg text-sm text-center transition-colors"
-      >
-        Відкрити в застосунку банку
-      </a>
+      <div className="flex space-x-2">
+        <a
+          href={transfer.bankLinks.privat24}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary flex-1 py-3 rounded-lg text-sm text-center transition-colors"
+        >
+          Оплатити в Приват24
+        </a>
+        <a
+          href={transfer.bankLinks.monobank}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary flex-1 py-3 rounded-lg text-sm text-center transition-colors"
+        >
+          Оплатити в monobank
+        </a>
+      </div>
+      <p className="text-subtle text-xs">Інший банк: скопіюйте реквізити нижче.</p>
       <div className="rounded-xl border border-line bg-surface px-4 py-1">
         <CopyRow label="Сума" value={String(transfer.amountUah)} shown={formatUah(transfer.amountUah)} />
         <CopyRow label="Отримувач" value={transfer.recipient} />

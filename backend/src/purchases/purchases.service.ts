@@ -20,7 +20,7 @@ import {
   transferCode,
   transferPurpose,
 } from '../payment/payment-methods';
-import { nbuQrUrl } from '../payment/nbu-qr';
+import { nbuBankLinks } from '../payment/nbu-qr';
 
 // Same errors as BookingService.book
 function bookingError(reason: Extract<GroupBookingResult, { ok: false }>['reason']) {
@@ -301,7 +301,7 @@ function transferDetails(p: { id: string; method: string; totalUah: number }) {
     amountUah: p.totalUah,
     code,
     purpose,
-    qrUrl: nbuQrUrl({ ...account, amountUah: p.totalUah, reference: code, purpose }),
+    bankLinks: nbuBankLinks({ ...account, amountUah: p.totalUah, reference: code, purpose }),
   };
 }
 

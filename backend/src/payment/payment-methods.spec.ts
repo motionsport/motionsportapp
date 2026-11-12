@@ -1,5 +1,5 @@
 import { parsePaymentMethods, transferCode, validIban, validTaxId } from './payment-methods';
-import { NBU_QR_MAX_BYTES, nbuAmount, nbuQrPayload, nbuQrUrl } from './nbu-qr';
+import { NBU_QR_MAX_BYTES, nbuAmount, nbuBankLinks, nbuQrPayload, nbuQrUrl } from './nbu-qr';
 
 describe('parsePaymentMethods', () => {
   it('unset: LiqPay when its keys are set, and cash (as before transfers)', () => {
@@ -91,5 +91,13 @@ describe('NBU QR', () => {
     expect(url).toMatch(/^https:\/\/qr\.bank\.gov\.ua\/[A-Za-z0-9_-]+$/);
     const encoded = url.slice('https://qr.bank.gov.ua/'.length);
     expect(Buffer.from(encoded, 'base64url').toString('utf8')).toBe(nbuQrPayload(transfer));
+  });
+
+  it("bank buttons: each bank's start link with the same data", () => {
+    const data = nbuQrUrl(transfer).slice('https://qr.bank.gov.ua/'.length);
+    expect(nbuBankLinks(transfer)).toEqual({
+      privat24: `https://www.privat24.ua/rd/send_qr/nbu/${data}`,
+      monobank: `https://mbnk.app/qr/${data}`,
+    });
   });
 });

@@ -1,10 +1,17 @@
 // NBU payment link, format 003: постанова НБУ від 19.08.2025 № 97 «Правила формування, передачі та обробки структури
 // даних і графічного зображення QR-коду…», додаток 4 (https://bank.gov.ua/admin_uploads/law/19082025_97.pdf).
-// On a phone the link opens a bank app with the transfer filled in; there is no QR picture (members pay from the same
-// phone). Check a change by opening the link on a phone with a bank app
+// Members pay from the phone the app is on, so no QR picture: buttons open a bank app with the transfer filled in.
+// The generic https://qr.bank.gov.ua/ link only shows the NBU page on a phone (checked 2026-11-12), so each button
+// uses that bank's own start link with the same data (додаток 4, таблиця 1: «персоніфікований код старту
+// застосунку»). Links from skules777/nbu-qr-code-swift, where they were checked by paying on an iPhone
 import type { TransferAccount } from './payment-methods';
 
 export const NBU_QR_BASE = 'https://qr.bank.gov.ua/';
+export const BANK_START_LINKS = {
+  privat24: 'https://www.privat24.ua/rd/send_qr/nbu/',
+  monobank: 'https://mbnk.app/qr/',
+} as const;
+export type BankLinks = Record<keyof typeof BANK_START_LINKS, string>;
 // Додаток 4, п. 8: the data before Base64URL
 export const NBU_QR_MAX_BYTES = 507;
 
@@ -42,4 +49,11 @@ export function nbuQrPayload(t: NbuTransfer): string {
 }
 
 // Додаток 4, таблиця 1: the start code, then Base64URL (no padding)
-export const nbuQrUrl = (t: NbuTransfer) => NBU_QR_BASE + Buffer.from(nbuQrPayload(t), 'utf8').toString('base64url');
+const encoded = (t: NbuTransfer) => Buffer.from(nbuQrPayload(t), 'utf8').toString('base64url');
+
+export const nbuQrUrl = (t: NbuTransfer) => NBU_QR_BASE + encoded(t);
+
+export function nbuBankLinks(t: NbuTransfer): BankLinks {
+  const data = encoded(t);
+  return { privat24: BANK_START_LINKS.privat24 + data, monobank: BANK_START_LINKS.monobank + data };
+}

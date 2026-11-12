@@ -86,7 +86,7 @@ export interface PriceChange {
 
 export type PurchaseMethod = "LIQPAY" | "CASH" | "TRANSFER";
 
-// The gym's account and what to put in the transfer; qrUrl = the NBU payment link, opens a bank app with the details filled in
+// The gym's account and what to put in the transfer; bankLinks open that bank's app with the details filled in
 export interface TransferDetails {
   recipient: string;
   iban: string;
@@ -94,7 +94,7 @@ export interface TransferDetails {
   amountUah: number;
   code: string; // «MG-1A2B3C4D», the trainer finds the money by it
   purpose: string;
-  qrUrl: string;
+  bankLinks: { privat24: string; monobank: string };
 }
 export type AssignedType = Exclude<TrainingType, "group">;
 

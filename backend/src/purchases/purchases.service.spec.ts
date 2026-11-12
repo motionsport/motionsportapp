@@ -383,7 +383,10 @@ describe('Purchases — create', () => {
       amountUah: 5000,
       code: 'MG-PURCHASE',
       purpose: 'Оплата послуг, MG-PURCHASE',
-      qrUrl: expect.stringMatching(/^https:\/\/qr\.bank\.gov\.ua\/[A-Za-z0-9_-]+$/),
+      bankLinks: {
+        privat24: expect.stringMatching(/^https:\/\/www\.privat24\.ua\/rd\/send_qr\/nbu\/[A-Za-z0-9_-]+$/),
+        monobank: expect.stringMatching(/^https:\/\/mbnk\.app\/qr\/[A-Za-z0-9_-]+$/),
+      },
     });
   });
 
