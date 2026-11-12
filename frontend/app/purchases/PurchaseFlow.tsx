@@ -6,6 +6,7 @@ import { errorText } from "@/lib/apiErrors";
 import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { formatUah, groupByTitle, lineName } from "@/lib/prices";
 import { TransferDetails } from "@/components/purchases/TransferDetails";
+import { buyableServiceTypes } from "./buyable";
 
 type Step = "service" | "club" | "group" | "checkout" | "sent" | "transfer";
 
@@ -69,7 +70,9 @@ export function PurchaseFlow({
   const canPayCash = data.canPayCash || cardOnly;
   const cashOn = data.methods.cash && canPayCash;
   const noMethod = !data.methods.liqpay && !data.methods.transfer && !cashOn;
-  const groups = SERVICE_GROUPS.filter((g) => !startType || g.type === startType);
+  // Only types with nothing left (the backend refuses the others): split left still lets the member buy personal
+  const buyable = buyableServiceTypes(data.packages);
+  const groups = SERVICE_GROUPS.filter((g) => buyable.includes(g.type) && (!startType || g.type === startType));
 
   const pay = async (method: PurchaseMethod) => {
     setBusy(true);
@@ -308,6 +311,9 @@ export function PurchaseFlow({
       {back("close")}
       <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-1">Послуги тренера</h1>
       <p className="text-muted text-xs mb-4">Ціна без урахування вартості абонемента</p>
+      {groups.length === 0 && (
+        <p className="text-body text-sm">Ще є тренування цього типу: нові можна купити, коли вони закінчаться.</p>
+      )}
       {groups.map((g) => (
         <section key={g.type}>
           <h2 className={sectionTitle}>{g.title}</h2>

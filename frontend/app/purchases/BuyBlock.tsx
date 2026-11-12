@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import { CatalogItem, MyPurchases } from "@/lib/api";
 import { formatUah } from "@/lib/prices";
+import { TYPE_LABEL_PLURAL } from "@/lib/trainingTypes";
+import { buyableServiceTypes } from "./buyable";
 import type { PurchaseMode } from "./PurchaseFlow";
 
 const fromPrice = (items: CatalogItem[]) =>
@@ -62,7 +64,7 @@ function BuyTile({
   );
 }
 
-// No buying ahead: a tile shows only when nothing of that kind is left; no tiles, no block
+// No buying ahead: a tile shows only when nothing of that kind is left (trainer services per type); no tiles, no block
 export function BuyBlock({
   data,
   titleClass,
@@ -76,7 +78,11 @@ export function BuyBlock({
     data.packages.some(
       (p) => types.includes(p.trainingType) && p.left > 0 && (p.state === "waiting" || p.state === "active"),
     );
-  const canBuyService = !hasUnused(["personal", "split"]);
+  const serviceTypes = buyableServiceTypes(data.packages);
+  const canBuyService = serviceTypes.length > 0;
+  const services = data.catalog.services.filter(
+    (s) => s.trainingType && serviceTypes.some((t) => t === s.trainingType),
+  );
   const canBuyGroup = !hasUnused(["group"]);
   const canBuyCard = !data.card;
   if (!canBuyService && !canBuyGroup && !canBuyCard) return null;
@@ -92,7 +98,10 @@ export function BuyBlock({
         >
           <PersonIcon />
           <span className="block font-semibold mt-3">З тренером</span>
-          <span className="block text-xs mt-0.5">Персональні та спліт · {fromPrice(data.catalog.services)}</span>
+          <span className="block text-xs mt-0.5">
+            {serviceTypes.length === 2 ? "Персональні та спліт" : TYPE_LABEL_PLURAL[serviceTypes[0]]} ·{" "}
+            {fromPrice(services)}
+          </span>
         </button>
       )}
       {(canBuyGroup || canBuyCard) && (
