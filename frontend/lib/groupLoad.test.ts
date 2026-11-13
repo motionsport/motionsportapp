@@ -58,10 +58,14 @@ describe("lighterSlot", () => {
 });
 
 describe("lighterHint", () => {
-  it("from 7 booked, when another time has fewer", () => {
-    const other = slot("b", "20:00", 3);
-    expect(lighterHint(slot("a", "19:00", 6), [other])).toBeNull();
-    expect(lighterHint(slot("a", "19:00", 7), [other])?.id).toBe("b");
+  it("another time 3 or more people fewer, however many are booked", () => {
+    expect(lighterHint(slot("a", "19:00", 4), [slot("b", "20:00", 1)])?.id).toBe("b");
+    expect(lighterHint(slot("a", "19:00", 9), [slot("b", "20:00", 6)])?.id).toBe("b");
+  });
+
+  it("a gap of 2 or less: no hint", () => {
+    expect(lighterHint(slot("a", "19:00", 3), [slot("b", "20:00", 1)])).toBeNull();
+    expect(lighterHint(slot("a", "19:00", 8), [slot("b", "20:00", 6)])).toBeNull();
   });
 });
 
