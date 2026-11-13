@@ -318,6 +318,7 @@ export interface SlotView {
   started?: boolean; // no booking, cancelling or switching after the start
   myGuest?: { name: string } | null;
   lateCancelled?: boolean; // cancelled late: can't book it again
+  smallGroup?: boolean; // 2 or fewer after someone cancelled or moved away: the card asks people to come
 }
 
 // Personal / split slot the trainer assigned this member to

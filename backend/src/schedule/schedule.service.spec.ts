@@ -3,6 +3,7 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { ScheduleService } from './schedule.service';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { loadFreezes, memberFrozenOn, openFreeze } from '../freezes/freeze.store';
+import { slotsLeftByMembers } from '../booking/group-booking';
 
 // No member is frozen unless a test says so
 jest.mock('../freezes/freeze.store', () => ({
@@ -15,6 +16,13 @@ beforeEach(() => {
   (memberFrozenOn as jest.Mock).mockResolvedValue(false);
   (openFreeze as jest.Mock).mockResolvedValue(null);
 });
+
+// Nobody left a training by their own cancel unless a test says so
+jest.mock('../booking/group-booking', () => ({
+  ...jest.requireActual('../booking/group-booking'),
+  slotsLeftByMembers: jest.fn(),
+}));
+beforeEach(() => (slotsLeftByMembers as jest.Mock).mockResolvedValue(new Set()));
 
 jest.mock('../trainer-schedule/trainer-schedule.store', () => ({ loadTrainerSchedule: jest.fn() }));
 const mockLoadSchedule = loadTrainerSchedule as jest.Mock;
@@ -100,6 +108,43 @@ describe('ScheduleService — group pass', () => {
     const { db } = makeDb([TRAINER, [trainingDay], HAS_GROUP, slots, [publishedAnnouncement]]);
     const result = await makeService(db, kyivAt(15), [], 7).getNext();
     expect(result.groupPassLeft).toBe(0);
+  });
+});
+
+describe('ScheduleService — a small group after someone left (the card asks people to come)', () => {
+  const day = (list: unknown[]) => [TRAINER, [trainingDay], HAS_GROUP, list, [publishedAnnouncement]];
+
+  it('2 or fewer, not started, someone cancelled or moved away', async () => {
+    (slotsLeftByMembers as jest.Mock).mockResolvedValue(new Set(['slot-1']));
+    const list = [
+      { id: 'slot-1', slotTime: '19:00', status: 'ACTIVE', capacity: 8, bookedCount: 2 },
+      { id: 'slot-2', slotTime: '20:00', status: 'ACTIVE', capacity: 8, bookedCount: 3 },
+    ];
+    const { db } = makeDb(day(list));
+    const result = await makeService(db, kyivAt(15)).getNext();
+    expect(result.slots.map((s) => [s.id, s.smallGroup])).toEqual([
+      ['slot-1', true],
+      ['slot-2', false],
+    ]);
+    // Only the small ones are looked up
+    expect(slotsLeftByMembers).toHaveBeenCalledWith(db, ['slot-1']);
+  });
+
+  it('small from the start (nobody left): no note', async () => {
+    const list = [{ id: 'slot-1', slotTime: '19:00', status: 'ACTIVE', capacity: 8, bookedCount: 1 }];
+    const { db } = makeDb(day(list));
+    const result = await makeService(db, kyivAt(15)).getNext();
+    expect(result.slots[0].smallGroup).toBe(false);
+  });
+
+  it('started or cancelled: not looked up', async () => {
+    const list = [
+      { id: 'slot-1', slotTime: '19:00', status: 'ACTIVE', capacity: 8, bookedCount: 1 },
+      { id: 'slot-2', slotTime: '20:00', status: 'CANCELLED', capacity: 8, bookedCount: 0 },
+    ];
+    const { db } = makeDb(day(list));
+    await makeService(db, kyivAt(19, 30)).getNext();
+    expect(slotsLeftByMembers).toHaveBeenCalledWith(db, []);
   });
 });
 
