@@ -160,6 +160,21 @@ export async function takeSeats(tx: Tx, slotId: string, seats: number) {
     .where(eq(trainingSlots.id, slotId));
 }
 
+// Seats taken on a group slot (guests count), read after freeSeats under the same lock; null = not a group slot
+export async function groupSeatsLeft(tx: Tx, slotId: string): Promise<{ count: number; capacity: number } | null> {
+  const [slot] = await tx
+    .select({
+      bookedCount: trainingSlots.bookedCount,
+      capacity: trainingSlots.capacity,
+      trainingType: trainingSlots.trainingType,
+    })
+    .from(trainingSlots)
+    .where(eq(trainingSlots.id, slotId))
+    .limit(1);
+  if (!slot || slot.trainingType !== GROUP_TYPE) return null;
+  return { count: slot.bookedCount, capacity: slot.capacity };
+}
+
 // Under the slot row lock. true = a full group slot: the caller sends vacancy pushes after the transaction
 export async function freeSeats(tx: Tx, slotId: string, seats: number): Promise<boolean> {
   const [slot] = await tx

@@ -23,6 +23,7 @@ import {
   freeSeats,
   findGroupBooking,
   groupBookingWindow,
+  groupSeatsLeft,
   lateCancelledSlotIds,
   lockMember,
   takeSeats,
@@ -129,7 +130,7 @@ export class BookingService {
     // After the start a booked no-show loses the training
     this.validateBeforeStart(booking.localDate, booking.slotTime);
 
-    const { wasFull, refundUah } = await this.database.db.transaction(async (tx) => {
+    const { wasFull, refundUah, groupLeft } = await this.database.db.transaction(async (tx) => {
       const now = this.clock.now().toJSDate();
       await tx
         .update(bookings)
@@ -146,7 +147,8 @@ export class BookingService {
       );
       // The guest goes with the booking
       const seats = 1 + (await cancelGuests(tx, [booking.id], now)).size;
-      return { wasFull: await freeSeats(tx, slotId, seats), refundUah };
+      const wasFull = await freeSeats(tx, slotId, seats);
+      return { wasFull, refundUah, groupLeft: await groupSeatsLeft(tx, slotId) };
     });
 
     if (wasFull) {
@@ -167,6 +169,7 @@ export class BookingService {
       reason,
       null,
       refundUah,
+      groupLeft,
     );
     return { ok: true };
   }
@@ -206,7 +209,7 @@ export class BookingService {
 
     const [firstId, secondId] = [oldSlotId, newSlotId].sort();
 
-    const wasFull = await oneBookingPerDay(() =>
+    const { wasFull, groupLeft } = await oneBookingPerDay(() =>
       this.database.db.transaction(async (tx) => {
         await lockMember(tx, memberId);
         const slot1 = await this.lockSlot(tx, firstId);
@@ -246,7 +249,8 @@ export class BookingService {
         if (guest) await tx.update(bookingGuests).set({ bookingId: created.id }).where(eq(bookingGuests.id, guest.id));
 
         await takeSeats(tx, newSlotId, seats);
-        return freeSeats(tx, oldSlotId, seats);
+        const wasFull = await freeSeats(tx, oldSlotId, seats);
+        return { wasFull, groupLeft: await groupSeatsLeft(tx, oldSlotId) };
       }),
     );
 
@@ -264,6 +268,7 @@ export class BookingService {
       reason,
       target.slotTime,
       null,
+      groupLeft,
     );
 
     return { ok: true };
@@ -451,6 +456,8 @@ export class BookingService {
     reason: string,
     switchedToTime: string | null,
     refundUah: number | null,
+    // Seats still taken on the training left (group only), so the trainer sees a small group
+    groupLeft: { count: number; capacity: number } | null,
   ) {
     try {
       const [member] = await this.database.db
@@ -466,6 +473,7 @@ export class BookingService {
         reason,
         switchedToTime,
         refundUah,
+        groupLeft,
       });
     } catch (err) {
       this.logger.error(`Trainer push for booking ${bookingId} failed`, err);

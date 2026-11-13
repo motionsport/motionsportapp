@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import { freeSeats, lockMember, tryBookGroup } from './group-booking';
+import { freeSeats, groupSeatsLeft, lockMember, tryBookGroup } from './group-booking';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 
 jest.mock('../trainer-schedule/trainer-schedule.store', () => ({ loadTrainerSchedule: jest.fn() }));
@@ -162,6 +162,18 @@ describe('freeSeats — a booking (and its guest) gave its seats back', () => {
   it('a full assigned training: nobody waits for it (no vacancy alerts there)', async () => {
     const { tx } = makeTx([[{ bookedCount: 1, capacity: 1, trainingType: 'personal' }]]);
     expect(await freeSeats(tx, 'slot-p', 1)).toBe(false);
+  });
+});
+
+describe('groupSeatsLeft — for the small-group line in the trainer push', () => {
+  it('a group training: seats taken and capacity', async () => {
+    const { tx } = makeTx([[{ bookedCount: 2, capacity: 8, trainingType: 'group' }]]);
+    expect(await groupSeatsLeft(tx, 'slot-1')).toEqual({ count: 2, capacity: 8 });
+  });
+
+  it('an assigned training: nothing', async () => {
+    const { tx } = makeTx([[{ bookedCount: 0, capacity: 3, trainingType: 'split' }]]);
+    expect(await groupSeatsLeft(tx, 'slot-s')).toBeNull();
   });
 });
 

@@ -5,6 +5,7 @@ import { notificationEvents } from '../database/schema';
 import { PushService, PushPayload } from './push.service';
 import { PushSubscriptionsService } from './push-subscriptions.service';
 import { VacancyAlertsService } from './vacancy-alerts.service';
+import { SMALL_GROUP_MAX } from '../schedule/training-types';
 
 const ICON = '/motion-gym-logo-app.png';
 
@@ -129,6 +130,14 @@ export class NotificationService {
     const switchedToTime = payload.switchedToTime as string | null;
     const trainerId = payload.trainerId as string | null | undefined;
     const refundUah = payload.refundUah as number | null | undefined;
+    // Older events have no groupLeft: no line
+    const groupLeft = payload.groupLeft as { count: number; capacity: number } | null | undefined;
+    const smallGroupLine =
+      groupLeft && groupLeft.count <= SMALL_GROUP_MAX
+        ? groupLeft.count === 0
+          ? `\nНа ${slotTime} нікого не лишилось`
+          : `\nМала група: на ${slotTime} лишилось ${groupLeft.count} з ${groupLeft.capacity}`
+        : '';
 
     const title = switchedToTime
       ? `Перенесення ${slotTime} → ${switchedToTime}, ${this.fmtDate(localDate)}`
@@ -136,7 +145,8 @@ export class NotificationService {
     // Older events without trainerId go to every trainer
     const subscriptions = trainerId ? await this.subs.findAdminByAdminId(trainerId) : await this.subs.findAllAdmin();
     for (const sub of subscriptions) {
-      const body = `${displayName}: ${reason}` + (refundUah ? `\nПовернути ${refundUah} ₴: Клієнти` : '');
+      const body =
+        `${displayName}: ${reason}` + smallGroupLine + (refundUah ? `\nПовернути ${refundUah} ₴: Клієнти` : '');
       const result = await this.push.send(sub, { title, body, icon: ICON, url: '/admin' });
       if (result === 'expired') await this.subs.disableAdminByEndpoint(sub.endpoint);
     }

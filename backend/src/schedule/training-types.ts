@@ -5,6 +5,9 @@ export const KY_ZONE = 'Europe/Kyiv';
 // DB / API values; only the frontend turns them into words
 export const GROUP_TYPE = 'group';
 export const GROUP_CAPACITY = 8;
+// A group training this small (guests count) gets a line in the trainer's cancel push; the trainer decides,
+// nothing is cancelled. Same threshold as `belowMin` in frontend SlotCard.tsx
+export const SMALL_GROUP_MAX = 2;
 // Assigned slots: the trainer picks the members (slot_members); only they see the slot
 export const ASSIGNED_TYPES = ['personal', 'split'];
 export const PASS_TYPES = [GROUP_TYPE, ...ASSIGNED_TYPES];

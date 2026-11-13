@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { BookingService } from './booking.service';
-import { cancelGuests, freeSeats, lateCancelledSlotIds } from './group-booking';
+import { cancelGuests, freeSeats, groupSeatsLeft, lateCancelledSlotIds } from './group-booking';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { loadFreezes, memberFrozenOn, openFreeze } from '../freezes/freeze.store';
 
@@ -11,7 +11,10 @@ jest.mock('./group-booking', () => ({
   cancelGuests: jest.fn().mockResolvedValue(new Set()),
   lateCancelledSlotIds: jest.fn(),
   freeSeats: jest.fn(),
+  groupSeatsLeft: jest.fn(),
 }));
+// The training left keeps a group of 3 unless a test says so
+beforeEach(() => (groupSeatsLeft as jest.Mock).mockResolvedValue({ count: 3, capacity: 8 }));
 // No late cancellation unless a test says so
 beforeEach(() => (lateCancelledSlotIds as jest.Mock).mockResolvedValue(new Set()));
 // Tested in group-booking.spec; here it only says whether the slot was full
@@ -373,7 +376,36 @@ describe('BookingService — trainer push with the reason', () => {
         reason: 'Захворіла',
         switchedToTime: null,
         refundUah: null,
+        groupLeft: { count: 3, capacity: 8 },
       },
+    );
+  });
+
+  it('tells the trainer how many are left on the training they left', async () => {
+    (groupSeatsLeft as jest.Mock).mockResolvedValueOnce({ count: 2, capacity: 8 });
+    const current = { id: 'booking-1', slotId: 'slot-1', trainingDayId: 'day-1', memberId: 'member-1' };
+    const target = { trainingDayId: 'day-1', trainingType: 'group', slotTime: '20:00', trainerId: 'trainer-1' };
+    const { db } = makeDb(
+      [
+        [{ ...target, localDate: TODAY }],
+        MEMBER_TRAINER,
+        [{ ...current, slotTime: '19:00', trainerId: 'trainer-1' }],
+        MEMBER,
+        [{ id: 'slot-1', status: 'ACTIVE', capacity: 8, bookedCount: 3 }],
+        [{ id: 'slot-2', status: 'ACTIVE', capacity: 8, bookedCount: 2 }],
+        [],
+        [{ displayName: 'Іра' }],
+      ],
+      () => [{ id: 'booking-1' }],
+    );
+    const service = makeService(db, kyivAt(17));
+    await service.switchSlot('member-1', 'slot-2', 'Не встигаю');
+
+    expect(groupSeatsLeft).toHaveBeenCalledWith(db, 'slot-1');
+    expect((service as any).notifications.enqueueAndProcess).toHaveBeenCalledWith(
+      'MEMBER_CANCELLED',
+      'member-cancelled:booking-1',
+      expect.objectContaining({ slotTime: '19:00', groupLeft: { count: 2, capacity: 8 } }),
     );
   });
 

@@ -83,6 +83,43 @@ describe('Trainer push — member cancelled / moved', () => {
     );
   });
 
+  describe('a small group left behind (the trainer decides, nothing is cancelled)', () => {
+    const bodyFor = async (groupLeft: unknown, refundUah: number | null = null) => {
+      const { svc, push } = makeNotifications();
+      await (svc as any).sendMemberCancelled({
+        displayName: 'Іра',
+        slotTime: '19:00',
+        localDate: '2026-10-22',
+        reason: 'Не встигаю',
+        switchedToTime: '20:00',
+        refundUah,
+        groupLeft,
+      });
+      return push.send.mock.calls[0][1].body as string;
+    };
+
+    it('says how many are left at 2 and 1', async () => {
+      expect(await bodyFor({ count: 2, capacity: 8 })).toBe('Іра: Не встигаю\nМала група: на 19:00 лишилось 2 з 8');
+      expect(await bodyFor({ count: 1, capacity: 8 })).toBe('Іра: Не встигаю\nМала група: на 19:00 лишилось 1 з 8');
+    });
+
+    it('says nobody is left at 0', async () => {
+      expect(await bodyFor({ count: 0, capacity: 8 })).toBe('Іра: Не встигаю\nНа 19:00 нікого не лишилось');
+    });
+
+    it('nothing from 3, for an assigned training or an older event', async () => {
+      expect(await bodyFor({ count: 3, capacity: 8 })).toBe('Іра: Не встигаю');
+      expect(await bodyFor(null)).toBe('Іра: Не встигаю');
+      expect(await bodyFor(undefined)).toBe('Іра: Не встигаю');
+    });
+
+    it('comes before the refund line', async () => {
+      expect(await bodyFor({ count: 2, capacity: 8 }, 300)).toBe(
+        'Іра: Не встигаю\nМала група: на 19:00 лишилось 2 з 8\nПовернути 300 ₴: Клієнти',
+      );
+    });
+  });
+
   it("goes only to the member's trainer when the member has one", async () => {
     const { svc, subs } = makeNotifications();
     await (svc as any).sendMemberCancelled({
