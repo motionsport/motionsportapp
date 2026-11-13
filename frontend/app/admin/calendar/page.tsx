@@ -121,7 +121,7 @@ export default function CalendarPage() {
     // Group: seats taken. Assigned: members, ✓ = paid
     const detail =
       s.trainingType === "group"
-        ? `${s.bookedCount}/${s.capacity}`
+        ? `${s.bookedCount}/${s.norm}`
         : s.members
             .map((m) => `${m.displayName}${m.booked && (m.spent || m.packageLeft > 0) ? " ✓" : ""}`)
             .join(", ") || "без людей";

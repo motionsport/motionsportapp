@@ -343,7 +343,7 @@ describe('Group slots — upsertGroupSlot', () => {
   it('any time from 06:00 to 21:00 in 15-minute steps (no longer only 19:00 / 20:00)', async () => {
     const { db, values } = makeDb([[]]);
     await makeService(db).upsertGroupSlot(TRAINER, '2026-10-21', '18:00');
-    expect(values).toContainEqual(expect.objectContaining({ slotTime: '18:00', trainingType: 'group', capacity: 8 }));
+    expect(values).toContainEqual(expect.objectContaining({ slotTime: '18:00', trainingType: 'group', capacity: 15 }));
     await expect(makeService(makeDb().db).upsertGroupSlot(TRAINER, '2026-10-21', '05:45')).rejects.toThrow(
       new BadRequestException('Group trainings are from 06:00 to 21:00'),
     );

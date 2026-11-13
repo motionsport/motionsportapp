@@ -104,6 +104,15 @@ describe('ScheduleService — group pass', () => {
 });
 
 describe("ScheduleService — the member on the day's group trainings", () => {
+  it('a group counter shows the norm 8, booking closes at the capacity 15', async () => {
+    const groupSlots = [
+      { id: 'slot-1', slotTime: '19:00', status: 'ACTIVE', trainingType: 'group', capacity: 15, bookedCount: 9 },
+    ];
+    const { db } = makeDb([[], [{ trainerId: 'trainer-1' }], [trainingDay], HAS_GROUP, groupSlots, [], [], []]);
+    const result = await makeService(db, kyivAt(15)).getNext('member-1');
+    expect(result.slots.map((s) => [s.bookedCount, s.norm, s.capacity])).toEqual([[9, 8, 15]]);
+  });
+
   it('their booking and guest, a training cancelled late, a seat they wait for', async () => {
     const { db } = makeDb([
       [], // no assigned trainings
@@ -417,7 +426,7 @@ describe('ScheduleService — group trainings from each trainer schedule', () =>
 
   beforeEach(() => mockLoadSchedule.mockReset());
 
-  it("creates each trainer's own times on their weekdays only, 8 seats, never overwriting", async () => {
+  it("creates each trainer's own times on their weekdays only, 15 seats, never overwriting", async () => {
     mockLoadSchedule.mockResolvedValue(MON_10_WED_19);
     // Reads: trainers, scheduled days, the trainer's group slots
     const days = [
@@ -442,7 +451,7 @@ describe('ScheduleService — group trainings from each trainer schedule', () =>
         trainingDayId: 'd-wed',
         slotTime: '19:00',
         trainingType: 'group',
-        capacity: 8,
+        capacity: 15,
         trainerId: 'trainer-2',
       }),
       expect.objectContaining({ trainingDayId: 'd-mon', slotTime: '10:00', trainerId: 'trainer-2' }),

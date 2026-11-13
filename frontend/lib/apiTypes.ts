@@ -312,6 +312,7 @@ export interface SlotView {
   status: "ACTIVE" | "CANCELLED";
   trainingType: TrainingType;
   capacity: number;
+  norm: number; // counters show bookedCount / norm («9/8»); a group books past it up to capacity
   bookedCount: number;
   isMyBooking: boolean;
   isMyVacancyAlert?: boolean;
@@ -391,6 +392,7 @@ export interface AdminSlotView {
   status: "ACTIVE" | "CANCELLED";
   trainingType: TrainingType;
   capacity: number;
+  norm: number; // counters show bookedCount / norm («9/8»); a group books past it up to capacity
   bookedCount: number;
   participants: AdminParticipant[];
   cancellations: Cancellation[];
@@ -419,6 +421,7 @@ export interface CalendarSlot {
   trainingType: TrainingType;
   bookedCount: number;
   capacity: number;
+  norm: number; // counters show bookedCount / norm («9/8»); a group books past it up to capacity
   // Assigned slots only. booked false = cancelled; spent = paid from a package
   members: { id: string; displayName: string; booked: boolean; spent: boolean; packageLeft: number }[];
 }

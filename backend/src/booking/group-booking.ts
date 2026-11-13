@@ -2,7 +2,7 @@ import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { DateTime } from 'luxon';
 import type { DatabaseService } from '../database/database.service';
 import { bookingGuests, bookings, members, trainingDays, trainingSlots, vacancyAlerts } from '../database/schema';
-import { GROUP_TYPE, slotStartsAt } from '../schedule/training-types';
+import { GROUP_NORM, GROUP_TYPE, slotStartsAt } from '../schedule/training-types';
 import { bookingOpensAt } from '../trainer-schedule/rules';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { getMemberTrainerId } from '../schedule/default-trainer';
@@ -160,29 +160,23 @@ export async function takeSeats(tx: Tx, slotId: string, seats: number) {
     .where(eq(trainingSlots.id, slotId));
 }
 
-// Seats taken on a group slot (guests count), read after freeSeats under the same lock; null = not a group slot
+// Seats taken on a group slot (guests count) and the norm, read after freeSeats under the same lock; null = not a group slot
 export async function groupSeatsLeft(tx: Tx, slotId: string): Promise<{ count: number; capacity: number } | null> {
   const [slot] = await tx
-    .select({
-      bookedCount: trainingSlots.bookedCount,
-      capacity: trainingSlots.capacity,
-      trainingType: trainingSlots.trainingType,
-    })
+    .select({ bookedCount: trainingSlots.bookedCount, trainingType: trainingSlots.trainingType })
     .from(trainingSlots)
     .where(eq(trainingSlots.id, slotId))
     .limit(1);
   if (!slot || slot.trainingType !== GROUP_TYPE) return null;
-  return { count: slot.bookedCount, capacity: slot.capacity };
+  // «лишилось 2 з 8»: the norm, not the 15 booking can reach
+  return { count: slot.bookedCount, capacity: GROUP_NORM };
 }
 
-// Under the slot row lock. true = a full group slot: the caller sends vacancy pushes after the transaction
+// Under the slot row lock. true = a group slot dropped below the norm (a comfortable seat is free again): the caller
+// sends vacancy pushes after the transaction. 10 → 9 is still past the norm, so nobody is told
 export async function freeSeats(tx: Tx, slotId: string, seats: number): Promise<boolean> {
   const [slot] = await tx
-    .select({
-      bookedCount: trainingSlots.bookedCount,
-      capacity: trainingSlots.capacity,
-      trainingType: trainingSlots.trainingType,
-    })
+    .select({ bookedCount: trainingSlots.bookedCount, trainingType: trainingSlots.trainingType })
     .from(trainingSlots)
     .where(eq(trainingSlots.id, slotId))
     .for('update')
@@ -191,5 +185,10 @@ export async function freeSeats(tx: Tx, slotId: string, seats: number): Promise<
     .update(trainingSlots)
     .set({ bookedCount: sql`GREATEST(${trainingSlots.bookedCount} - ${seats}, 0)` })
     .where(eq(trainingSlots.id, slotId));
-  return !!slot && slot.trainingType === GROUP_TYPE && slot.bookedCount >= slot.capacity;
+  return (
+    !!slot &&
+    slot.trainingType === GROUP_TYPE &&
+    slot.bookedCount >= GROUP_NORM &&
+    slot.bookedCount - seats < GROUP_NORM
+  );
 }

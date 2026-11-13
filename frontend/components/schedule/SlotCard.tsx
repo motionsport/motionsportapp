@@ -4,12 +4,15 @@ import { api, SlotView } from "@/lib/api";
 import { ensurePushSubscribed } from "@/lib/pushUtils";
 import { CancellationReasonModal } from "./CancellationReasonModal";
 import { GroupPassModal } from "./GroupPassModal";
+import { OverNormModal } from "./OverNormModal";
+import { crowdedText, lighterHint, lighterSlot, overNorm } from "@/lib/groupLoad";
 import { kyivTime } from "@/lib/kyivTime";
 
 // Same threshold as the backend's SMALL_GROUP_MAX (the trainer's push) and the admin SlotCard's «мало учасників»
 const SMALL_GROUP_MAX = 2;
 
-// Group slot: needs a group pass (else booking offers to buy one); booking, cancelling, switching end at the start
+// Group slot: needs a group pass (else booking offers to buy one); booking, cancelling, switching end at the start.
+// Books past the norm («9/8») up to capacity, after a warning that suggests a time with fewer people
 interface SlotCardProps {
   slot: SlotView;
   allSlots: SlotView[];
@@ -34,7 +37,9 @@ export function SlotCard({
   onRefresh,
 }: SlotCardProps) {
   const [modal, setModal] = useState<{ action: "cancel" } | { action: "switch"; targetSlot: SlotView } | null>(null);
-  const [buying, setBuying] = useState(false);
+  // The slot a group pass is being bought for (this one, or the time suggested by the over-norm warning)
+  const [buying, setBuying] = useState<SlotView | null>(null);
+  const [overNormOpen, setOverNormOpen] = useState(false);
   // null = guest name field closed
   const [guestName, setGuestName] = useState<string | null>(null);
 
@@ -42,6 +47,8 @@ export function SlotCard({
   // The guest moves along and needs a seat too
   const seatsNeeded = slot.myGuest ? 2 : 1;
   const canSwitch = !!otherSlot && otherSlot.bookedCount + seatsNeeded <= otherSlot.capacity;
+  // Moving there takes it past its norm: the reason modal warns
+  const switchCrowded = otherSlot && overNorm(otherSlot, seatsNeeded) ? crowdedText(otherSlot) : null;
 
   const isFull = slot.bookedCount >= slot.capacity;
   const hasAnyBooking = allSlots.some((s) => s.isMyBooking);
@@ -52,6 +59,26 @@ export function SlotCard({
     !afterWindow &&
     !slot.started &&
     bookingWindowOpen;
+
+  const bookable = slot.status === "ACTIVE" && !afterWindow && !slot.started && bookingWindowOpen && !frozen;
+  // «На 20:00 вільніше»: this time is filling up and another has fewer people
+  const lighter = bookable ? lighterHint(slot, allSlots) : null;
+
+  const book = (target: SlotView) => {
+    setOverNormOpen(false);
+    if (groupPassLeft > 0) onMutate(() => api.book(target.id));
+    else setBuying(target);
+  };
+  const subscribeVacancy = async () => {
+    setOverNormOpen(false);
+    await ensurePushSubscribed();
+    await onMutate(() => api.subscribeVacancy(slot.id));
+    onRefresh();
+  };
+  const unsubscribeVacancy = async () => {
+    await onMutate(() => api.unsubscribeVacancy(slot.id));
+    onRefresh();
+  };
 
   const cardClass = slot.isMyBooking
     ? "bg-teal/5 border-teal"
@@ -65,9 +92,11 @@ export function SlotCard({
         <div className="flex items-center justify-between mb-4">
           <span className="font-geologica font-semibold text-title text-heading">{slot.slotTime}</span>
           <span className="text-muted text-sm">
-            {slot.bookedCount}/{slot.capacity} місць
+            {slot.bookedCount}/{slot.norm} місць
           </span>
         </div>
+
+        {lighter && <p className="text-accent text-xs -mt-2 mb-4">На {lighter.slotTime} вільніше</p>}
 
         {smallGroup && (
           <div className="mb-4 flex items-start space-x-2.5 rounded-lg border border-warn-line bg-warn-bg px-3 py-2.5">
@@ -127,6 +156,7 @@ export function SlotCard({
                 }}
                 className="flex flex-col space-y-2"
               >
+                {overNorm(slot) && <p className="text-warn text-xs">{crowdedText(slot)}</p>}
                 <input
                   autoFocus
                   value={guestName}
@@ -185,13 +215,25 @@ export function SlotCard({
         ) : hasAnyBooking && !isFull ? (
           <p className="text-muted text-sm">Ви вже записані на інший час</p>
         ) : !isFull ? (
-          <button
-            type="button"
-            onClick={() => (groupPassLeft > 0 ? onMutate(() => api.book(slot.id)) : setBuying(true))}
-            className="btn-primary w-full py-3 rounded-lg text-sm transition-colors"
-          >
-            Записатись
-          </button>
+          <div className="flex flex-col space-y-2">
+            <button
+              type="button"
+              onClick={() => (overNorm(slot) ? setOverNormOpen(true) : book(slot))}
+              className="btn-primary w-full py-3 rounded-lg text-sm transition-colors"
+            >
+              Записатись
+            </button>
+            {/* Turned on from the over-norm warning: waits for a seat within the norm */}
+            {slot.isMyVacancyAlert && (
+              <button
+                type="button"
+                onClick={unsubscribeVacancy}
+                className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
+              >
+                🔔 Сповіщення увімкнено
+              </button>
+            )}
+          </div>
         ) : (
           // Also offered to a member booked on the other time: a freed seat shows them "Перейти на …"
           <div className="flex flex-col space-y-2">
@@ -200,10 +242,7 @@ export function SlotCard({
               (slot.isMyVacancyAlert ? (
                 <button
                   type="button"
-                  onClick={async () => {
-                    await onMutate(() => api.unsubscribeVacancy(slot.id));
-                    onRefresh();
-                  }}
+                  onClick={unsubscribeVacancy}
                   className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
                 >
                   🔔 Сповіщення увімкнено
@@ -211,11 +250,7 @@ export function SlotCard({
               ) : (
                 <button
                   type="button"
-                  onClick={async () => {
-                    await ensurePushSubscribed();
-                    await onMutate(() => api.subscribeVacancy(slot.id));
-                    onRefresh();
-                  }}
+                  onClick={subscribeVacancy}
                   className="btn-ghost hover-accent w-full py-3 rounded-lg border text-sm transition-colors"
                 >
                   🔕 Сповістити про вільне місце
@@ -225,11 +260,21 @@ export function SlotCard({
         )}
       </div>
 
+      {overNormOpen && (
+        <OverNormModal
+          slot={slot}
+          lighter={lighterSlot(slot, allSlots)}
+          onBook={book}
+          onAlert={slot.isMyVacancyAlert ? null : subscribeVacancy}
+          onDismiss={() => setOverNormOpen(false)}
+        />
+      )}
+
       {buying && (
         <GroupPassModal
-          slotId={slot.id}
-          slotTime={slot.slotTime}
-          onDismiss={() => setBuying(false)}
+          slotId={buying.id}
+          slotTime={buying.slotTime}
+          onDismiss={() => setBuying(null)}
           onBooked={onRefresh}
         />
       )}
@@ -238,6 +283,7 @@ export function SlotCard({
         <CancellationReasonModal
           action={modal.action}
           switchTime={modal.action === "switch" ? modal.targetSlot.slotTime : undefined}
+          crowded={modal.action === "switch" ? switchCrowded : null}
           slotId={slot.id}
           onDismiss={() => setModal(null)}
           onConfirm={async (reason) => {

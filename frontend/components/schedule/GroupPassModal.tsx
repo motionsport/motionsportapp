@@ -179,13 +179,16 @@ export function GroupPassModal({
             </p>
           )}
 
-          <button
-            type="button"
-            onClick={() => (step === "pick" ? setStep("choose") : onDismiss())}
-            className="btn-ghost w-full py-3 rounded-lg border text-sm transition-colors mt-2"
-          >
-            Назад
-          </button>
+          {/* Back a step; the first step closes with the modal's ✕ */}
+          {step === "pick" && (
+            <button
+              type="button"
+              onClick={() => setStep("choose")}
+              className="btn-ghost w-full py-3 rounded-lg border text-sm transition-colors mt-2"
+            >
+              Назад
+            </button>
+          )}
         </>
       )}
     </Modal>

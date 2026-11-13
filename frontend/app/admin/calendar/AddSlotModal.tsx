@@ -188,9 +188,6 @@ export function AddSlotModal({
         >
           {saving ? "Зачекайте..." : "Зберегти"}
         </button>
-        <button type="button" onClick={onClose} className="text-muted text-sm py-2 transition-colors hover:text-body">
-          Закрити
-        </button>
       </div>
     </Modal>
   );

@@ -198,7 +198,7 @@ describe('Trainer — client purchases', () => {
     expect(db.delete).toHaveBeenCalled(); // a mark on it goes too
   });
 
-  it('rejecting cash in a full group training tells those waiting for a seat, not the member', async () => {
+  it('rejecting cash in a group training at the norm (8 → 7) tells those waiting for a seat, not the member', async () => {
     const { db } = makeDb(
       [[{ bookedCount: 8, capacity: 8, trainingType: 'group' }], [{ slotTime: '19:00', localDate: '2026-10-24' }]],
       () => [{ id: 'purchase-1', bookingId: 'b1', slotId: 's1', memberId: 'm1' }],
@@ -214,7 +214,7 @@ describe('Trainer — client purchases', () => {
     });
   });
 
-  it('rejecting cash in a training that was not full sends nothing', async () => {
+  it('rejecting cash in a training below the norm sends nothing', async () => {
     const { db } = makeDb([[{ bookedCount: 5, capacity: 8, trainingType: 'group' }]], () => [
       { id: 'purchase-1', bookingId: 'b1', slotId: 's1', memberId: 'm1' },
     ]);

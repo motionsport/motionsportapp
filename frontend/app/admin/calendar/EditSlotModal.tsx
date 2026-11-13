@@ -67,7 +67,7 @@ export function EditSlotModal({
         </p>
         {!assigned && (
           <p className="text-muted text-xs mt-1">
-            Записано {slot.bookedCount} з {slot.capacity}
+            Записано {slot.bookedCount} з {slot.norm}
           </p>
         )}
         {repeatsWeekly && (
@@ -129,9 +129,6 @@ export function EditSlotModal({
           className="btn-ghost hover-danger w-full py-3 rounded-lg border text-sm transition-colors disabled:opacity-60"
         >
           Скасувати тренування {slot.slotTime}
-        </button>
-        <button type="button" onClick={onClose} className="text-muted text-sm py-2 transition-colors hover:text-body">
-          Закрити
         </button>
       </div>
     </Modal>

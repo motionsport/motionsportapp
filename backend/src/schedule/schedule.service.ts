@@ -16,7 +16,7 @@ import {
 import { ClockService } from '../clock/clock.service';
 import { PaymentService } from '../payment/payment.service';
 import { EntitlementsService } from '../purchases/entitlements.service';
-import { GROUP_TYPE, GROUP_CAPACITY, KY_ZONE, ASSIGNED_TYPES, slotStartsAt } from './training-types';
+import { GROUP_TYPE, GROUP_CAPACITY, KY_ZONE, ASSIGNED_TYPES, slotStartsAt, slotNorm } from './training-types';
 import { getMemberTrainerId } from './default-trainer';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { bookingOpensAt, groupTimeError } from '../trainer-schedule/rules';
@@ -162,6 +162,8 @@ export class ScheduleService {
       status: s.status,
       trainingType: s.trainingType,
       capacity: s.capacity,
+      // Counters show booked / norm («9/8»); capacity is where booking closes
+      norm: slotNorm(s),
       bookedCount: s.bookedCount,
       isMyBooking: s.id === mine?.bookedSlotId,
       isMyVacancyAlert: !!mine?.alertSlotIds.has(s.id),

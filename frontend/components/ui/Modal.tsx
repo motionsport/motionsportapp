@@ -21,6 +21,7 @@ interface ModalProps {
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// A ✕ in the top right corner closes it, like a click outside or Escape.
 // Focus goes to the dialog itself, not the first field (that would pop up the phone keyboard), unless something
 // inside took it already. Tab is trapped; on close focus returns to the opener.
 export function Modal({ variant = "sheet", onDismiss, canDismiss = true, labelledBy, children }: ModalProps) {
@@ -74,6 +75,17 @@ export function Modal({ variant = "sheet", onDismiss, canDismiss = true, labelle
         className={`${PANEL[variant]} focus:outline-none`}
       >
         {children}
+        {/* Every modal closes with this cross (or a click outside / Escape), never a separate «Закрити» button.
+            Last in the DOM, so focus order stays: content first */}
+        <button
+          type="button"
+          onClick={onDismiss}
+          disabled={!canDismiss}
+          aria-label="Закрити"
+          className="absolute top-2 right-2 w-9 h-9 flex items-center justify-center rounded-lg text-subtle text-base hover:text-body transition-colors disabled:opacity-40"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );

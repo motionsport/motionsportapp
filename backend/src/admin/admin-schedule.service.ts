@@ -17,7 +17,7 @@ import { EntitlementsService } from '../purchases/entitlements.service';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { requireOwnSlot } from '../schedule/default-trainer';
 import { bookingOpensAt } from '../trainer-schedule/rules';
-import { GROUP_TYPE, KY_ZONE, isAssignedType, slotStartsAt } from '../schedule/training-types';
+import { GROUP_TYPE, KY_ZONE, isAssignedType, slotNorm, slotStartsAt } from '../schedule/training-types';
 import { markOf, memberCancellations, toCancellationView } from './admin-views';
 
 const HISTORY_PAGE_DAYS = 14;
@@ -172,6 +172,7 @@ export class AdminScheduleService {
       status: s.status,
       trainingType: s.trainingType,
       capacity: s.capacity,
+      norm: slotNorm(s),
       bookedCount: s.bookedCount,
       participants: participantRows
         .filter((p) => p.slotId === s.id)
@@ -266,6 +267,7 @@ export class AdminScheduleService {
       trainingType: r.trainingType,
       bookedCount: r.bookedCount,
       capacity: r.capacity,
+      norm: slotNorm(r),
       members: assigned
         .filter((a) => a.slotId === r.slotId)
         .map(({ id, displayName }) => ({

@@ -8,11 +8,12 @@ interface Props {
   action: "cancel" | "switch";
   switchTime?: string;
   slotId?: string; // cancel only: fetches the late-cancellation fee
+  crowded?: string | null; // switch only: the target is past its norm («На 20:00 вже 8 людей, …»)
   onConfirm: (reason: string) => void;
   onDismiss: () => void;
 }
 
-export function CancellationReasonModal({ action, switchTime, slotId, onConfirm, onDismiss }: Props) {
+export function CancellationReasonModal({ action, switchTime, slotId, crowded, onConfirm, onDismiss }: Props) {
   const [reason, setReason] = useState("");
   const [fee, setFee] = useState<CancelFeePreview | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,6 +55,9 @@ export function CancellationReasonModal({ action, switchTime, slotId, onConfirm,
           Скасування зараз: {warning.charAt(0).toLowerCase() + warning.slice(1)}
         </p>
       )}
+      {action === "switch" && crowded && (
+        <p className="text-warn bg-warn-bg border border-warn-line rounded-xl px-3 py-2.5 text-sm mb-4">{crowded}</p>
+      )}
       <p className="text-muted text-sm mb-4">{prompt}</p>
 
       <textarea
@@ -75,13 +79,6 @@ export function CancellationReasonModal({ action, switchTime, slotId, onConfirm,
           }`}
         >
           {submitLabel}
-        </button>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="btn-ghost w-full py-3 rounded-lg border text-sm transition-colors"
-        >
-          Назад
         </button>
       </div>
     </Modal>

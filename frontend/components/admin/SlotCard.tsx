@@ -16,6 +16,8 @@ export function SlotCard({ slot, onMutate }: SlotCardProps) {
   const isGroup = slot.trainingType === "group";
   // The low-attendance warning is for group trainings only
   const belowMin = isGroup && slot.status === "ACTIVE" && slot.bookedCount < 3;
+  // Members may book past the norm (up to capacity), with a warning
+  const overNorm = isGroup && slot.status === "ACTIVE" && slot.bookedCount > slot.norm;
   const allPresent = slot.participants.length > 0 && slot.participants.every((p) => p.attendanceStatus === "PRESENT");
 
   return (
@@ -29,8 +31,9 @@ export function SlotCard({ slot, onMutate }: SlotCardProps) {
         </div>
         <div className="flex items-center space-x-3">
           {belowMin && <Badge>мало учасників</Badge>}
+          {overNorm && <Badge tone="warn">понад норму</Badge>}
           <span className="text-muted text-sm">
-            {slot.bookedCount}/{slot.capacity}
+            {slot.bookedCount}/{slot.norm}
           </span>
         </div>
       </div>

@@ -141,7 +141,7 @@ describe('tryBookGroup — booking inside someone else’s transaction, never th
 
 describe('freeSeats — a booking (and its guest) gave its seats back', () => {
   it('locks the training, frees the seats, never below zero', async () => {
-    const { tx, updates } = makeTx([[{ bookedCount: 3, capacity: 8, trainingType: 'group' }]]);
+    const { tx, updates } = makeTx([[{ bookedCount: 3, trainingType: 'group' }]]);
     await freeSeats(tx, 'slot-1', 2);
     expect(tx.select.mock.results[0].value.for).toHaveBeenCalledWith('update');
     const { sql, params } = new PgDialect().sqlToQuery((updates[0].set as { bookedCount: SQL }).bookedCount);
@@ -149,30 +149,45 @@ describe('freeSeats — a booking (and its guest) gave its seats back', () => {
     expect(params).toEqual([2]);
   });
 
-  it("a full group training: «З'явилось місце» is due", async () => {
-    const { tx } = makeTx([[{ bookedCount: 8, capacity: 8, trainingType: 'group' }]]);
+  it("8 → 7, below the norm: «З'явилось місце» is due", async () => {
+    const { tx } = makeTx([[{ bookedCount: 8, trainingType: 'group' }]]);
     expect(await freeSeats(tx, 'slot-1', 1)).toBe(true);
   });
 
-  it('not full: nothing to tell', async () => {
-    const { tx } = makeTx([[{ bookedCount: 7, capacity: 8, trainingType: 'group' }]]);
+  it('9 → 7, a member with a guest leaves an over-norm training: due', async () => {
+    const { tx } = makeTx([[{ bookedCount: 9, trainingType: 'group' }]]);
+    expect(await freeSeats(tx, 'slot-1', 2)).toBe(true);
+  });
+
+  it('10 → 9, still past the norm: nothing to tell', async () => {
+    const { tx } = makeTx([[{ bookedCount: 10, trainingType: 'group' }]]);
+    expect(await freeSeats(tx, 'slot-1', 1)).toBe(false);
+  });
+
+  it('15 → 14, booking reopens but still past the norm: nothing to tell', async () => {
+    const { tx } = makeTx([[{ bookedCount: 15, trainingType: 'group' }]]);
+    expect(await freeSeats(tx, 'slot-1', 1)).toBe(false);
+  });
+
+  it('7 → 6, below the norm already: nothing to tell', async () => {
+    const { tx } = makeTx([[{ bookedCount: 7, trainingType: 'group' }]]);
     expect(await freeSeats(tx, 'slot-1', 1)).toBe(false);
   });
 
   it('a full assigned training: nobody waits for it (no vacancy alerts there)', async () => {
-    const { tx } = makeTx([[{ bookedCount: 1, capacity: 1, trainingType: 'personal' }]]);
+    const { tx } = makeTx([[{ bookedCount: 1, trainingType: 'personal' }]]);
     expect(await freeSeats(tx, 'slot-p', 1)).toBe(false);
   });
 });
 
 describe('groupSeatsLeft — for the small-group line in the trainer push', () => {
-  it('a group training: seats taken and capacity', async () => {
-    const { tx } = makeTx([[{ bookedCount: 2, capacity: 8, trainingType: 'group' }]]);
+  it('a group training: seats taken and the norm (not the 15 booking can reach)', async () => {
+    const { tx } = makeTx([[{ bookedCount: 2, trainingType: 'group' }]]);
     expect(await groupSeatsLeft(tx, 'slot-1')).toEqual({ count: 2, capacity: 8 });
   });
 
   it('an assigned training: nothing', async () => {
-    const { tx } = makeTx([[{ bookedCount: 0, capacity: 3, trainingType: 'split' }]]);
+    const { tx } = makeTx([[{ bookedCount: 0, trainingType: 'split' }]]);
     expect(await groupSeatsLeft(tx, 'slot-s')).toBeNull();
   });
 });
