@@ -5,7 +5,6 @@ import { ensurePushSubscribed } from "@/lib/pushUtils";
 import { CancellationReasonModal } from "./CancellationReasonModal";
 import { GroupPassModal } from "./GroupPassModal";
 import { kyivTime } from "@/lib/kyivTime";
-import { smallGroupNote } from "@/lib/smallGroupNote";
 
 // Group slot: needs a group pass (else booking offers to buy one); booking, cancelling, switching end at the start
 interface SlotCardProps {
@@ -43,15 +42,9 @@ export function SlotCard({
 
   const isFull = slot.bookedCount >= slot.capacity;
   const hasAnyBooking = allSlots.some((s) => s.isMyBooking);
-  const bookable = slot.status === "ACTIVE" && !frozen && !afterWindow && !slot.started && bookingWindowOpen;
-  const note = bookable
-    ? smallGroupNote({
-        smallGroup: !!slot.smallGroup,
-        bookedCount: slot.bookedCount,
-        isMyBooking: slot.isMyBooking,
-        canBook: !hasAnyBooking && !slot.lateCancelled && !isFull,
-      })
-    : null;
+  // 2 or fewer after someone cancelled or moved away: the trainer may cancel it. Everyone sees it while booking is open
+  const smallGroup =
+    !!slot.smallGroup && slot.status === "ACTIVE" && !afterWindow && !slot.started && bookingWindowOpen;
 
   const cardClass = slot.isMyBooking
     ? "bg-teal/5 border-teal"
@@ -69,10 +62,10 @@ export function SlotCard({
           </span>
         </div>
 
-        {note && (
-          <div className="mb-4 rounded-lg border border-teal/30 bg-teal/10 px-3 py-2.5">
-            <p className="text-accent text-base font-medium">{note.text}</p>
-            {note.hint && <p className="text-subtle text-xs mt-1">{note.hint}</p>}
+        {smallGroup && (
+          <div className="mb-4 rounded-lg border border-warn-line bg-warn-bg px-3 py-2.5">
+            <p className="text-warn text-base font-medium">Записалось мало людей</p>
+            <p className="text-subtle text-xs mt-1">Тренування може не відбутися</p>
           </div>
         )}
 
