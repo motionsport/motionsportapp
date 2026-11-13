@@ -14,10 +14,9 @@ export function smallGroupNote(opts: {
   const { smallGroup, bookedCount, isMyBooking, canBook } = opts;
   if (!smallGroup) return null;
   if (isMyBooking) {
-    const who = bookedCount <= 1 ? "Поки записані лише ви." : `Поки записано лише ${bookedCount}.`;
     return {
-      text: `${who} Покличте друга (гість безкоштовно), щоб тренування точно відбулося`,
-      hint: "Якщо тренер скасує, прийде сповіщення, нічого не списується",
+      text: "Записалось мало людей",
+      hint: "Якщо тренування скасують, прийде сповіщення",
     };
   }
   if (!canBook) return null;

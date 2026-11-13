@@ -18,12 +18,11 @@ describe("smallGroupNote", () => {
     );
   });
 
-  it("asks the booked to bring a friend and says nothing is spent if cancelled", () => {
+  it("tells the booked a push comes if it is cancelled", () => {
     expect(smallGroupNote({ ...base, isMyBooking: true })).toEqual({
-      text: "Поки записано лише 2. Покличте друга (гість безкоштовно), щоб тренування точно відбулося",
-      hint: "Якщо тренер скасує, прийде сповіщення, нічого не списується",
+      text: "Записалось мало людей",
+      hint: "Якщо тренування скасують, прийде сповіщення",
     });
-    expect(smallGroupNote({ ...base, isMyBooking: true, bookedCount: 1 })?.text).toMatch(/^Поки записані лише ви\./);
   });
 
   it("nothing for someone who can't book it (booked elsewhere, cancelled late)", () => {
