@@ -58,18 +58,6 @@ export async function lateCancelledSlotIds(db: Db | Tx, memberId: string, slotId
   return new Set(rows.map((r) => r.slotId));
 }
 
-// Slots a member left by their own cancel or move (a reason; the trainer's and system cancellations have none)
-export async function slotsLeftByMembers(db: Db | Tx, slotIds: string[]): Promise<Set<string>> {
-  if (slotIds.length === 0) return new Set();
-  const rows = await db
-    .selectDistinct({ slotId: bookings.slotId })
-    .from(bookings)
-    .where(
-      and(inArray(bookings.slotId, slotIds), eq(bookings.status, 'CANCELLED'), isNotNull(bookings.cancellationReason)),
-    );
-  return new Set(rows.map((r) => r.slotId));
-}
-
 export type GroupBookingResult =
   | { ok: true; bookingId: string }
   | {

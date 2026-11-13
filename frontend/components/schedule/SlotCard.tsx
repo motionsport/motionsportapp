@@ -6,6 +6,9 @@ import { CancellationReasonModal } from "./CancellationReasonModal";
 import { GroupPassModal } from "./GroupPassModal";
 import { kyivTime } from "@/lib/kyivTime";
 
+// Same threshold as the backend's SMALL_GROUP_MAX (the trainer's push) and the admin SlotCard's «мало учасників»
+const SMALL_GROUP_MAX = 2;
+
 // Group slot: needs a group pass (else booking offers to buy one); booking, cancelling, switching end at the start
 interface SlotCardProps {
   slot: SlotView;
@@ -42,9 +45,13 @@ export function SlotCard({
 
   const isFull = slot.bookedCount >= slot.capacity;
   const hasAnyBooking = allSlots.some((s) => s.isMyBooking);
-  // 2 or fewer after someone cancelled or moved away: the trainer may cancel it. Everyone sees it while booking is open
+  // 2 or fewer (guests count): the trainer may cancel it. Everyone sees it while booking is open
   const smallGroup =
-    !!slot.smallGroup && slot.status === "ACTIVE" && !afterWindow && !slot.started && bookingWindowOpen;
+    slot.bookedCount <= SMALL_GROUP_MAX &&
+    slot.status === "ACTIVE" &&
+    !afterWindow &&
+    !slot.started &&
+    bookingWindowOpen;
 
   const cardClass = slot.isMyBooking
     ? "bg-teal/5 border-teal"
@@ -63,9 +70,25 @@ export function SlotCard({
         </div>
 
         {smallGroup && (
-          <div className="mb-4 rounded-lg border border-warn-line bg-warn-bg px-3 py-2.5">
-            <p className="text-warn text-base font-medium">Записалось мало людей</p>
-            <p className="text-subtle text-xs mt-1">Тренування може не відбутися</p>
+          <div className="mb-4 flex items-start space-x-2.5 rounded-lg border border-warn-line bg-warn-bg px-3 py-2.5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="text-warn w-5 h-5 mt-0.5 shrink-0"
+            >
+              <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+              <path d="M12 9v4" />
+              <path d="M12 17h.01" />
+            </svg>
+            <div>
+              <p className="text-warn text-base font-medium">Записалось мало людей</p>
+              <p className="text-subtle text-xs mt-1">Тренування може не відбутися</p>
+            </div>
           </div>
         )}
 

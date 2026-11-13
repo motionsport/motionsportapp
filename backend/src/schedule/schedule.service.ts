@@ -16,13 +16,13 @@ import {
 import { ClockService } from '../clock/clock.service';
 import { PaymentService } from '../payment/payment.service';
 import { EntitlementsService } from '../purchases/entitlements.service';
-import { GROUP_TYPE, GROUP_CAPACITY, KY_ZONE, ASSIGNED_TYPES, SMALL_GROUP_MAX, slotStartsAt } from './training-types';
+import { GROUP_TYPE, GROUP_CAPACITY, KY_ZONE, ASSIGNED_TYPES, slotStartsAt } from './training-types';
 import { getMemberTrainerId } from './default-trainer';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { bookingOpensAt, groupTimeError } from '../trainer-schedule/rules';
 import { loadFreezes } from '../freezes/freeze.store';
 import { frozenOn, plusDays } from '../freezes/rules';
-import { lateCancelledSlotIds, slotsLeftByMembers } from '../booking/group-booking';
+import { lateCancelledSlotIds } from '../booking/group-booking';
 import { passUsableOn } from '../purchases/validity';
 
 // An assigned slot stays visible until it ends; cancelling closes at the start
@@ -156,16 +156,6 @@ export class ScheduleService {
         )
       : null;
 
-    // A small group after someone cancelled or moved away: the card asks people to come (the trainer may cancel it)
-    const started = (slotTime: string) => now >= slotStartsAt(day.localDate, slotTime);
-    const small = slots.filter(
-      (s) => s.status === 'ACTIVE' && !started(s.slotTime) && s.bookedCount <= SMALL_GROUP_MAX,
-    );
-    const leftBySomeone = await slotsLeftByMembers(
-      this.database.db,
-      small.map((s) => s.id),
-    );
-
     return slots.map((s) => ({
       id: s.id,
       slotTime: s.slotTime,
@@ -179,8 +169,7 @@ export class ScheduleService {
       // Cancelled late with a fee: can't be booked again
       lateCancelled: !!mine?.lateCancelled.has(s.id),
       // Booking, cancelling and switching are closed
-      started: started(s.slotTime),
-      smallGroup: leftBySomeone.has(s.id),
+      started: now >= slotStartsAt(day.localDate, s.slotTime),
     }));
   }
 
