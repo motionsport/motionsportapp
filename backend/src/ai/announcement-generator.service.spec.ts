@@ -1,4 +1,7 @@
-import { AnnouncementGeneratorService, withoutLongDash } from './announcement-generator.service';
+import { AnnouncementGeneratorService, dayTopic, withoutLongDash } from './announcement-generator.service';
+
+const MONDAY = '2026-10-26';
+const THURSDAY = '2026-10-29';
 
 const GYM_NAMES = ['MotionSport', 'Motion Gym', 'MotionGym', 'мотіонспорт', 'моушн джим'];
 
@@ -61,41 +64,48 @@ describe('AnnouncementGeneratorService', () => {
     });
 
     it('returns AI-generated text', async () => {
-      const result = await service.generate(['Приклад 1']);
+      const result = await service.generate(['Приклад 1'], null, MONDAY);
       expect(result.source).toBe('ai');
       expect(result.text).toBe('Записуйтесь на тренування сьогодні! 💪');
     });
 
     it('prompt and system instruction do not mention the gym name', async () => {
-      await service.generate(['Приклад оголошення']);
+      await service.generate(['Приклад оголошення'], null, MONDAY);
       for (const name of GYM_NAMES) {
         expect(capturedPrompt.toLowerCase()).not.toContain(name.toLowerCase());
         expect(capturedSystem.toLowerCase()).not.toContain(name.toLowerCase());
       }
     });
 
-    it('system instruction holds the weekly programme (Mon legs, Wed circuit, Fri arms)', async () => {
-      await service.generate([]);
-      expect(capturedSystem).toContain('понеділок: ноги');
-      expect(capturedSystem).toContain('середа: кругове тренування');
-      expect(capturedSystem).toContain('пʼятниця: руки');
+    it("the weekday's topic goes into the prompt, picked in code (Mon legs, Wed circuit, Fri arms)", async () => {
+      await service.generate([], null, MONDAY);
+      expect(capturedPrompt).toContain('понеділок, 26 жовтня');
+      expect(capturedPrompt).toContain('Тема тренування: ноги');
     });
 
-    it('prompt names the weekday of the training so the model picks the topic', async () => {
-      await service.generate([], null, '2026-10-26');
-      expect(capturedPrompt).toContain('понеділок, 26 жовтня');
-      expect(capturedPrompt).not.toContain('Окрема тема');
+    it('a day outside the programme with no topic of its own: the fallback text, no AI', async () => {
+      capturedPrompt = '';
+      const result = await service.generate([], null, THURSDAY);
+      expect(result).toMatchObject({ source: 'fallback', fallbackReason: 'no topic for this day' });
+      expect(capturedPrompt).toBe('');
+    });
+
+    it('the model is told not to mention other days', async () => {
+      await service.generate([], null, MONDAY);
+      expect(capturedSystem).toContain('не згадуй інші дні');
     });
 
     it('prompt includes provided examples', async () => {
-      await service.generate(['Перший приклад', 'Другий приклад']);
+      await service.generate(['Перший приклад', 'Другий приклад'], null, MONDAY);
       expect(capturedPrompt).toContain('Перший приклад');
       expect(capturedPrompt).toContain('Другий приклад');
     });
 
-    it('a topic set for the day goes into the prompt as an override', async () => {
-      await service.generate([], 'Спина', '2026-10-26');
-      expect(capturedPrompt).toContain('Окрема тема на цей день: Спина');
+    it("the trainer's topic for the day wins over the programme, any weekday", async () => {
+      await service.generate([], 'Спина', MONDAY);
+      expect(capturedPrompt).toContain('Тема тренування: Спина');
+      await service.generate([], 'Спина', THURSDAY);
+      expect(capturedPrompt).toContain('Тема тренування: Спина');
     });
 
     it('returns fallback when Gemini returns empty text', async () => {
@@ -108,9 +118,20 @@ describe('AnnouncementGeneratorService', () => {
         }),
       }));
       (service as any).genAI = null;
-      const result = await service.generate([]);
+      const result = await service.generate([], null, MONDAY);
       expect(result.source).toBe('fallback');
     });
+  });
+});
+
+describe('dayTopic', () => {
+  it("the trainer's topic, else the weekday's, else none", () => {
+    expect(dayTopic(' Спина ', THURSDAY)).toBe('Спина');
+    expect(dayTopic(null, MONDAY)).toBe('ноги');
+    expect(dayTopic(null, '2026-10-28')).toBe('кругове тренування');
+    expect(dayTopic(null, '2026-10-30')).toBe('руки');
+    expect(dayTopic(null, THURSDAY)).toBeNull();
+    expect(dayTopic('  ', THURSDAY)).toBeNull();
   });
 });
 

@@ -3,24 +3,32 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { DateTime } from 'luxon';
 import { KY_ZONE } from '../schedule/training-types';
 
-const FALLBACK_TEXT = 'Записуйтесь на тренування! 💪 Чекаємо вас сьогодні.';
+const FALLBACK_TEXT = 'Записуйтесь на тренування! Чекаємо вас сьогодні.';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 // Bump when the instructions change (ai_generations.prompt_version)
-export const PROMPT_VERSION = 'v3';
+export const PROMPT_VERSION = 'v4';
 
-// Holds the weekly programme; the model picks the topic from the weekday in the prompt
+// The gym's weekly programme by weekday (1 = понеділок). Picked in code, not by the model: a day outside it
+// (вт, чт) once got «завтра пʼятниця, ручки». Change it here and bump PROMPT_VERSION
+export const WEEKLY_TOPICS: Record<number, string> = {
+  1: 'ноги',
+  3: 'кругове тренування',
+  5: 'руки',
+};
+
+// The trainer's topic for the day, else the programme's; none = the fallback text, no AI
+export function dayTopic(topic: string | null | undefined, localDate?: string): string | null {
+  if (topic?.trim()) return topic.trim();
+  if (!localDate) return null;
+  return WEEKLY_TOPICS[DateTime.fromISO(localDate, { zone: KY_ZONE }).weekday] ?? null;
+}
+
 const SYSTEM_INSTRUCTION = `Ти тренер жіночого фітнес-залу. Пишеш короткі мотиваційні оголошення українською мовою, щоб запросити записатися на групове тренування.
-
-Тижнева програма групових тренувань:
-- понеділок: ноги
-- середа: кругове тренування
-- пʼятниця: руки
-
-Якщо в запиті вказано окрему тему на цей день, вона важливіша за тижневу програму.
 
 Вимоги до оголошення:
 - 1-2 речення, максимум 150 символів
-- згадай тему тренування
+- тренування сьогодні: не згадуй інші дні (завтра, вчора, інші дні тижня)
+- згадай тему тренування з запиту
 - дружній, енергійний, мотивуючий тон
 - можна 1-2 емодзі
 - тільки текст оголошення, без пояснень і заголовків
@@ -55,8 +63,12 @@ export class AnnouncementGeneratorService {
     return this.genAI;
   }
 
-  // localDate picks the topic by weekday; `topic` overrides it
+  // The topic: the trainer's for the day, else the weekday's (dayTopic); none = the fallback text
   async generate(examples: string[], topic?: string | null, localDate?: string): Promise<GenerateResult> {
+    const theme = dayTopic(topic, localDate);
+    if (!theme) {
+      return { text: FALLBACK_TEXT, model: GEMINI_MODEL, source: 'fallback', fallbackReason: 'no topic for this day' };
+    }
     const ai = this.ensureInit();
     if (!ai) {
       return { text: FALLBACK_TEXT, model: GEMINI_MODEL, source: 'fallback', fallbackReason: 'GEMINI_API_KEY not set' };
@@ -73,9 +85,10 @@ export class AnnouncementGeneratorService {
 
     const prompt = `Напиши одне оголошення про тренування сьогодні${day ? ` (${day})` : ''}.
 
+Тема тренування: ${theme}
+
 Стиль (приклади попередніх оголошень):
-${examplesText}
-${topic ? `\nОкрема тема на цей день: ${topic}` : ''}`;
+${examplesText}`;
 
     const start = Date.now();
     try {
