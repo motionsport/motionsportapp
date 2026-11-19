@@ -28,9 +28,21 @@ describe("lighterSlot", () => {
     expect(lighterSlot(s19, [s19, slot("b", "20:00", 3)])?.id).toBe("b");
   });
 
-  it("the least booked, the earlier on a tie", () => {
+  it("the nearest later time, even when an earlier one is lighter", () => {
     const s19 = slot("a", "19:00", 8);
-    const all = [s19, slot("b", "20:00", 5), slot("c", "18:00", 2), slot("d", "21:00", 2)];
+    const all = [s19, slot("d", "21:00", 2), slot("b", "20:00", 5), slot("c", "18:00", 0)];
+    expect(lighterSlot(s19, all)?.id).toBe("b");
+  });
+
+  it("the last training of the day: the nearest earlier one", () => {
+    const s21 = slot("a", "21:00", 8);
+    const all = [slot("c", "18:00", 0), s21, slot("b", "20:00", 5)];
+    expect(lighterSlot(s21, all)?.id).toBe("b");
+  });
+
+  it("nothing lighter later: the nearest earlier one", () => {
+    const s19 = slot("a", "19:00", 8);
+    const all = [s19, slot("b", "20:00", 9), slot("c", "18:00", 4), slot("d", "17:00", 1)];
     expect(lighterSlot(s19, all)?.id).toBe("c");
   });
 
@@ -71,6 +83,10 @@ describe("lighterHint", () => {
   it("a gap of 2 or less: no hint", () => {
     expect(lighterHint(slot("a", "19:00", 7), [slot("b", "20:00", 5)])).toBeNull();
     expect(lighterHint(slot("a", "19:00", 8), [slot("b", "20:00", 6)])).toBeNull();
+  });
+
+  it("skips a later time that is only a little lighter for an earlier one 3 fewer", () => {
+    expect(lighterHint(slot("a", "19:00", 8), [slot("b", "20:00", 7), slot("c", "18:00", 4)])?.id).toBe("c");
   });
 });
 
