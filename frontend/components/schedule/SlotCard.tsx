@@ -63,8 +63,9 @@ export function SlotCard({
     bookingWindowOpen;
 
   const bookable = slot.status === "ACTIVE" && !afterWindow && !slot.started && bookingWindowOpen && !frozen;
-  // «На 20:00 вільніше»: this time is filling up and another has fewer people
-  const lighter = bookable ? lighterHint(slot, allSlots) : null;
+  // «На 20:00 вільніше»: this time is filling up and another has fewer people. Only for choosing
+  // a time: a member already booked that day doesn't see it
+  const lighter = bookable && !hasAnyBooking ? lighterHint(slot, allSlots) : null;
 
   const book = (target: SlotView) => {
     setOverNormOpen(false);
