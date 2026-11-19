@@ -58,13 +58,18 @@ describe("lighterSlot", () => {
 });
 
 describe("lighterHint", () => {
-  it("another time 3 or more people fewer, however many are booked", () => {
-    expect(lighterHint(slot("a", "19:00", 4), [slot("b", "20:00", 1)])?.id).toBe("b");
+  it("6 or more booked and another time 3 or more people fewer", () => {
+    expect(lighterHint(slot("a", "19:00", 6), [slot("b", "20:00", 3)])?.id).toBe("b");
     expect(lighterHint(slot("a", "19:00", 9), [slot("b", "20:00", 6)])?.id).toBe("b");
   });
 
+  it("fewer than 6 booked: no hint, however big the gap", () => {
+    expect(lighterHint(slot("a", "19:00", 3), [slot("b", "20:00", 0)])).toBeNull();
+    expect(lighterHint(slot("a", "19:00", 5), [slot("b", "20:00", 0)])).toBeNull();
+  });
+
   it("a gap of 2 or less: no hint", () => {
-    expect(lighterHint(slot("a", "19:00", 3), [slot("b", "20:00", 1)])).toBeNull();
+    expect(lighterHint(slot("a", "19:00", 7), [slot("b", "20:00", 5)])).toBeNull();
     expect(lighterHint(slot("a", "19:00", 8), [slot("b", "20:00", 6)])).toBeNull();
   });
 });

@@ -12,8 +12,9 @@ interface LoadSlot {
   lateCancelled?: boolean;
 }
 
-// «На 20:00 вільніше» shows when another time has this many fewer people or more, however many are booked:
-// the groups even out from the first bookings
+// «На 20:00 вільніше» shows when this time has LIGHTER_HINT_FROM people or more (2 short of the norm of 8)
+// and another time has LIGHTER_HINT_GAP fewer or more: earlier it only sends people to a time that may not happen
+export const LIGHTER_HINT_FROM = 6;
 export const LIGHTER_HINT_GAP = 3;
 
 // This booking (with a guest: 2 seats) would take the training past its norm
@@ -36,8 +37,10 @@ export function lighterSlot<T extends LoadSlot>(slot: T, allSlots: T[], seats = 
   return candidates[0] ?? null;
 }
 
-// The card's «На 20:00 вільніше»: the least booked other time, when it has LIGHTER_HINT_GAP fewer people or more
+// The card's «На 20:00 вільніше»: from LIGHTER_HINT_FROM booked, the least booked other time,
+// when it has LIGHTER_HINT_GAP fewer people or more
 export function lighterHint<T extends LoadSlot>(slot: T, allSlots: T[]): T | null {
+  if (slot.bookedCount < LIGHTER_HINT_FROM) return null;
   const lighter = lighterSlot(slot, allSlots);
   return lighter && slot.bookedCount - lighter.bookedCount >= LIGHTER_HINT_GAP ? lighter : null;
 }
