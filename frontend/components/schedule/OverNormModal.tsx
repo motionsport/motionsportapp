@@ -57,9 +57,9 @@ export function OverNormModal({
           <button
             type="button"
             onClick={onAlert}
-            className="btn-ghost hover-accent w-full py-3 rounded-lg border text-sm transition-colors"
+            className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
           >
-            Сповістити, якщо звільниться місце
+            🔕 Сповістити, якщо звільниться місце
           </button>
         )}
       </div>

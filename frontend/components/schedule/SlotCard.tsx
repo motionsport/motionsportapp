@@ -254,7 +254,7 @@ export function SlotCard({
                 <button
                   type="button"
                   onClick={subscribeVacancy}
-                  className="btn-ghost hover-accent w-full py-3 rounded-lg border text-sm transition-colors"
+                  className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
                 >
                   🔕 Сповістити про вільне місце
                 </button>
