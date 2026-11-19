@@ -38,16 +38,13 @@ export default function BookingReminderBanner({
           <p className="text-base font-medium">Запишіться, щоб не пропустити</p>
         </div>
         {state.kind === "countdown" && (
-          <span className="font-geologica font-semibold text-[28px] leading-none tabular-nums whitespace-nowrap">
-            {state.left}
-          </span>
+          <div className="text-right shrink-0">
+            <p className="font-geologica font-semibold text-[28px] leading-none tabular-nums">{state.left}</p>
+            <p className="text-xs font-medium opacity-75 mt-1 whitespace-nowrap">до закриття запису</p>
+          </div>
         )}
       </div>
-      {state.kind === "countdown" ? (
-        <p className="text-base font-medium opacity-75 mt-2">до закриття запису</p>
-      ) : (
-        <p className="text-base font-semibold mt-2">Запис ще відкритий, встигніть!</p>
-      )}
+      {state.kind === "hurry" && <p className="text-base font-semibold mt-2">Запис ще відкритий, встигніть!</p>}
     </div>
   );
 }
