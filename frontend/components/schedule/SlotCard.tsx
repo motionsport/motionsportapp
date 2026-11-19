@@ -52,8 +52,10 @@ export function SlotCard({
 
   const isFull = slot.bookedCount >= slot.capacity;
   const hasAnyBooking = allSlots.some((s) => s.isMyBooking);
-  // 2 or fewer (guests count): the trainer may cancel it. Everyone sees it while booking is open
+  // 1 or 2 booked (guests count): the trainer may cancel it. Everyone sees it while booking is open;
+  // nobody booked yet shows nothing (right after booking opens it would only scare people off)
   const smallGroup =
+    slot.bookedCount > 0 &&
     slot.bookedCount <= SMALL_GROUP_MAX &&
     slot.status === "ACTIVE" &&
     !afterWindow &&
