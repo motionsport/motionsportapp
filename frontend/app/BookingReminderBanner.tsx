@@ -30,15 +30,23 @@ export default function BookingReminderBanner({
   if (!state) return null;
 
   return (
-    <div className="rounded-xl border border-teal bg-teal/10 px-4 py-3 mb-5">
-      <p className="font-geologica font-semibold text-heading uppercase">Сьогодні тренування</p>
-      <p className="text-body text-base">Запишіться, щоб не пропустити</p>
+    // Solid lime with dark text, like the primary button: the loudest block on the page
+    <div className="rounded-xl bg-teal text-on-teal p-4 mb-5">
+      <div className="flex items-start justify-between space-x-3">
+        <div className="min-w-0">
+          <p className="font-geologica font-semibold text-sm uppercase">Сьогодні тренування</p>
+          <p className="text-base font-medium">Запишіться, щоб не пропустити</p>
+        </div>
+        {state.kind === "countdown" && (
+          <span className="font-geologica font-semibold text-[28px] leading-none tabular-nums whitespace-nowrap">
+            {state.left}
+          </span>
+        )}
+      </div>
       {state.kind === "countdown" ? (
-        <p className="text-accent text-base mt-2">
-          До закриття запису залишилось <span className="font-semibold tabular-nums">{state.left}</span>
-        </p>
+        <p className="text-base font-medium opacity-75 mt-2">до закриття запису</p>
       ) : (
-        <p className="text-accent text-base font-semibold mt-2">Запис ще відкритий, встигніть!</p>
+        <p className="text-base font-semibold mt-2">Запис ще відкритий, встигніть!</p>
       )}
     </div>
   );
