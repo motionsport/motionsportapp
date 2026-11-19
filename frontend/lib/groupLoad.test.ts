@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crowdedText, lighterHint, lighterSlot, lighterText, overNorm, seatsWord } from "./groupLoad";
+import { crowdedText, lighterHint, lighterSlot, lighterText, overNorm } from "./groupLoad";
 
 const slot = (id: string, slotTime: string, bookedCount: number, extra: object = {}) => ({
   id,
@@ -75,22 +75,9 @@ describe("lighterHint", () => {
 });
 
 describe("texts", () => {
-  it("seat words", () => {
-    expect([1, 2, 4, 5, 11, 12, 21, 22].map(seatsWord)).toEqual([
-      "1 місце",
-      "2 місця",
-      "4 місця",
-      "5 місць",
-      "11 місць",
-      "12 місць",
-      "21 місце",
-      "22 місця",
-    ]);
-  });
-
   it("the crowded time and the suggested one", () => {
     expect(crowdedText(slot("a", "19:00", 8))).toBe("На 19:00 вже 8 людей, тренуватись буде менш комфортно");
-    expect(lighterText(slot("b", "20:00", 3))).toBe("На 20:00 вільно: 5 місць");
-    expect(lighterText(slot("b", "20:00", 9))).toBe("На 20:00 людей менше: 9");
+    expect(lighterText(slot("b", "20:00", 3))).toBe("На 20:00 вільніше");
+    expect(lighterText(slot("b", "20:00", 9))).toBe("На 20:00 вільніше");
   });
 });

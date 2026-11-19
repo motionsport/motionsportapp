@@ -45,24 +45,12 @@ export function lighterHint<T extends LoadSlot>(slot: T, allSlots: T[]): T | nul
   return lighter && slot.bookedCount - lighter.bookedCount >= LIGHTER_HINT_GAP ? lighter : null;
 }
 
-// «вільно: 5 місць» (1 місце, 2 місця, 5 місць, 11 місць, 21 місце)
-export function seatsWord(n: number) {
-  const last = n % 10;
-  const lastTwo = n % 100;
-  if (last === 1 && lastTwo !== 11) return `${n} місце`;
-  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return `${n} місця`;
-  return `${n} місць`;
-}
-
 // «На 19:00 вже 8 людей, тренуватись буде менш комфортно»
 export function crowdedText(slot: LoadSlot) {
   return `На ${slot.slotTime} вже ${slot.bookedCount} людей, тренуватись буде менш комфортно`;
 }
 
-// The suggested time: free seats within its norm, or (past the norm too, just less so) how many are there
+// The suggested time, with no number: «вільно: 4 місця» read as a limit, and there is none
 export function lighterText(slot: LoadSlot) {
-  const free = slot.norm - slot.bookedCount;
-  return free > 0
-    ? `На ${slot.slotTime} вільно: ${seatsWord(free)}`
-    : `На ${slot.slotTime} людей менше: ${slot.bookedCount}`;
+  return `На ${slot.slotTime} вільніше`;
 }
