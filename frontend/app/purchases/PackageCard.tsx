@@ -1,5 +1,6 @@
 import { TrainingPackage } from "@/lib/api";
 import { ddmm } from "@/lib/dates";
+import { endingHint } from "@/lib/endingPackages";
 
 // A trainer service's title already names its type
 export const packageTitle = (p: TrainingPackage) => (p.trainingType === "group" ? `Групові · ${p.title}` : p.title);
@@ -42,7 +43,8 @@ export function PackageCard({ p }: { p: TrainingPackage }) {
     <div className="rounded-xl border border-line bg-surface p-4">
       <div className="flex items-baseline justify-between space-x-3">
         <span className="text-heading font-semibold">{packageTitle(p)}</span>
-        <span className="text-subtle text-xs whitespace-nowrap">
+        {/* Ending soon: the date turns warn, with a hint under the dots */}
+        <span className={`text-xs whitespace-nowrap ${p.endsInDays ? "text-warn font-semibold" : "text-subtle"}`}>
           {p.state === "active" ? `діє до ${ddmm(p.validUntil)}` : `почати до ${ddmm(p.activateBy)}`}
         </span>
       </div>
@@ -57,6 +59,7 @@ export function PackageCard({ p }: { p: TrainingPackage }) {
           `Почнеться з першого тренування · ${p.total} попереду`
         )}
       </p>
+      {p.endsInDays && <p className="text-warn text-xs mt-2">{endingHint(p.endsInDays, p.left)}</p>}
     </div>
   );
 }

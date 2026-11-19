@@ -1,4 +1,4 @@
-import { activateByFor, cardState, passState, passUsableOn, validUntilFor } from './validity';
+import { activateByFor, cardState, endsInDays, passState, passUsableOn, validUntilFor } from './validity';
 
 describe('Validity — dates', () => {
   it('a month to activate, to the same date (or the month end)', () => {
@@ -53,5 +53,30 @@ describe('Validity — states', () => {
     expect(passState({ ...pass, activatedOn: '2026-11-01', validUntil: '2026-12-01', left: 3 }, '2026-12-02')).toBe(
       'expired',
     );
+  });
+});
+
+describe('Validity — «Пакет скоро закінчиться»', () => {
+  const pack = (validUntil: string, extra: object = {}) => ({
+    total: 10,
+    state: 'active' as const,
+    validUntil,
+    ...extra,
+  });
+
+  it('10 days or fewer, today and the last day counted', () => {
+    expect(endsInDays(pack('2026-11-27'), '2026-11-19')).toBe(9);
+    expect(endsInDays(pack('2026-11-28'), '2026-11-19')).toBe(10);
+    expect(endsInDays(pack('2026-11-19'), '2026-11-19')).toBe(1);
+  });
+
+  it('more than 10 days: no', () => {
+    expect(endsInDays(pack('2026-11-29'), '2026-11-19')).toBeNull();
+  });
+
+  it('a single training, a package not started, used up or over: no', () => {
+    expect(endsInDays(pack('2026-11-27', { total: 1 }), '2026-11-19')).toBeNull();
+    for (const state of ['waiting', 'used', 'expired', 'burned'] as const)
+      expect(endsInDays(pack('2026-11-27', { state }), '2026-11-19')).toBeNull();
   });
 });

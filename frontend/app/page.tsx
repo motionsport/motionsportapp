@@ -13,6 +13,7 @@ import { nextPollDelay } from "@/lib/schedulePoll";
 import { errorText } from "@/lib/apiErrors";
 import { ddmm, longDay } from "@/lib/dates";
 import BookingReminderBanner from "./BookingReminderBanner";
+import EndingPackagesBanner from "./EndingPackagesBanner";
 
 // No flag: show the landing without calling the API (avoids a 401 in the console)
 function readAuthFlag(): boolean {
@@ -198,10 +199,14 @@ export default function SchedulePage() {
           )}
 
           {!schedule.localDate ? (
-            <p className="text-muted text-sm mb-4">Групових тренувань поки не заплановано.</p>
+            <>
+              <p className="text-muted text-sm mb-4">Групових тренувань поки не заплановано.</p>
+              <EndingPackagesBanner packages={schedule.endingPackages ?? []} />
+            </>
           ) : (
             <>
               <p className="text-muted text-sm mb-4 capitalize">{longDay(schedule.localDate)}</p>
+              <EndingPackagesBanner packages={schedule.endingPackages ?? []} />
 
               {schedule.announcement && (
                 <div className="bg-teal/8 border border-teal/20 rounded-xl px-4 py-3 mb-5 text-sm text-body">

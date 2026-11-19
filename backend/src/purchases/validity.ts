@@ -42,3 +42,19 @@ export function passState(p: PassDates & { left: number }, today: string): PassS
   if (!p.activatedOn) return today <= p.activateBy ? 'waiting' : 'burned';
   return today <= p.validUntil! ? 'active' : 'expired';
 }
+
+// «Пакет скоро закінчиться»: a started package of several trainings with some left, ENDING_SOON_DAYS or fewer
+// days to go (today and the last day counted). Shown on the home page and the package's card
+export const ENDING_SOON_DAYS = 10;
+
+export function endsInDays(
+  p: { total: number; state: PassState; validUntil: string | null },
+  today: string,
+): number | null {
+  if (p.total <= 1 || p.state !== 'active' || !p.validUntil) return null;
+  const days =
+    Math.round(
+      DateTime.fromISO(p.validUntil, { zone: KY_ZONE }).diff(DateTime.fromISO(today, { zone: KY_ZONE }), 'days').days,
+    ) + 1;
+  return days <= ENDING_SOON_DAYS ? days : null;
+}

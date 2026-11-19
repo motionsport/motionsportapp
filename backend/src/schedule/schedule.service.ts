@@ -79,6 +79,7 @@ export class ScheduleService {
         assignedSlots,
         groupPassLeft: 0,
         frozenUntil,
+        endingPackages: await this.endingPackages(memberId, frozenUntil),
         bookingReminder: null,
         serverTime: now.toUTC().toISO(),
         announcement: null,
@@ -106,6 +107,7 @@ export class ScheduleService {
       // 0 = booking offers to buy a group pass
       groupPassLeft: memberId ? await this.entitlements.groupPassLeft(memberId, targetDay.localDate) : 0,
       frozenUntil,
+      endingPackages: await this.endingPackages(memberId, frozenUntil),
       bookingReminder:
         memberId && !frozenUntil
           ? await this.bookingReminder(memberId, targetDay.localDate, slots, opensAt, now)
@@ -113,6 +115,19 @@ export class ScheduleService {
       serverTime: now.toUTC().toISO(),
       announcement,
     };
+  }
+
+  // «Пакет скоро закінчиться» (validity.ts endsInDays); none while frozen: the freeze moves the end anyway
+  private async endingPackages(memberId: string | undefined, frozenUntil: string | null) {
+    if (!memberId || frozenUntil) return [];
+    return (await this.entitlements.packagesOf(memberId))
+      .filter((p) => p.endsInDays !== null)
+      .map((p) => ({
+        trainingType: p.trainingType,
+        left: p.left,
+        validUntil: p.validUntil!,
+        endsInDays: p.endsInDays!,
+      }));
   }
 
   // «Сьогодні тренування» banner (booking-reminder.ts): today, the member not booked on a group training and

@@ -144,6 +144,29 @@ describe("ScheduleService — the member on the day's group trainings", () => {
   });
 });
 
+describe('ScheduleService — «Пакет скоро закінчиться»', () => {
+  const ending = { trainingType: 'group', left: 6, validUntil: '2026-10-28', endsInDays: 9 };
+  const packs = [
+    { ...ending, id: 'p1', state: 'active' },
+    { id: 'p2', trainingType: 'personal', left: 3, validUntil: '2026-11-15', endsInDays: null, state: 'active' },
+  ];
+
+  it("lists the member's packages ending soon", async () => {
+    const { db } = makeDb([[], [{ trainerId: 'trainer-1' }], [trainingDay], HAS_GROUP, slots]);
+    const result = await makeService(db, kyivAt(15), packs).getNext('member-1');
+    expect(result.endingPackages).toEqual([ending]);
+  });
+
+  it('none while frozen', async () => {
+    (loadFreezes as jest.Mock).mockResolvedValue([
+      { memberId: 'member-1', status: 'ACTIVE', startedOn: '2026-10-10', endsOn: '2026-11-01' },
+    ]);
+    const { db } = makeDb([[], [{ trainerId: 'trainer-1' }], [trainingDay], HAS_GROUP, slots]);
+    const result = await makeService(db, kyivAt(15), packs).getNext('member-1');
+    expect(result.endingPackages).toEqual([]);
+  });
+});
+
 describe('ScheduleService — «Сьогодні тренування» reminder', () => {
   // Opens at 14:00, first group training 19:00: from 16:00, «встигніть» from 18:00
   const notBooked = () => makeDb([[], [{ trainerId: 'trainer-1' }], [trainingDay], HAS_GROUP, slots]).db;

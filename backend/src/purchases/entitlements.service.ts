@@ -18,7 +18,7 @@ import {
 } from '../database/schema';
 import { GROUP_TYPE, KY_ZONE, PASS_TYPES } from '../schedule/training-types';
 import { tryBookGroup } from '../booking/group-booking';
-import { activateByFor, cardState, passState, PassState, passUsableOn, validUntilFor } from './validity';
+import { activateByFor, cardState, endsInDays, passState, PassState, passUsableOn, validUntilFor } from './validity';
 import { loadFreezes } from '../freezes/freeze.store';
 import { daysBetween, frozenOn, plusDays } from '../freezes/rules';
 
@@ -42,6 +42,8 @@ export type PackageView = {
   activateBy: string;
   activatedOn: string | null;
   validUntil: string | null;
+  // «Пакет скоро закінчиться»: days left, counting today (validity.ts), else null
+  endsInDays: number | null;
   createdAt: string;
 };
 
@@ -196,13 +198,17 @@ export class EntitlementsService {
       .where(eq(packages.memberId, memberId))
       .orderBy(asc(packages.createdAt));
     const today = this.today();
-    return rows.map(({ used, ...r }) => ({
-      ...r,
-      trainingType: r.trainingType as PackageView['trainingType'],
-      left: r.total - used,
-      state: passState({ ...r, left: r.total - used }, today),
-      createdAt: r.createdAt.toISOString(),
-    }));
+    return rows.map(({ used, ...r }) => {
+      const state = passState({ ...r, left: r.total - used }, today);
+      return {
+        ...r,
+        trainingType: r.trainingType as PackageView['trainingType'],
+        left: r.total - used,
+        state,
+        endsInDays: endsInDays({ ...r, state }, today),
+        createdAt: r.createdAt.toISOString(),
+      };
+    });
   }
 
   async summaries(memberIds: string[], db: Q = this.database.db) {

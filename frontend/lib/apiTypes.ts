@@ -138,6 +138,7 @@ export type TrainingPackage = {
   left: number;
   purchasedOn: string;
   activateBy: string;
+  endsInDays: number | null; // «Пакет скоро закінчиться»: days left counting today, 10 or fewer
   createdAt: string;
 } & (
   | { state: "waiting" | "burned"; activatedOn: null; validUntil: null }
@@ -335,6 +336,13 @@ export interface AssignedSlotView {
   started: boolean;
 }
 
+export interface EndingPackage {
+  trainingType: TrainingType;
+  left: number;
+  validUntil: string;
+  endsInDays: number;
+}
+
 export interface BookingReminder {
   from: string; // shown from here (3 hours before the first group training)
   softDeadline: string; // the countdown ends here (an hour before it), then «Запис ще відкритий, встигніть!»
@@ -352,6 +360,7 @@ export interface ScheduleNext {
   assignedSlots?: AssignedSlotView[];
   groupPassLeft: number; // 0 = booking offers to buy a group pass
   frozenUntil: string | null; // last frozen day; no booking while frozen
+  endingPackages: EndingPackage[]; // «Пакет скоро закінчиться»; none while frozen
   // «Сьогодні тренування» banner: today, not booked, a group package left (moments, ISO)
   bookingReminder: BookingReminder | null;
   serverTime: string;
