@@ -43,12 +43,12 @@ export function TransferDetails({ transfer }: { transfer: Details }) {
       <p className="rounded-xl border border-warn-line bg-warn-bg px-4 py-3 text-sm text-warn">
         Обов&apos;язково вкажіть призначення з кодом {transfer.code}: за ним тренер знайде ваш переказ.
       </p>
-      <div className="flex space-x-2">
+      <div className="space-y-2">
         <a
           href={transfer.bankLinks.privat24}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-primary flex-1 py-3 rounded-lg text-sm text-center transition-colors"
+          className="btn-primary block w-full py-3 rounded-lg text-sm text-center transition-colors"
         >
           Оплатити в Приват24
         </a>
@@ -56,7 +56,7 @@ export function TransferDetails({ transfer }: { transfer: Details }) {
           href={transfer.bankLinks.monobank}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-primary flex-1 py-3 rounded-lg text-sm text-center transition-colors"
+          className="btn-primary block w-full py-3 rounded-lg text-sm text-center transition-colors"
         >
           Оплатити в monobank
         </a>
