@@ -1,16 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { NotificationService } from './notification.service';
 import { AnnouncementsService } from '../ai/announcements.service';
 import { ClockService } from '../clock/clock.service';
 import { EntitlementsService, inLockOrder } from '../purchases/entitlements.service';
-import { trainingSlots, bookings, attendance, bookingGuests } from '../database/schema';
+import { trainingSlots, bookings, attendance, bookingGuests, members } from '../database/schema';
 import { GROUP_TYPE, slotOverAt, slotStartsAt } from '../schedule/training-types';
 import { bookingOpensAt } from '../trainer-schedule/rules';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { getDefaultTrainerId } from '../schedule/default-trainer';
 import { trainingDayOn } from '../schedule/training-day.store';
+import { reminderWindow } from '../schedule/booking-reminder';
+import { loadFreezes } from '../freezes/freeze.store';
+import { frozenOn } from '../freezes/rules';
 
 // Jobs behind /internal/cron/*; InternalCronController checks the secret
 @Injectable()
@@ -59,6 +62,68 @@ export class CronService {
     }
 
     return { ok: true, localDate: today, trainerIds: sent };
+  }
+
+  // «Сьогодні тренування»: per trainer, from the reminder's start until an hour before their first group training
+  // (booking-reminder.ts), to their clients with a group package left, not booked on a group training today
+  // and not frozen. Runs with bookingOpen every 15 min; the dedupe key keeps it to one push a day
+  async bookingReminder() {
+    const now = this.clock.now();
+    const today = now.toISODate()!;
+    const day = await trainingDayOn(this.database.db, today);
+    if (!day || day.status !== 'SCHEDULED') return { ok: true, skipped: 'no scheduled day today' };
+    const trainers = await this.groupTrainersToday(day.id);
+    if (trainers.length === 0) return { ok: true, skipped: 'no group trainings today' };
+    const firstTrainerId = await getDefaultTrainerId(this.database.db);
+
+    const sent: string[] = [];
+    for (const trainerId of [...new Set(trainers.map((t) => t.trainerId))]) {
+      const { bookingOpensAt: opensAt } = await loadTrainerSchedule(this.database.db, trainerId);
+      const times = trainers.filter((t) => t.trainerId === trainerId).map((t) => t.slotTime);
+      const window = reminderWindow(today, times, opensAt);
+      if (!window || now < window.from || now >= window.softDeadline) continue;
+      const memberIds = await this.reminderRecipients(trainerId, trainerId === firstTrainerId, day.id, today);
+      if (memberIds.length === 0) continue;
+      await this.notifications.enqueueAndProcess('BOOKING_REMINDER', `booking-reminder:${today}:${trainerId}`, {
+        localDate: today,
+        memberIds,
+      });
+      sent.push(trainerId);
+    }
+    return { ok: true, localDate: today, trainerIds: sent };
+  }
+
+  // Members without a trainer see the first trainer's group trainings
+  private async reminderRecipients(trainerId: string, includeUnassigned: boolean, dayId: string, today: string) {
+    const db = this.database.db;
+    const ofTrainer = eq(members.trainerId, trainerId);
+    const clients = await db
+      .select({ id: members.id })
+      .from(members)
+      .where(includeUnassigned ? or(ofTrainer, isNull(members.trainerId)) : ofTrainer);
+    const withPackage = await this.entitlements.groupPackageLeft(
+      clients.map((c) => c.id),
+      today,
+    );
+    const candidates = [...withPackage.keys()];
+    if (candidates.length === 0) return [];
+    const booked = await db
+      .select({ memberId: bookings.memberId })
+      .from(bookings)
+      .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
+      .where(
+        and(
+          inArray(bookings.memberId, candidates),
+          eq(bookings.status, 'ACTIVE'),
+          eq(trainingSlots.trainingDayId, dayId),
+          eq(trainingSlots.trainingType, GROUP_TYPE),
+        ),
+      );
+    const bookedIds = new Set(booked.map((b) => b.memberId));
+    const frozenIds = new Set(
+      (await loadFreezes(db, candidates)).filter((f) => frozenOn(f, today)).map((f) => f.memberId),
+    );
+    return candidates.filter((id) => !bookedIds.has(id) && !frozenIds.has(id));
   }
 
   async generateAnnouncement() {

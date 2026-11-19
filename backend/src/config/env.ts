@@ -60,6 +60,11 @@ export function envProblems(env: Env): string[] {
 
   problems.push(...wholeGroup(env, 'Push', ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT']));
 
+  // Minutes before the first group training; must leave room for the hour of «встигніть»
+  const lead = env.BOOKING_REMINDER_LEAD_MINUTES;
+  if (lead !== undefined && !(/^\d+$/.test(lead) && Number(lead) > 60))
+    problems.push('BOOKING_REMINDER_LEAD_MINUTES must be a whole number of minutes over 60 (default 180)');
+
   if (env.PORT !== undefined && !/^[1-9]\d*$/.test(env.PORT)) problems.push('PORT must be a positive whole number');
 
   return problems;

@@ -11,6 +11,7 @@ const ICON = '/motion-gym-logo-app.png';
 
 type EventType =
   | 'BOOKING_OPEN'
+  | 'BOOKING_REMINDER'
   | 'SLOT_CANCELLED'
   | 'VACANCY'
   | 'MEMBER_CANCELLED'
@@ -57,6 +58,7 @@ export class NotificationService {
     try {
       const p = event.payload as Record<string, unknown>;
       if (event.eventType === 'BOOKING_OPEN') await this.sendOpening(p);
+      else if (event.eventType === 'BOOKING_REMINDER') await this.sendReminder(p);
       else if (event.eventType === 'SLOT_CANCELLED') await this.sendCancellation(p);
       else if (event.eventType === 'VACANCY') await this.sendVacancy(p);
       else if (event.eventType === 'MEMBER_CANCELLED') await this.sendMemberCancelled(p);
@@ -87,6 +89,16 @@ export class NotificationService {
     await this.sendToSubs(subscriptions, {
       title: 'Запис відкрито! 🏋️',
       body: `Записуйтесь на тренування ${this.fmtDate(localDate)}`,
+      icon: ICON,
+      url: '/',
+    });
+  }
+
+  private async sendReminder(payload: Record<string, unknown>) {
+    const subscriptions = await this.subs.findActiveByMemberIds(payload.memberIds as string[]);
+    await this.sendToSubs(subscriptions, {
+      title: 'Сьогодні тренування',
+      body: 'Запишіться, щоб не пропустити',
       icon: ICON,
       url: '/',
     });

@@ -12,6 +12,7 @@ import { resyncExistingSubscription } from "@/lib/pushUtils";
 import { nextPollDelay } from "@/lib/schedulePoll";
 import { errorText } from "@/lib/apiErrors";
 import { ddmm, longDay } from "@/lib/dates";
+import BookingReminderBanner from "./BookingReminderBanner";
 
 // No flag: show the landing without calling the API (avoids a 401 in the console)
 function readAuthFlag(): boolean {
@@ -182,6 +183,7 @@ export default function SchedulePage() {
     <PageLayout variant="top" loading={loading} action={scheduleAction}>
       {schedule && (
         <>
+          <BookingReminderBanner reminder={schedule.bookingReminder} serverTime={schedule.serverTime} />
           <h1 className="font-geologica font-semibold text-title sm:text-display text-heading mb-1 uppercase">
             Наступне тренування
           </h1>

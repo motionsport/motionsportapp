@@ -237,3 +237,59 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
     expect(await runAt(9)).toEqual([]);
   });
 });
+
+describe('CronService — «Сьогодні тренування» reminder', () => {
+  // t1 (the first trainer) opens at 10:00, group trainings at 19:00 and 20:00: the reminder runs 16:00–18:00
+  async function runAt(hour: number, minute = 5, opts: { opensAt?: string; times?: string[] } = {}) {
+    mockLoadSchedule.mockResolvedValue({ bookingOpensAt: opts.opensAt ?? '10:00', autoCreate: true, times: [] });
+    // Reads: today's day, its group trainings, the first trainer, the clients, who is booked, freezes
+    const reads: unknown[][] = [
+      [{ id: 'day-1', status: 'SCHEDULED' }],
+      (opts.times ?? ['19:00', '20:00']).map((slotTime) => ({ trainerId: 't1', slotTime })),
+      [{ id: 't1' }],
+      [{ id: 'm-pack' }, { id: 'm-booked' }, { id: 'm-frozen' }, { id: 'm-none' }],
+      [{ memberId: 'm-booked' }],
+      [{ memberId: 'm-frozen', status: 'ACTIVE', startedOn: '2026-11-10', endsOn: '2026-12-01' }],
+    ];
+    function link(): any {
+      const chain: any = { then: (r: (v: unknown) => void) => r(reads.shift() ?? []) };
+      for (const m of ['from', 'where', 'limit', 'orderBy', 'innerJoin']) chain[m] = () => chain;
+      return chain;
+    }
+    const db: any = { select: () => link() };
+    const notifications = { enqueueAndProcess: jest.fn().mockResolvedValue(undefined) };
+    // m-none has no group package (or only a single visit): groupPackageLeft leaves it out
+    const entitlements = {
+      groupPackageLeft: jest.fn().mockResolvedValue(
+        new Map([
+          ['m-pack', 4],
+          ['m-booked', 2],
+          ['m-frozen', 6],
+        ]),
+      ),
+    };
+    const clock = { now: () => DateTime.fromISO('2026-11-19T00:00:00', { zone: 'Europe/Kyiv' }).set({ hour, minute }) };
+    const cron = new CronService({ db } as any, notifications as any, {} as any, clock, entitlements as any);
+    await cron.bookingReminder();
+    return notifications.enqueueAndProcess.mock.calls;
+  }
+
+  it('at 16:05: members with a group package, not booked and not frozen, once per trainer and day', async () => {
+    expect(await runAt(16)).toEqual([
+      ['BOOKING_REMINDER', 'booking-reminder:2026-11-19:t1', { localDate: '2026-11-19', memberIds: ['m-pack'] }],
+    ]);
+  });
+
+  it('before 16:00 and from 18:00 (an hour before the first): nothing', async () => {
+    expect(await runAt(15, 55)).toEqual([]);
+    expect(await runAt(18, 0)).toEqual([]);
+  });
+
+  it('booking opens after 16:00: nothing, the members just got «Запис відкрито»', async () => {
+    expect(await runAt(16, 30, { opensAt: '16:15' })).toEqual([]);
+  });
+
+  it('the first training is the first after the opening time', async () => {
+    expect(await runAt(16, 5, { times: ['09:00', '19:00'] })).toHaveLength(1);
+  });
+});

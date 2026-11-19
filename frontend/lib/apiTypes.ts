@@ -335,6 +335,12 @@ export interface AssignedSlotView {
   started: boolean;
 }
 
+export interface BookingReminder {
+  from: string; // shown from here (3 hours before the first group training)
+  softDeadline: string; // the countdown ends here (an hour before it), then «Запис ще відкритий, встигніть!»
+  firstStart: string; // gone once it starts
+}
+
 // localDate null: no group training ahead (assigned ones may still be listed)
 export interface ScheduleNext {
   localDate: string | null;
@@ -346,6 +352,8 @@ export interface ScheduleNext {
   assignedSlots?: AssignedSlotView[];
   groupPassLeft: number; // 0 = booking offers to buy a group pass
   frozenUntil: string | null; // last frozen day; no booking while frozen
+  // «Сьогодні тренування» banner: today, not booked, a group package left (moments, ISO)
+  bookingReminder: BookingReminder | null;
   serverTime: string;
   announcement?: string | null;
 }

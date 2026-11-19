@@ -15,7 +15,9 @@ export class InternalCronController {
   @Get('cron/booking-open')
   async bookingOpen(@Headers('authorization') auth: string) {
     this.verifyCronSecret(auth);
-    return this.cron.bookingOpen();
+    // cron-job.org calls this one route every 15 min: the «Сьогодні тренування» reminder rides along
+    const open = await this.cron.bookingOpen();
+    return { ...open, reminder: await this.cron.bookingReminder() };
   }
 
   @Get('cron/generate-announcement')

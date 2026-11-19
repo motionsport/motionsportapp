@@ -24,6 +24,7 @@ import { loadFreezes } from '../freezes/freeze.store';
 import { frozenOn, plusDays } from '../freezes/rules';
 import { lateCancelledSlotIds } from '../booking/group-booking';
 import { passUsableOn } from '../purchases/validity';
+import { reminderWindow } from './booking-reminder';
 
 // An assigned slot stays visible until it ends; cancelling closes at the start
 const ASSIGNED_SHOWN_FOR_MINUTES = 60;
@@ -78,6 +79,7 @@ export class ScheduleService {
         assignedSlots,
         groupPassLeft: 0,
         frozenUntil,
+        bookingReminder: null,
         serverTime: now.toUTC().toISO(),
         announcement: null,
       };
@@ -104,8 +106,34 @@ export class ScheduleService {
       // 0 = booking offers to buy a group pass
       groupPassLeft: memberId ? await this.entitlements.groupPassLeft(memberId, targetDay.localDate) : 0,
       frozenUntil,
+      bookingReminder:
+        memberId && !frozenUntil
+          ? await this.bookingReminder(memberId, targetDay.localDate, slots, opensAt, now)
+          : null,
       serverTime: now.toUTC().toISO(),
       announcement,
+    };
+  }
+
+  // «Сьогодні тренування» banner (booking-reminder.ts): today, the member not booked on a group training and
+  // with a group package left; the moments, so the page counts down by itself
+  private async bookingReminder(
+    memberId: string,
+    localDate: string,
+    slots: { slotTime: string; status: string; isMyBooking: boolean }[],
+    opensAt: string,
+    now: DateTime,
+  ) {
+    if (localDate !== now.toISODate() || slots.some((s) => s.isMyBooking)) return null;
+    const active = slots.filter((s) => s.status === 'ACTIVE').map((s) => s.slotTime);
+    const window = reminderWindow(localDate, active, opensAt);
+    if (!window || now >= window.firstStart) return null;
+    const left = await this.entitlements.groupPackageLeft([memberId], localDate);
+    if (!left.get(memberId)) return null;
+    return {
+      from: window.from.toUTC().toISO(),
+      softDeadline: window.softDeadline.toUTC().toISO(),
+      firstStart: window.firstStart.toUTC().toISO(),
     };
   }
 

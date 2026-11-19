@@ -260,6 +260,21 @@ export class EntitlementsService {
     return rows.filter((p) => passUsableOn(p, date)).reduce((sum, p) => sum + Math.max(p.total - p.used, 0), 0);
   }
 
+  // Trainings left in group packages (not a single visit) usable on the date, per member; only members with some
+  async groupPackageLeft(memberIds: string[], date: string, db: Q = this.database.db) {
+    const left = new Map<string, number>();
+    if (memberIds.length === 0) return left;
+    const rows = await db
+      .select({ memberId: packages.memberId, total: packages.total, used: USED, ...PASS_DATES })
+      .from(packages)
+      .where(and(inArray(packages.memberId, memberIds), eq(packages.trainingType, GROUP_TYPE)));
+    for (const p of rows) {
+      if (p.total <= 1 || !passUsableOn(p, date) || p.used >= p.total) continue;
+      left.set(p.memberId, (left.get(p.memberId) ?? 0) + p.total - p.used);
+    }
+    return left;
+  }
+
   // Any mark (present or absent) spends one training (see payerFor); the first spend activates the package.
   // Clearing the mark returns it to the same package, activation stays. No package left: no spend, no debt
   async syncSpend(tx: Tx, bookingId: string) {

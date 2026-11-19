@@ -74,12 +74,13 @@ const HAS_GROUP = [
 const publishedAnnouncement = { text: 'Записуйтесь сьогодні! 💪', publishedAt: new Date() };
 const unpublishedAnnouncement = { text: 'Записуйтесь сьогодні! 💪', publishedAt: null };
 
-function makeService(db: any, now: DateTime, packages: unknown[] = [], groupPassLeft = 0) {
+function makeService(db: any, now: DateTime, packages: unknown[] = [], groupPassLeft = 0, groupPackageLeft = 0) {
   const mockClock = { now: () => now };
   const mockPaymentService = { expireStale: jest.fn().mockResolvedValue(undefined) };
   const mockEntitlements = {
     packagesOf: jest.fn().mockResolvedValue(packages),
     groupPassLeft: jest.fn().mockResolvedValue(groupPassLeft),
+    groupPackageLeft: jest.fn().mockResolvedValue(new Map(groupPackageLeft ? [['member-1', groupPackageLeft]] : [])),
   };
   const service = new ScheduleService({ db } as any, mockClock, mockPaymentService as any, mockEntitlements as any);
   mockLoadSchedule.mockResolvedValue({ bookingOpensAt: '14:00', autoCreate: true, times: [] });
@@ -140,6 +141,58 @@ describe("ScheduleService — the member on the day's group trainings", () => {
       [false, null],
       [false, null],
     ]);
+  });
+});
+
+describe('ScheduleService — «Сьогодні тренування» reminder', () => {
+  // Opens at 14:00, first group training 19:00: from 16:00, «встигніть» from 18:00
+  const notBooked = () => makeDb([[], [{ trainerId: 'trainer-1' }], [trainingDay], HAS_GROUP, slots]).db;
+
+  it('a member with a group package, not booked: the moments to count down', async () => {
+    const result = await makeService(notBooked(), kyivAt(15), [], 4, 4).getNext('member-1');
+    expect(result.bookingReminder).toEqual({
+      from: '2026-10-20T13:00:00.000Z',
+      softDeadline: '2026-10-20T15:00:00.000Z',
+      firstStart: '2026-10-20T16:00:00.000Z',
+    });
+  });
+
+  it('no group package (none or a single visit left): none', async () => {
+    const result = await makeService(notBooked(), kyivAt(15), [], 1, 0).getNext('member-1');
+    expect(result.bookingReminder).toBeNull();
+  });
+
+  it('booked on any group training that day: none', async () => {
+    const { db } = makeDb([
+      [],
+      [{ trainerId: 'trainer-1' }],
+      [trainingDay],
+      HAS_GROUP,
+      slots,
+      [{ id: 'b1', slotId: 'slot-2' }],
+    ]);
+    const result = await makeService(db, kyivAt(15), [], 4, 4).getNext('member-1');
+    expect(result.bookingReminder).toBeNull();
+  });
+
+  it('frozen: none', async () => {
+    (loadFreezes as jest.Mock).mockResolvedValue([
+      { memberId: 'member-1', status: 'ACTIVE', startedOn: '2026-10-10', endsOn: '2026-11-01' },
+    ]);
+    const result = await makeService(notBooked(), kyivAt(15), [], 4, 4).getNext('member-1');
+    expect(result.bookingReminder).toBeNull();
+  });
+
+  it('once the first group training started: none', async () => {
+    const result = await makeService(notBooked(), kyivAt(19, 5), [], 4, 4).getNext('member-1');
+    expect(result.bookingReminder).toBeNull();
+  });
+
+  it('the next group day is not today: none', async () => {
+    const tomorrow = { ...trainingDay, localDate: '2026-10-21' };
+    const { db } = makeDb([[], [{ trainerId: 'trainer-1' }], [tomorrow], HAS_GROUP, slots]);
+    const result = await makeService(db, kyivAt(15), [], 4, 4).getNext('member-1');
+    expect(result.bookingReminder).toBeNull();
   });
 });
 
