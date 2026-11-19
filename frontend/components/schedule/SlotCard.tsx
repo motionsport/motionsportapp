@@ -119,7 +119,7 @@ export function SlotCard({
             </svg>
             <div>
               <p className="text-warn text-base font-medium">Записалось мало людей</p>
-              <p className="text-subtle text-xs mt-1">Тренування відбудеться, якщо запишеться ще кілька</p>
+              <p className="text-subtle text-xs mt-1">Тренування відбудеться, якщо запишеться ще кілька людей</p>
             </div>
           </div>
         )}
