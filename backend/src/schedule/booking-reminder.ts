@@ -2,9 +2,9 @@ import { DateTime } from 'luxon';
 import { slotStartsAt } from './training-types';
 import { bookingOpensAt } from '../trainer-schedule/rules';
 
-// «Сьогодні тренування»: a push and a home banner to members with a group package not booked that day, from
-// LEAD minutes before the trainer's first group training. The banner counts down to an hour before it, then
-// says «Запис ще відкритий, встигніть!» until it starts
+// «Сьогодні тренування»: a home banner (no push: «Запис відкрито» is enough) to members with a group package not
+// booked that day, from LEAD minutes before the trainer's first group training. It counts down to an hour before
+// it, then says «Запис ще відкритий, встигніть!» until it starts
 export const DEFAULT_REMINDER_LEAD_MINUTES = 180;
 export const REMINDER_SOFT_MINUTES = 60;
 
