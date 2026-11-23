@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cancelWarning, feeLabel, feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
+import { cancelPrompt, cancelWarning, feeLabel, feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
 
 describe("feeWarning (the member's «Скасувати»)", () => {
   it("says nothing when cancelling is free or the preview hasn't come", () => {
@@ -124,5 +124,23 @@ describe("cancelWarning (one block in «Скасувати»)", () => {
         "Пакет діє до 27.11, невикористані тренування згорять.",
       ],
     });
+  });
+});
+
+describe("cancelPrompt (the text over the reason field)", () => {
+  const free = { fee: null, single: false, refundUah: null, cancelNumber: null, packUntil: null };
+  const usual = { prompt: "Чому скасовуєте запис?", placeholder: "Напишіть причину..." };
+
+  it("a free personal or split cancel asks when to move it", () => {
+    expect(cancelPrompt(true, free)).toEqual({
+      prompt: "Чому скасовуєте і коли вам зручно перенести?",
+      placeholder: "Наприклад: захворіла, можу в четвер після 18:00",
+    });
+  });
+
+  it("the usual question: a late cancel, a group training, or no answer about the fee yet", () => {
+    expect(cancelPrompt(true, { ...free, fee: "FULL" })).toEqual(usual);
+    expect(cancelPrompt(false, free)).toEqual(usual);
+    expect(cancelPrompt(true, null)).toEqual(usual);
   });
 });

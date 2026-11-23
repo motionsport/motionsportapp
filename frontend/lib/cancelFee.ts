@@ -11,6 +11,18 @@ export function feeWarning(p: CancelFeePreview | null) {
   return p.single ? "Тренування згорить, гроші не повертаються." : "З пакета спишеться 1 тренування.";
 }
 
+// The question over the reason field. A free cancel of a personal / split training also asks when to move it
+// (one field: it goes to the trainer as the reason). No answer about the fee yet = the usual question
+export function cancelPrompt(assigned: boolean, p: CancelFeePreview | null) {
+  if (assigned && p && !p.fee) {
+    return {
+      prompt: "Чому скасовуєте і коли вам зручно перенести?",
+      placeholder: "Наприклад: захворіла, можу в четвер після 18:00",
+    };
+  }
+  return { prompt: "Чому скасовуєте запис?", placeholder: "Напишіть причину..." };
+}
+
 // Member's warning when cancelling often a training a package pays for; the date only once the package started
 export function frequentCancelWarning(p: CancelFeePreview | null, today = kyivToday()) {
   if (!p?.cancelNumber || p.cancelNumber < FREQUENT_CANCELLATIONS) return null;

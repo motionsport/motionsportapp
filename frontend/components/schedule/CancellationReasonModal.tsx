@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { api, CancelFeePreview } from "@/lib/api";
-import { cancelWarning } from "@/lib/cancelFee";
+import { cancelPrompt, cancelWarning } from "@/lib/cancelFee";
 import { Modal } from "@/components/ui/Modal";
 import { WarnNote } from "@/components/ui/WarnNote";
 
@@ -10,11 +10,20 @@ interface Props {
   switchTime?: string;
   slotId?: string; // cancel only: fetches the late-cancellation fee
   crowded?: string | null; // switch only: the target is past its norm («На 20:00 вже 8 людей, …»)
+  assigned?: boolean; // personal / split: a free cancel also asks when to move it
   onConfirm: (reason: string) => void;
   onDismiss: () => void;
 }
 
-export function CancellationReasonModal({ action, switchTime, slotId, crowded, onConfirm, onDismiss }: Props) {
+export function CancellationReasonModal({
+  action,
+  switchTime,
+  slotId,
+  crowded,
+  assigned = false,
+  onConfirm,
+  onDismiss,
+}: Props) {
   const [reason, setReason] = useState("");
   const [fee, setFee] = useState<CancelFeePreview | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -36,7 +45,10 @@ export function CancellationReasonModal({ action, switchTime, slotId, crowded, o
 
   const title = action === "switch" ? `Перенести на ${switchTime}` : "Скасувати запис";
 
-  const prompt = action === "switch" ? "Чому переносите час?" : "Чому скасовуєте запис?";
+  const ask =
+    action === "switch"
+      ? { prompt: "Чому переносите час?", placeholder: "Напишіть причину..." }
+      : cancelPrompt(assigned, fee);
 
   const submitLabel = action === "switch" ? `Перенести на ${switchTime}` : "Скасувати запис";
 
@@ -58,14 +70,14 @@ export function CancellationReasonModal({ action, switchTime, slotId, crowded, o
         </WarnNote>
       )}
       {action === "switch" && crowded && <WarnNote title={crowded} className="mb-4" />}
-      <p className="text-muted text-sm mb-4">{prompt}</p>
+      <p className="text-muted text-sm mb-4">{ask.prompt}</p>
 
       <textarea
         ref={textareaRef}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         rows={3}
-        placeholder="Напишіть причину..."
+        placeholder={ask.placeholder}
         className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-body resize-none focus:outline-none focus:border-teal"
       />
 
