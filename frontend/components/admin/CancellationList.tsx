@@ -15,6 +15,7 @@ function formatCancelledAt(iso: string | null, withDate: boolean): string {
 export interface CancellationItem extends Cancellation {
   label?: string; // instead of the name (client history shows the training date)
   moveInLabel?: boolean; // the label already shows the move, so no target-time badge
+  locked?: boolean; // closed 3 days after the training (lib/marksLock.ts): no «Не списувати»
 }
 
 interface CancellationListProps {
@@ -75,7 +76,7 @@ export function CancellationList({ title, items, withDate = false }: Cancellatio
               {fee && (
                 <div className="flex items-center justify-between space-x-2 mt-1">
                   <Badge tone={fee.waived ? "none" : "warn"}>{feeLabel(fee)}</Badge>
-                  {!fee.waived && !fee.refundDone && !fee.refundSending && (
+                  {!fee.waived && !fee.refundDone && !fee.refundSending && !c.locked && (
                     <button
                       type="button"
                       onClick={() => waive(c.bookingId)}

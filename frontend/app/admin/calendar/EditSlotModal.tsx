@@ -6,6 +6,7 @@ import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { longDay } from "@/lib/dates";
 import { Modal } from "@/components/ui/Modal";
 import { CancellationList } from "@/components/admin/CancellationList";
+import { marksLocked } from "@/lib/marksLock";
 import { memberLabel } from "./memberLabel";
 import { MemberPickers } from "./MemberPickers";
 import { fieldsFor, useSave } from "./slotForm";
@@ -94,7 +95,13 @@ export function EditSlotModal({
         </ul>
       )}
 
-      {cancellations && <CancellationList title="Скасували" items={cancellations} withDate />}
+      {cancellations && (
+        <CancellationList
+          title="Скасували"
+          items={cancellations.map((c) => ({ ...c, locked: marksLocked(slot.localDate) }))}
+          withDate
+        />
+      )}
 
       {assigned && (
         <MemberPickers

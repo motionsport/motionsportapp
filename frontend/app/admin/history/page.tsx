@@ -10,6 +10,8 @@ import { TYPE_COLORS, TYPE_LABEL } from "@/lib/trainingTypes";
 import { longDay } from "@/lib/dates";
 import { Badge } from "@/components/ui/Badge";
 import { toAdminLogin } from "@/lib/adminAuth";
+import { errorText } from "@/lib/apiErrors";
+import { marksLocked } from "@/lib/marksLock";
 
 // Collapsed row, e.g. "11 прийшли з 12 · 1 скасування"
 function daySummary(day: HistoryDay) {
@@ -27,9 +29,11 @@ function daySummary(day: HistoryDay) {
 
 function HistorySlot({
   slot,
+  locked,
   onAttendance,
 }: {
   slot: AdminSlotView;
+  locked: boolean;
   onAttendance: (bookingId: string, next: AttendanceStatus) => void;
 }) {
   const colors = TYPE_COLORS[slot.trainingType];
@@ -66,6 +70,7 @@ function HistorySlot({
                 <AttendanceButton
                   status={p.attendanceStatus}
                   name={p.displayName}
+                  disabled={locked}
                   onChange={(next) => onAttendance(p.bookingId, next)}
                 />
               </li>
@@ -75,14 +80,14 @@ function HistorySlot({
 
       {slot.cancellations.length > 0 && (
         <div className="border-t border-dashed border-line pt-3">
-          <CancellationList title="Скасували" items={slot.cancellations} withDate />
+          <CancellationList title="Скасували" items={slot.cancellations.map((c) => ({ ...c, locked }))} withDate />
         </div>
       )}
     </div>
   );
 }
 
-// Attendance stays editable here at any time
+// Marks stay editable on the training day and 3 days after it (lib/marksLock.ts); older days are read-only
 export default function HistoryPage() {
   const router = useRouter();
   const [days, setDays] = useState<HistoryDay[] | null>(null);
@@ -149,9 +154,9 @@ export default function HistoryPage() {
       .find((p) => p.bookingId === bookingId);
     try {
       await api.updateParticipantAttendance({ bookingId, guestOf: participant?.guestOf ?? null }, next);
-    } catch {
+    } catch (err: unknown) {
       setAttendance(bookingId, previous);
-      setError("Не вдалося зберегти відмітку. Спробуйте ще раз.");
+      setError(errorText(err, "Не вдалося зберегти відмітку. Спробуйте ще раз."));
     }
   };
 
@@ -201,10 +206,14 @@ export default function HistoryPage() {
                 )}
                 {expanded && day.status !== "CANCELLED" && (
                   <div className="border-t border-line p-3 flex flex-col space-y-3">
+                    {marksLocked(day.localDate) && (
+                      <p className="text-subtle text-xs">Минуло понад 3 дні: відмітки вже не змінити</p>
+                    )}
                     {day.slots.map((slot) => (
                       <HistorySlot
                         key={slot.id}
                         slot={slot}
+                        locked={marksLocked(day.localDate)}
                         onAttendance={(bookingId, next) => {
                           const previous =
                             slot.participants.find((p) => p.bookingId === bookingId)?.attendanceStatus ?? "UNMARKED";

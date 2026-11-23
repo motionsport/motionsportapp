@@ -498,3 +498,23 @@ describe('Entitlements — manual club card', () => {
     expect(inserts[0].values).toMatchObject({ validFrom: '2026-10-23', validUntil: '2026-11-23' });
   });
 });
+
+describe('newerPackageBought («—» / «Не списувати» must not revive an old package)', () => {
+  const spent = { memberId: 'm1', trainingType: 'personal', createdAt: new Date('2026-10-01') };
+
+  it('nothing spent: nothing goes back, so no question', async () => {
+    const { db, selects } = makeDb([[]]);
+    expect(await makeService(db).newerPackageBought(db, 'b1')).toBe(false);
+    expect(selects()).toBe(1);
+  });
+
+  it('a newer package of that type: true', async () => {
+    const { db } = makeDb([[spent], [{ id: 'p2' }]]);
+    expect(await makeService(db).newerPackageBought(db, 'b1')).toBe(true);
+  });
+
+  it('no newer one: false', async () => {
+    const { db } = makeDb([[spent], []]);
+    expect(await makeService(db).newerPackageBought(db, 'b1')).toBe(false);
+  });
+});

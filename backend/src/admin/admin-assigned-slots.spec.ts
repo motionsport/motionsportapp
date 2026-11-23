@@ -89,8 +89,9 @@ function makeViews(db: any, entitlements: any = {}) {
   return new AdminScheduleService({ db } as any, { now: () => now }, entitlements);
 }
 
-function makeAttendance(db: any, entitlements: any = { syncSpend: jest.fn() }) {
-  return new AdminAttendanceService({ db } as any, { now: () => now }, entitlements);
+function makeAttendance(db: any, entitlements: any = {}) {
+  const defaults = { syncSpend: jest.fn(), newerPackageBought: jest.fn().mockResolvedValue(false) };
+  return new AdminAttendanceService({ db } as any, { now: () => now }, { ...defaults, ...entitlements });
 }
 
 function makeMembers(db: any, entitlements: any = {}) {
@@ -303,7 +304,7 @@ describe('Attendance spends from the package', () => {
   it('a mark (✓ or ✗) and «—» both keep the package in step, in the same transaction', async () => {
     for (const status of ['PRESENT', 'ABSENT', 'UNMARKED'] as const) {
       const entitlements = { syncSpend: jest.fn() };
-      const { db, values } = makeDb([[{ id: 'b1' }]]);
+      const { db, values } = makeDb([[{ id: 'b1', localDate: '2026-10-20' }]]);
       await makeAttendance(db, entitlements).updateBookingAttendance('b1', { status }, TRAINER);
       expect(entitlements.syncSpend).toHaveBeenCalledWith(db, 'b1');
       // UNMARKED deletes the row instead of saving one
@@ -315,7 +316,7 @@ describe('Attendance spends from the package', () => {
   it('«Підтвердити всіх» spends for every booking', async () => {
     const entitlements = { syncSpend: jest.fn() };
     const { db, values } = makeDb([
-      [{ id: 'slot-1', trainerId: TRAINER }],
+      [{ id: 'slot-1', trainerId: TRAINER, localDate: '2026-10-20' }],
       [
         { id: 'b1', memberId: 'm1' },
         { id: 'b2', memberId: 'm2' },
@@ -330,7 +331,7 @@ describe('Attendance spends from the package', () => {
   it('«Підтвердити всіх» marks members in a fixed order (by member id)', async () => {
     const entitlements = { syncSpend: jest.fn() };
     const { db } = makeDb([
-      [{ id: 'slot-1', trainerId: TRAINER }],
+      [{ id: 'slot-1', trainerId: TRAINER, localDate: '2026-10-20' }],
       [
         { id: 'b1', memberId: 'm-c' },
         { id: 'b2', memberId: 'm-a' },
@@ -873,10 +874,82 @@ describe("Trainer's today page — the booking window of the trainer's own sched
   });
 });
 
+describe('Marks close 3 days after the training (now 20.10)', () => {
+  const oldDay = '2026-10-16'; // 4 days before
+
+  it('✓ / ✗ / «—» on a closed training: 409, nothing written', async () => {
+    const entitlements = { syncSpend: jest.fn() };
+    const { db } = makeDb([[{ id: 'b1', localDate: oldDay }]]);
+    await expect(
+      makeAttendance(db, entitlements).updateBookingAttendance('b1', { status: 'UNMARKED' }, TRAINER),
+    ).rejects.toThrow('Training is closed');
+    expect(db.delete).not.toHaveBeenCalled();
+    expect(entitlements.syncSpend).not.toHaveBeenCalled();
+  });
+
+  it('still open on the 3rd day after', async () => {
+    const entitlements = { syncSpend: jest.fn() };
+    const { db } = makeDb([[{ id: 'b1', localDate: '2026-10-17' }]]);
+    await makeAttendance(db, entitlements).updateBookingAttendance('b1', { status: 'PRESENT' }, TRAINER);
+    expect(entitlements.syncSpend).toHaveBeenCalled();
+  });
+
+  it('«Підтвердити всіх» on a closed training: 409', async () => {
+    const entitlements = { syncSpend: jest.fn() };
+    const { db } = makeDb([[{ id: 'slot-1', trainerId: TRAINER, localDate: oldDay }], [{ id: 'b1', memberId: 'm1' }]]);
+    await expect(makeAttendance(db, entitlements).markAllAttendance('slot-1', TRAINER)).rejects.toThrow(
+      'Training is closed',
+    );
+    expect(entitlements.syncSpend).not.toHaveBeenCalled();
+  });
+
+  it("a guest's mark on a closed training: 409", async () => {
+    const { db } = makeDb([[{ id: 'g1', localDate: oldDay }]]);
+    await expect(makeAttendance(db).updateGuestAttendance('g1', { status: 'PRESENT' }, TRAINER)).rejects.toThrow(
+      'Training is closed',
+    );
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('«Не списувати» on a closed training: 409', async () => {
+    const entitlements = { waiveSpend: jest.fn() };
+    const { db } = makeDb([[{ id: 'b1', refundStatus: 'DUE', localDate: oldDay }]]);
+    await expect(makeAttendance(db, entitlements).waiveCancelFee('b1', TRAINER)).rejects.toThrow('Training is closed');
+    expect(entitlements.waiveSpend).not.toHaveBeenCalled();
+  });
+});
+
+describe('A training never goes back into a package once a newer one of that type is bought', () => {
+  it('«—» refused: 409, the mark stays', async () => {
+    const entitlements = { syncSpend: jest.fn(), newerPackageBought: jest.fn().mockResolvedValue(true) };
+    const { db } = makeDb([[{ id: 'b1', localDate: '2026-10-20' }]]);
+    await expect(
+      makeAttendance(db, entitlements).updateBookingAttendance('b1', { status: 'UNMARKED' }, TRAINER),
+    ).rejects.toThrow('Newer package bought');
+    expect(db.delete).not.toHaveBeenCalled();
+  });
+
+  it('✓ → ✗ is fine (nothing goes back)', async () => {
+    const entitlements = { syncSpend: jest.fn(), newerPackageBought: jest.fn().mockResolvedValue(true) };
+    const { db } = makeDb([[{ id: 'b1', localDate: '2026-10-20' }]]);
+    await makeAttendance(db, entitlements).updateBookingAttendance('b1', { status: 'ABSENT' }, TRAINER);
+    expect(entitlements.newerPackageBought).not.toHaveBeenCalled();
+  });
+
+  it('«Не списувати» refused too', async () => {
+    const entitlements = { waiveSpend: jest.fn(), newerPackageBought: jest.fn().mockResolvedValue(true) };
+    const { db } = makeDb([[{ id: 'b1', refundStatus: null, localDate: '2026-10-20' }]]);
+    await expect(makeAttendance(db, entitlements).waiveCancelFee('b1', TRAINER)).rejects.toThrow(
+      'Newer package bought',
+    );
+    expect(entitlements.waiveSpend).not.toHaveBeenCalled();
+  });
+});
+
 describe('Late cancellation — «Не списувати»', () => {
   it('gives the training back and drops the half refund still to return', async () => {
     const entitlements = { waiveSpend: jest.fn() };
-    const { db, sets } = makeDb([[{ id: 'b1', refundStatus: 'DUE' }]]);
+    const { db, sets } = makeDb([[{ id: 'b1', refundStatus: 'DUE', localDate: '2026-10-20' }]]);
     await makeAttendance(db, entitlements).waiveCancelFee('b1', TRAINER);
     expect(sets).toContainEqual(expect.objectContaining({ feeWaivedBy: TRAINER }));
     expect(sets).toContainEqual({ status: 'CANCELLED' });
@@ -884,7 +957,7 @@ describe('Late cancellation — «Не списувати»', () => {
   });
 
   it('not once the money was returned', async () => {
-    const { db } = makeDb([[{ id: 'b1', refundStatus: 'DONE' }]]);
+    const { db } = makeDb([[{ id: 'b1', refundStatus: 'DONE', localDate: '2026-10-20' }]]);
     await expect(makeAttendance(db).waiveCancelFee('b1', TRAINER)).rejects.toThrow('Money already returned');
   });
 
@@ -895,7 +968,7 @@ describe('Late cancellation — «Не списувати»', () => {
 
   it('not while the refund is being sent', async () => {
     const entitlements = { waiveSpend: jest.fn() };
-    const { db, sets } = makeDb([[{ id: 'b1', refundStatus: 'SENDING' }]]);
+    const { db, sets } = makeDb([[{ id: 'b1', refundStatus: 'SENDING', localDate: '2026-10-20' }]]);
     await expect(makeAttendance(db, entitlements).waiveCancelFee('b1', TRAINER)).rejects.toThrow(
       'Refund is in progress',
     );
@@ -905,7 +978,9 @@ describe('Late cancellation — «Не списувати»', () => {
 
   it('the trainer who took over the refund (the training is another trainer’s) may waive', async () => {
     const { db } = makeDb();
-    const where = jest.fn(() => ({ limit: () => Promise.resolve([{ id: 'b1', refundStatus: 'DUE' }]) }));
+    const where = jest.fn(() => ({
+      limit: () => Promise.resolve([{ id: 'b1', refundStatus: 'DUE', localDate: '2026-10-20' }]),
+    }));
     const join: any = { innerJoin: () => join, leftJoin: () => join, where };
     db.select = jest.fn(() => ({ from: () => join }));
     await makeAttendance(db, { waiveSpend: jest.fn() }).waiveCancelFee('b1', TRAINER);
@@ -915,7 +990,7 @@ describe('Late cancellation — «Не списувати»', () => {
   });
 
   it('nothing to waive (no fee, or waived already) answers 409', async () => {
-    const { db } = makeDb([[{ id: 'b1', refundStatus: null }]], () => []);
+    const { db } = makeDb([[{ id: 'b1', refundStatus: null, localDate: '2026-10-20' }]], () => []);
     await expect(makeAttendance(db).waiveCancelFee('b1', TRAINER)).rejects.toThrow('Nothing to waive');
   });
 });

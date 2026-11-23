@@ -37,6 +37,8 @@ export const API_ERRORS = {
   TIME_PAST: 'Training time is in the past',
   OPENS_AFTER_TRAINING: 'Booking must open before the first training',
   ATTENDANCE_MARKED: 'Attendance already marked',
+  TRAINING_CLOSED: 'Training is closed: marks can be changed up to 3 days after it',
+  NEWER_PACKAGE: 'Newer package bought: the training cannot go back into the old one',
   MEMBER_FROZEN: 'Member is frozen',
   MONEY_RETURNED: 'Money already returned',
   REFUND_IN_PROGRESS: 'Refund is in progress',

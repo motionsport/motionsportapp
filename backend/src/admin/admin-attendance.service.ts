@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { eq, and, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
-import { trainingSlots, bookings, attendance, bookingGuests, cancelRefunds } from '../database/schema';
+import { trainingSlots, trainingDays, bookings, attendance, bookingGuests, cancelRefunds } from '../database/schema';
 import type { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { ClockService } from '../clock/clock.service';
 import { EntitlementsService, inLockOrder } from '../purchases/entitlements.service';
 import { requireOwnSlot } from '../schedule/default-trainer';
 import { apiError } from '../common/api-error';
+import { marksLocked } from './attendance-lock';
 
 type Db = DatabaseService['db'];
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -21,7 +22,8 @@ export class AdminAttendanceService {
   ) {}
 
   async markAllAttendance(slotId: string, adminId: string) {
-    await requireOwnSlot(this.database.db, adminId, slotId);
+    const slot = await requireOwnSlot(this.database.db, adminId, slotId);
+    this.requireOpen(slot.localDate);
     const activeBookings = await this.database.db
       .select({ id: bookings.id, memberId: bookings.memberId })
       .from(bookings)
@@ -56,9 +58,10 @@ export class AdminAttendanceService {
   // «Не списувати»: returns the spent training and drops a DUE half refund. Compare-and-set; refused once refunded
   async waiveCancelFee(bookingId: string, adminId: string) {
     const [booking] = await this.database.db
-      .select({ id: bookings.id, refundStatus: cancelRefunds.status })
+      .select({ id: bookings.id, refundStatus: cancelRefunds.status, localDate: trainingDays.localDate })
       .from(bookings)
       .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
+      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
       .leftJoin(cancelRefunds, eq(cancelRefunds.bookingId, bookings.id))
       // The training's trainer, or the one a disabled trainer's refund was handed to
       .where(
@@ -68,6 +71,8 @@ export class AdminAttendanceService {
     if (!booking) throw new NotFoundException('Booking not found');
     if (booking.refundStatus === 'DONE') throw new ConflictException(apiError('MONEY_RETURNED'));
     if (booking.refundStatus === 'SENDING') throw new ConflictException(apiError('REFUND_IN_PROGRESS'));
+    this.requireOpen(booking.localDate);
+    await this.requireNoNewerPackage(bookingId);
 
     await this.database.db.transaction(async (tx) => {
       const [done] = await tx
@@ -97,13 +102,17 @@ export class AdminAttendanceService {
 
   async updateBookingAttendance(bookingId: string, dto: UpdateAttendanceDto, adminId: string) {
     const [booking] = await this.database.db
-      .select({ id: bookings.id })
+      .select({ id: bookings.id, localDate: trainingDays.localDate })
       .from(bookings)
       .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
+      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
       .where(and(eq(bookings.id, bookingId), eq(trainingSlots.trainerId, adminId)))
       .limit(1);
 
     if (!booking) throw new NotFoundException('Booking not found');
+    this.requireOpen(booking.localDate);
+    // «—» gives the training back: not into an old package once a newer one is bought (✓ ↔ ✗ gives nothing back)
+    if (dto.status === 'UNMARKED') await this.requireNoNewerPackage(bookingId);
 
     const now = this.clock.now().toJSDate();
     // Mark and spend move together: a mark spends, unmarking gives it back
@@ -119,6 +128,16 @@ export class AdminAttendanceService {
     return { ok: true };
   }
 
+  // Closed 3 days after the training (attendance-lock.ts)
+  private requireOpen(localDate: string) {
+    if (marksLocked(localDate, this.clock.now().toISODate()!)) throw new ConflictException(apiError('TRAINING_CLOSED'));
+  }
+
+  private async requireNoNewerPackage(bookingId: string) {
+    if (await this.entitlements.newerPackageBought(this.database.db, bookingId))
+      throw new ConflictException(apiError('NEWER_PACKAGE'));
+  }
+
   // Caller must syncSpend in the same transaction
   private async saveMark(tx: Tx, bookingId: string, status: 'PRESENT' | 'ABSENT', at: Date, adminId: string) {
     await tx
@@ -130,13 +149,15 @@ export class AdminAttendanceService {
   // Guest marks are for the count only; nothing is spent
   async updateGuestAttendance(guestId: string, dto: UpdateAttendanceDto, adminId: string) {
     const [guest] = await this.database.db
-      .select({ id: bookingGuests.id })
+      .select({ id: bookingGuests.id, localDate: trainingDays.localDate })
       .from(bookingGuests)
       .innerJoin(bookings, eq(bookings.id, bookingGuests.bookingId))
       .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
+      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
       .where(and(eq(bookingGuests.id, guestId), eq(trainingSlots.trainerId, adminId)))
       .limit(1);
     if (!guest) throw new NotFoundException('Guest not found');
+    this.requireOpen(guest.localDate);
     const marked = dto.status !== 'UNMARKED';
     await this.database.db
       .update(bookingGuests)

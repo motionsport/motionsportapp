@@ -6,6 +6,7 @@ import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { formatUah } from "@/lib/prices";
 import { ERROR_TEXT, errorText } from "@/lib/apiErrors";
 import { Modal } from "@/components/ui/Modal";
+import { marksLocked } from "@/lib/marksLock";
 import { refundNotice, type RefundAction } from "./refundNotice";
 
 const SAVE_FAILED = "Не вдалося зберегти. Оновіть сторінку й спробуйте ще раз.";
@@ -121,14 +122,16 @@ export function CancelRefunds({ refunds, onDone }: { refunds: CancelRefund[]; on
                   >
                     {online ? "Повернути" : r.method === "TRANSFER" ? "Повернено" : "Віддано"} {formatUah(r.amountUah)}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => act(r, "waive", () => api.waiveCancelFee(r.bookingId))}
-                    disabled={busy}
-                    className="block mx-auto text-subtle text-xs underline hover:text-body py-2 mt-1 transition-colors disabled:opacity-60"
-                  >
-                    Не списувати
-                  </button>
+                  {!marksLocked(r.localDate) && (
+                    <button
+                      type="button"
+                      onClick={() => act(r, "waive", () => api.waiveCancelFee(r.bookingId))}
+                      disabled={busy}
+                      className="block mx-auto text-subtle text-xs underline hover:text-body py-2 mt-1 transition-colors disabled:opacity-60"
+                    >
+                      Не списувати
+                    </button>
+                  )}
                 </>
               )}
             </div>

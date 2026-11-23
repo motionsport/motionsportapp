@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, AdminMember, Trainer, MemberCancellation } from "@/lib/api";
 import { CancellationList } from "@/components/admin/CancellationList";
+import { marksLocked } from "@/lib/marksLock";
 import { plural } from "@/lib/plural";
 import { ddmm, shortDay } from "@/lib/dates";
 import { Badge } from "@/components/ui/Badge";
@@ -92,7 +93,15 @@ export function CancellationHistory({
         (list.length === 0 ? (
           <p className="text-subtle">Не було</p>
         ) : (
-          <CancellationList items={list.map((c) => ({ ...c, label: trainingLabel(c), moveInLabel: true }))} withDate />
+          <CancellationList
+            items={list.map((c) => ({
+              ...c,
+              label: trainingLabel(c),
+              moveInLabel: true,
+              locked: marksLocked(c.localDate),
+            }))}
+            withDate
+          />
         ))}
     </section>
   );

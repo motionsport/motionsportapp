@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, Logger } from '@nestjs/common';
-import { and, asc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { DateTime } from 'luxon';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
@@ -334,6 +334,30 @@ export class EntitlementsService {
         .set({ activatedOn: booking.localDate, validUntil })
         .where(and(eq(packages.id, from.id), isNull(packages.activatedOn)));
     }
+  }
+
+  // The package this booking was spent from has a newer one of the same type (bought after it): giving the training
+  // back («—», «Не списувати») would revive the old package next to the new one, so the trainer is refused
+  async newerPackageBought(db: Tx | Db, bookingId: string): Promise<boolean> {
+    const [spent] = await db
+      .select({ memberId: packages.memberId, trainingType: packages.trainingType, createdAt: packages.createdAt })
+      .from(packageSpends)
+      .innerJoin(packages, eq(packages.id, packageSpends.packageId))
+      .where(eq(packageSpends.bookingId, bookingId))
+      .limit(1);
+    if (!spent) return false;
+    const [newer] = await db
+      .select({ id: packages.id })
+      .from(packages)
+      .where(
+        and(
+          eq(packages.memberId, spent.memberId),
+          eq(packages.trainingType, spent.trainingType),
+          gt(packages.createdAt, spent.createdAt),
+        ),
+      )
+      .limit(1);
+    return !!newer;
   }
 
   // «Не списувати»: gives the training back (syncSpend after the fee is waived). When that late cancellation is what
