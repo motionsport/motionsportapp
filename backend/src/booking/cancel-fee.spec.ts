@@ -1,4 +1,4 @@
-import { cancelFee, halfBack } from './cancel-fee';
+import { cancelFee, frequentCancel, halfBack } from './cancel-fee';
 
 const H = 60 * 60 * 1000;
 
@@ -30,5 +30,20 @@ describe('cancel fee', () => {
   it('half back in whole hryvnias', () => {
     expect(halfBack(700)).toBe(350);
     expect(halfBack(375)).toBe(187);
+  });
+});
+
+describe('frequent cancel', () => {
+  it('no package pays (no payer or a single training): no number, no date', () => {
+    expect(frequentCancel(null, 4)).toEqual({ cancelNumber: null, packUntil: null });
+    expect(frequentCancel({ total: 1, validUntil: '2026-11-27' }, 4)).toEqual({ cancelNumber: null, packUntil: null });
+  });
+
+  it('a package: this cancellation counts, the end date once started', () => {
+    expect(frequentCancel({ total: 10, validUntil: '2026-11-27' }, 2)).toEqual({
+      cancelNumber: 3,
+      packUntil: '2026-11-27',
+    });
+    expect(frequentCancel({ total: 10, validUntil: null }, 0)).toEqual({ cancelNumber: 1, packUntil: null });
   });
 });

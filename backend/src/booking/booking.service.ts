@@ -1,5 +1,5 @@
 import { Injectable, Logger, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
   bookingGuests,
@@ -30,7 +30,8 @@ import {
 } from './group-booking';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { memberFrozenOn } from '../freezes/freeze.store';
-import { cancelFee, halfBack, type CancelFee } from './cancel-fee';
+import { cancelFee, frequentCancel, halfBack, type CancelFee } from './cancel-fee';
+import { CANCELLATION_STATS_DAYS, memberCancellationsSince } from './recent-cancellations';
 import { apiError } from '../common/api-error';
 
 type Db = DatabaseService['db'];
@@ -278,7 +279,13 @@ export class BookingService {
   async cancelFeePreview(
     memberId: string,
     slotId: string,
-  ): Promise<{ fee: CancelFee | null; single: boolean; refundUah: number | null }> {
+  ): Promise<{
+    fee: CancelFee | null;
+    single: boolean;
+    refundUah: number | null;
+    cancelNumber: number | null;
+    packUntil: string | null;
+  }> {
     const row = await this.bookingOnSlot(memberId, slotId);
     const payer = await this.entitlements.payerFor(
       this.database.db,
@@ -292,7 +299,18 @@ export class BookingService {
       // A single training burns; a pass loses one
       single: payer?.total === 1,
       refundUah: fee === 'HALF' && payer ? halfBack(payer.amountUah) : null,
+      // «Це вже 3-тє скасування за місяць»: counted like the trainer's «Клієнти»
+      ...frequentCancel(payer, await this.recentCancellations(memberId)),
     };
+  }
+
+  private async recentCancellations(memberId: string) {
+    const since = this.clock.now().minus({ days: CANCELLATION_STATS_DAYS }).toJSDate();
+    const [r] = await this.database.db
+      .select({ n: memberCancellationsSince(sql`${memberId}`, since) })
+      .from(members)
+      .where(eq(members.id, memberId));
+    return r?.n ?? 0;
   }
 
   // Spends the training like a mark; HALF also records a refund (returned: its amount, for the trainer push). The final fee is decided from what was actually

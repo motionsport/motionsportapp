@@ -9,8 +9,8 @@ import { enabledTrainer, requireVisibleMember, visibleTo } from '../schedule/def
 import { loadFreezes } from '../freezes/freeze.store';
 import { frozenOn, plusDays } from '../freezes/rules';
 import { markOf, memberCancellations, toCancellationView } from './admin-views';
+import { CANCELLATION_STATS_DAYS, memberCancellationsSince } from '../booking/recent-cancellations';
 
-const CANCELLATION_STATS_DAYS = 30;
 const MEMBER_HISTORY_LIMIT = 20;
 
 // Client list and client page: own and unassigned members
@@ -25,16 +25,7 @@ export class AdminMembersService {
   // trainerNote is trainer-only: never select it in member-facing queries
   async getMembers(adminId: string, onlyId?: string) {
     const since = this.clock.now().minus({ days: CANCELLATION_STATS_DAYS }).toJSDate();
-    // Member cancellations only, moves excluded. Table names explicit: drizzle drops them in a single-table
-    // select, so an unqualified "id" here would bind to bookings.id
-    const cancelledCount = sql<number>`(
-      SELECT count(*)::int FROM bookings b
-      WHERE b.member_id = "members"."id"
-        AND b.status = 'CANCELLED'
-        AND b.cancellation_reason IS NOT NULL
-        AND b.switched_to_slot_id IS NULL
-        AND b.cancelled_at >= ${since}
-    )`;
+    const cancelledCount = memberCancellationsSince(sql`"members"."id"`, since);
     const rows = await this.database.db
       .select({
         id: members.id,

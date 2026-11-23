@@ -24,3 +24,13 @@ export function cancelFee(trainingType: string, msBeforeStart: number, packTotal
 
 // Whole hryvnias, rounded down
 export const halfBack = (amountUah: number) => Math.floor(amountUah / 2);
+
+// «Це вже 3-тє скасування за місяць»: only for a training a package pays for (total > 1). `previous` = the member's
+// own cancellations in the last 30 days, so this one is previous + 1. packUntil: the package's end once started
+export function frequentCancel(
+  payer: { total: number; validUntil: string | null } | null,
+  previous: number,
+): { cancelNumber: number | null; packUntil: string | null } {
+  if (!payer || payer.total <= 1) return { cancelNumber: null, packUntil: null };
+  return { cancelNumber: previous + 1, packUntil: payer.validUntil };
+}
