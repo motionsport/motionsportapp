@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   Logger,
 } from '@nestjs/common';
@@ -13,7 +14,7 @@ import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
 import { members, admins, owners, sessions, trainerInvites } from '../database/schema';
 import { loginTarget } from './login-target';
-import type { Role } from './roles';
+import { byRole, type Role, type SessionUser } from './roles';
 import { newToken, hashToken } from './token';
 import { deleteDeadSessions } from './dead-sessions';
 import type { RegisterMemberDto } from './dto/register-member.dto';
@@ -160,27 +161,34 @@ export class AuthService {
     return { username: admin.username, sessionToken };
   }
 
-  // Revokes the trainer's other sessions
-  async changeAdminPassword(adminId: string, sessionId: string, dto: ChangePasswordDto) {
-    const [admin] = await this.database.db
-      .select({ passwordHash: admins.passwordHash })
-      .from(admins)
-      .where(eq(admins.id, adminId))
+  // «Мій пароль» for a trainer or the owner: the current password, then the new one; their other sessions end
+  async changePassword(user: SessionUser, dto: ChangePasswordDto) {
+    const table = byRole(user, {
+      member: () => {
+        throw new ForbiddenException();
+      },
+      admin: () => admins,
+      owner: () => owners,
+    });
+    const [row] = await this.database.db
+      .select({ passwordHash: table.passwordHash })
+      .from(table)
+      .where(eq(table.id, user.id))
       .limit(1);
-    if (!admin || !(await bcrypt.compare(dto.currentPassword, admin.passwordHash))) {
+    if (!row || !(await bcrypt.compare(dto.currentPassword, row.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
-    await this.database.db.update(admins).set({ passwordHash }).where(eq(admins.id, adminId));
+    await this.database.db.update(table).set({ passwordHash }).where(eq(table.id, user.id));
     await this.database.db
       .update(sessions)
       .set({ revokedAt: this.clock.now().toJSDate() })
       .where(
         and(
-          eq(sessions.principalType, 'admin'),
-          eq(sessions.principalId, adminId),
-          ne(sessions.id, sessionId),
+          eq(sessions.principalType, user.type),
+          eq(sessions.principalId, user.id),
+          ne(sessions.id, user.sessionId),
           isNull(sessions.revokedAt),
         ),
       );

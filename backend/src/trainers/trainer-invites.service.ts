@@ -2,7 +2,7 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { and, asc, eq, gt, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
-import { admins, trainerInvites } from '../database/schema';
+import { trainerInvites } from '../database/schema';
 import { newToken, hashToken } from '../auth/token';
 
 export const INVITE_DAYS = 7;
@@ -15,13 +15,13 @@ export class TrainerInvitesService {
     private readonly clock: ClockService,
   ) {}
 
-  // The only time the raw token leaves the server; the DB keeps its hash
-  async create(adminId: string) {
+  // The only time the raw token leaves the server; the DB keeps its hash. Made by the owner: no trainer author
+  async create() {
     const token = newToken();
     const expiresAt = this.clock.now().plus({ days: INVITE_DAYS }).toJSDate();
     const [invite] = await this.database.db
       .insert(trainerInvites)
-      .values({ tokenHash: hashToken(token), createdByAdminId: adminId, expiresAt })
+      .values({ tokenHash: hashToken(token), expiresAt })
       .returning({ id: trainerInvites.id });
     return { id: invite.id, token, expiresAt };
   }
@@ -30,12 +30,10 @@ export class TrainerInvitesService {
     return this.database.db
       .select({
         id: trainerInvites.id,
-        createdBy: admins.username,
         createdAt: trainerInvites.createdAt,
         expiresAt: trainerInvites.expiresAt,
       })
       .from(trainerInvites)
-      .innerJoin(admins, eq(admins.id, trainerInvites.createdByAdminId))
       .where(
         and(
           isNull(trainerInvites.usedAt),
@@ -46,7 +44,7 @@ export class TrainerInvitesService {
       .orderBy(asc(trainerInvites.createdAt));
   }
 
-  // Any trainer may revoke any invite. Compare-and-set: used or revoked → 409
+  // The owner revokes any invite. Compare-and-set: used or revoked → 409
   async revoke(inviteId: string) {
     const [revoked] = await this.database.db
       .update(trainerInvites)

@@ -10,7 +10,7 @@ import { RecoverMemberDto } from './dto/recover-member.dto';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { AdminGuard } from '../common/guards/admin.guard';
+import { TeamGuard } from '../common/guards/team.guard';
 
 const COOKIE_NAME = 'session';
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
@@ -72,11 +72,12 @@ export class AuthController {
     return { username };
   }
 
+  // «Мій пароль»: a trainer or the owner
   @Post('admin/password')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(SessionGuard, AdminGuard)
-  changeAdminPassword(@CurrentUser() user: SessionUser, @Body() dto: ChangePasswordDto) {
-    return this.authService.changeAdminPassword(user.id, user.sessionId, dto);
+  @UseGuards(SessionGuard, TeamGuard)
+  changePassword(@CurrentUser() user: SessionUser, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user, dto);
   }
 
   @Post('logout')

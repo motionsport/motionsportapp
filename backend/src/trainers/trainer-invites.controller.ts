@@ -1,17 +1,17 @@
 import { Controller, Get, Post, Delete, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { TrainerInvitesService } from './trainer-invites.service';
-import { SessionGuard, SessionUser } from '../auth/session.guard';
-import { AdminGuard } from '../common/guards/admin.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { SessionGuard } from '../auth/session.guard';
+import { OwnerGuard } from '../common/guards/owner.guard';
 
-@Controller('admin/trainer-invites')
-@UseGuards(SessionGuard, AdminGuard)
+// Only the owner invites trainers (since 2026-11-23)
+@Controller('owner/trainer-invites')
+@UseGuards(SessionGuard, OwnerGuard)
 export class TrainerInvitesController {
   constructor(private readonly invites: TrainerInvitesService) {}
 
   @Post()
-  create(@CurrentUser() user: SessionUser) {
-    return this.invites.create(user.id);
+  create() {
+    return this.invites.create();
   }
 
   @Get()

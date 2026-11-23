@@ -120,9 +120,7 @@ export function InviteSection({ invites, onChange }: { invites: TrainerInvite[];
           <ul className="border-t border-line">
             {invites.map((invite) => (
               <li key={invite.id} className="flex items-center justify-between space-x-3 py-3 border-b border-line">
-                <p className="text-subtle text-sm min-w-0">
-                  від {invite.createdBy} · діє до {formatDateTime(invite.expiresAt)}
-                </p>
+                <p className="text-subtle text-sm min-w-0">діє до {formatDateTime(invite.expiresAt)}</p>
                 <button
                   type="button"
                   onClick={() => revoke(invite.id)}

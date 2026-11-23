@@ -64,9 +64,8 @@ export const owners = pgTable('owners', {
 export const trainerInvites = pgTable('trainer_invites', {
   id: uuid('id').primaryKey().defaultRandom(),
   tokenHash: text('token_hash').notNull().unique(),
-  createdByAdminId: uuid('created_by_admin_id')
-    .notNull()
-    .references((): AnyPgColumn => admins.id),
+  // null = made by the owner (only the owner invites since 2026-11-23); set on older invites made by a trainer
+  createdByAdminId: uuid('created_by_admin_id').references((): AnyPgColumn => admins.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),

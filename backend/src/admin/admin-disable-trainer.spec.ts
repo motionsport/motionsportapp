@@ -1,9 +1,10 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { GUARDS_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DateTime } from 'luxon';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { AdminTrainersService } from './admin-trainers.service';
-import { AdminScheduleController } from './admin-schedule.controller';
+import { AdminTrainersController, OwnerTrainersController } from './admin-trainers.controller';
+import { OwnerGuard } from '../common/guards/owner.guard';
 import { SessionGuard } from '../auth/session.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import {
@@ -24,7 +25,6 @@ jest.mock('../trainer-schedule/trainer-schedule.store', () => ({ loadTrainerSche
 const mockLoadSchedule = loadTrainerSchedule as jest.Mock;
 
 const NOW = DateTime.fromObject({ year: 2026, month: 10, day: 26, hour: 12 }, { zone: 'Europe/Kyiv' });
-const ME = 'trainer-1';
 const FIRST = 'trainer-0';
 const GONE = 'trainer-2';
 const NEW = 'trainer-3';
@@ -83,17 +83,9 @@ const slot = (id: string, localDate: string, slotTime: string) => ({ id, localDa
 beforeEach(() => mockLoadSchedule.mockResolvedValue({ bookingOpensAt: '08:00', autoCreate: true, times: [] }));
 
 describe('Disabling a trainer — refusals', () => {
-  it('a trainer cannot disable themselves', async () => {
-    const { db, log } = makeDb([]);
-    await expect(makeService(db).service.disableTrainer(ME, ME, NEW)).rejects.toThrow(
-      new BadRequestException('Cannot disable yourself'),
-    );
-    expect(log).toEqual([]);
-  });
-
   it('the first trainer cannot be disabled', async () => {
     const { db, log } = makeDb([[{ id: GONE }]]);
-    await expect(makeService(db).service.disableTrainer(ME, GONE, NEW)).rejects.toThrow(
+    await expect(makeService(db).service.disableTrainer(GONE, NEW)).rejects.toThrow(
       new BadRequestException('Cannot disable the first trainer'),
     );
     expect(log).toEqual([]);
@@ -101,12 +93,12 @@ describe('Disabling a trainer — refusals', () => {
 
   it('clients cannot go to the trainer being disabled', async () => {
     const { db } = makeDb([[{ id: FIRST }]]);
-    await expect(makeService(db).service.disableTrainer(ME, GONE, GONE)).rejects.toThrow(BadRequestException);
+    await expect(makeService(db).service.disableTrainer(GONE, GONE)).rejects.toThrow(BadRequestException);
   });
 
   it('clients cannot go to a missing or disabled trainer (404)', async () => {
     const { db, log } = makeDb([[{ id: FIRST }], []]);
-    await expect(makeService(db).service.disableTrainer(ME, GONE, NEW)).rejects.toThrow(
+    await expect(makeService(db).service.disableTrainer(GONE, NEW)).rejects.toThrow(
       new NotFoundException('Trainer not found'),
     );
     expect(log).toEqual([]);
@@ -114,7 +106,7 @@ describe('Disabling a trainer — refusals', () => {
 
   it('a missing trainer answers 404', async () => {
     const { db } = makeDb([[{ id: FIRST }], [{ id: NEW }], []]);
-    await expect(makeService(db).service.disableTrainer(ME, GONE, NEW)).rejects.toThrow(NotFoundException);
+    await expect(makeService(db).service.disableTrainer(GONE, NEW)).rejects.toThrow(NotFoundException);
   });
 
   it('already disabled (the compare-and-set matched nothing): 409 and nothing else is written', async () => {
@@ -130,7 +122,7 @@ describe('Disabling a trainer — refusals', () => {
       ],
       [[]],
     );
-    await expect(makeService(db).service.disableTrainer(ME, GONE, NEW)).rejects.toThrow(
+    await expect(makeService(db).service.disableTrainer(GONE, NEW)).rejects.toThrow(
       new ConflictException('Trainer already disabled'),
     );
     expect(log.map((e) => e.table)).toEqual([admins]);
@@ -147,14 +139,17 @@ describe('Disabling a trainer — refusals', () => {
         { id: NEW, disabledAt: new Date() },
       ],
     ]);
-    await expect(makeService(db).service.disableTrainer(ME, GONE, NEW)).rejects.toThrow(
+    await expect(makeService(db).service.disableTrainer(GONE, NEW)).rejects.toThrow(
       new NotFoundException('Trainer not found'),
     );
     expect(log).toEqual([]);
   });
 
-  it('is for signed-in trainers only', () => {
-    expect(Reflect.getMetadata(GUARDS_METADATA, AdminScheduleController)).toEqual([SessionGuard, AdminGuard]);
+  it("only the owner disables trainers; trainers keep only the list for picking a client's trainer", () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, OwnerTrainersController)).toEqual([SessionGuard, OwnerGuard]);
+    expect(Reflect.getMetadata(PATH_METADATA, OwnerTrainersController)).toBe('owner/trainers');
+    expect(Reflect.getMetadata(GUARDS_METADATA, AdminTrainersController)).toEqual([SessionGuard, AdminGuard]);
+    expect(Object.getOwnPropertyNames(AdminTrainersController.prototype)).not.toContain('disableTrainer');
   });
 });
 
@@ -187,7 +182,7 @@ describe('Disabling a trainer', () => {
       [[{ id: GONE }], [], [{ id: 'm-1' }, { id: 'm-2' }, { id: 'm-3' }]],
     );
     const { service, notifications } = makeService(db);
-    const result = await service.disableTrainer(ME, GONE, NEW);
+    const result = await service.disableTrainer(GONE, NEW);
     return { result, log, notifications, order };
   }
   const writesTo = (log: any[], table: unknown) => log.filter((e) => e.table === table);
@@ -197,10 +192,10 @@ describe('Disabling a trainer', () => {
     expect(result).toEqual({ movedClients: 3, cancelledTrainings: 2 });
   });
 
-  it('marks the trainer disabled by whom, compare-and-set', async () => {
+  it('marks the trainer disabled, compare-and-set (by the owner: who is not recorded)', async () => {
     const { log } = await disable();
     const [cas] = writesTo(log, admins);
-    expect(cas.payload).toEqual({ disabledAt: NOW.toJSDate(), disabledByAdminId: ME });
+    expect(cas.payload).toEqual({ disabledAt: NOW.toJSDate() });
     expect(cas.where.sql).toContain('"admins"."disabled_at" is null');
   });
 

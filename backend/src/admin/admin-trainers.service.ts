@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { eq, and, inArray, gte, asc, isNull } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseService } from '../database/database.service';
 import {
   trainingDays,
@@ -29,30 +28,19 @@ export class AdminTrainersService {
     private readonly clock: ClockService,
   ) {}
 
-  // Includes disabled trainers (pickers filter them). invitedBy null = seed:admin. Never select password hashes
+  // Includes disabled trainers (pickers filter them). Never select password hashes
   async getTrainers() {
-    const inviter = alias(admins, 'inviter');
-    const disabler = alias(admins, 'disabler');
     return this.database.db
-      .select({
-        id: admins.id,
-        username: admins.username,
-        createdAt: admins.createdAt,
-        invitedBy: inviter.username,
-        disabledAt: admins.disabledAt,
-        disabledBy: disabler.username,
-      })
+      .select({ id: admins.id, username: admins.username, createdAt: admins.createdAt, disabledAt: admins.disabledAt })
       .from(admins)
-      .leftJoin(inviter, eq(inviter.id, admins.invitedByAdminId))
-      .leftJoin(disabler, eq(disabler.id, admins.disabledByAdminId))
       .orderBy(asc(admins.username));
   }
 
   // One transaction: revoke sessions and pushes, move clients and pending cash purchases, cancel trainings not
-  // over yet, turn off auto-creation. Not self, not the first trainer (unassigned members see their groups).
+  // over yet, turn off auto-creation. Only the owner does it (who is not recorded). Not the first trainer (unassigned
+  // members see their groups).
   // Days are not marked CANCELLED: other trainers still use them
-  async disableTrainer(adminId: string, trainerId: string, transferToId: string) {
-    if (trainerId === adminId) throw new BadRequestException('Cannot disable yourself');
+  async disableTrainer(trainerId: string, transferToId: string) {
     if (trainerId === (await getDefaultTrainerId(this.database.db)))
       throw new BadRequestException('Cannot disable the first trainer');
     if (transferToId === trainerId) throw new BadRequestException('Cannot transfer to the same trainer');
@@ -80,7 +68,7 @@ export class AdminTrainersService {
       if (!locked.some((a) => a.id === transferToId && !a.disabledAt)) throw new NotFoundException('Trainer not found');
       const [disabled] = await tx
         .update(admins)
-        .set({ disabledAt: at, disabledByAdminId: adminId })
+        .set({ disabledAt: at })
         .where(and(eq(admins.id, trainerId), isNull(admins.disabledAt)))
         .returning({ id: admins.id });
       if (!disabled) throw new ConflictException('Trainer already disabled');

@@ -9,3 +9,8 @@ const HOME: Record<Role, string> = { admin: "/admin", owner: "/owner", member: "
 export function homeFor(role: Role): string {
   return HOME[role];
 }
+
+// A page of one role opened by another (e.g. the owner on the trainer's «Мій пароль»): where to send them
+export function elsewhereFor(who: Role, pageRole: TeamRole): string | null {
+  return who === pageRole ? null : homeFor(who);
+}

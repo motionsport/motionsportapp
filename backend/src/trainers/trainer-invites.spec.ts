@@ -1,5 +1,8 @@
-import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
-import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { AuthController } from '../auth/auth.controller';
+import { TeamGuard } from '../common/guards/team.guard';
+import { owners, sessions } from '../database/schema';
+import { GUARDS_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import * as bcrypt from 'bcryptjs';
@@ -8,7 +11,7 @@ import { AuthService } from '../auth/auth.service';
 import { hashToken } from '../auth/token';
 import { RegisterAdminDto } from '../auth/dto/register-admin.dto';
 import { SessionGuard } from '../auth/session.guard';
-import { AdminGuard } from '../common/guards/admin.guard';
+import { OwnerGuard } from '../common/guards/owner.guard';
 import { TrainerInvitesService } from './trainer-invites.service';
 import { TrainerInvitesController } from './trainer-invites.controller';
 import { KY_ZONE } from '../schedule/training-types';
@@ -45,19 +48,19 @@ function makeDb(results: unknown[][]) {
 }
 
 const clock = { now: () => NOW };
+const TRAINER = { type: 'admin' as const, sessionId: 'session-1', id: 'trainer-1', username: 'admin' };
+const OWNER = { type: 'owner' as const, sessionId: 'session-1', id: 'owner-1', email: 'o@g.ua', name: 'Ілона' };
 const auth = (db: any) => new AuthService({ db } as any, clock);
 const invites = (db: any) => new TrainerInvitesService({ db } as any, clock);
 
 describe('Trainer invites', () => {
-  it('creates a 7-day invite and stores only the hash of the token', async () => {
+  it('creates a 7-day invite and stores only the hash of the token (by the owner: no trainer author)', async () => {
     const { db, inserts } = makeDb([[{ id: 'inv-1' }]]);
-    const result = await invites(db).create('trainer-1');
+    const result = await invites(db).create();
 
     expect(result.token).toMatch(/^[0-9a-f]{64}$/);
     expect(result.expiresAt).toEqual(NOW.plus({ days: 7 }).toJSDate());
-    expect(inserts).toEqual([
-      { tokenHash: hashToken(result.token), createdByAdminId: 'trainer-1', expiresAt: result.expiresAt },
-    ]);
+    expect(inserts).toEqual([{ tokenHash: hashToken(result.token), expiresAt: result.expiresAt }]);
   });
 
   it('answers 409 when revoking an invite that is used or already revoked', async () => {
@@ -65,15 +68,22 @@ describe('Trainer invites', () => {
     await expect(invites(db).revoke('inv-1')).rejects.toThrow(ConflictException);
   });
 
-  it('is for signed-in trainers only', () => {
-    expect(Reflect.getMetadata(GUARDS_METADATA, TrainerInvitesController)).toEqual([SessionGuard, AdminGuard]);
+  it('only the owner invites trainers (/owner/trainer-invites)', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, TrainerInvitesController)).toEqual([SessionGuard, OwnerGuard]);
+    expect(Reflect.getMetadata(PATH_METADATA, TrainerInvitesController)).toBe('owner/trainer-invites');
+  });
+
+  it("the owner's invites are listed too (no join on the trainer who made it)", async () => {
+    const row = { id: 'inv-1', createdAt: NOW.toJSDate(), expiresAt: NOW.plus({ days: 7 }).toJSDate() };
+    const { db } = makeDb([[row]]);
+    expect(await invites(db).listActive()).toEqual([row]);
   });
 });
 
 describe('Trainer sign-up through an invite', () => {
   const dto = { token: TOKEN, username: 'olena', password: 'long-enough-pass' };
 
-  it('creates the trainer, remembers who invited them and signs them in', async () => {
+  it('creates the trainer and signs them in; an old trainer-made invite still remembers who invited', async () => {
     const { db, sets, inserts } = makeDb([
       [{ id: 'inv-1', createdByAdminId: 'trainer-1' }], // invite taken
       [], // username free
@@ -89,6 +99,18 @@ describe('Trainer sign-up through an invite', () => {
     expect(inserts[0]).toMatchObject({ username: 'olena', invitedByAdminId: 'trainer-1' });
     expect(await bcrypt.compare(dto.password, inserts[0].passwordHash as string)).toBe(true);
     expect(inserts[1]).toMatchObject({ principalType: 'admin', principalId: 'trainer-2' });
+  });
+
+  it("signs up through the owner's invite (no trainer invited them)", async () => {
+    const { db, inserts } = makeDb([
+      [{ id: 'inv-1', createdByAdminId: null }],
+      [],
+      [{ id: 'trainer-2', username: 'olena' }],
+      [],
+      [],
+    ]);
+    await auth(db).registerAdmin(dto);
+    expect(inserts[0]).toMatchObject({ username: 'olena', invitedByAdminId: null });
   });
 
   it('refuses a used, revoked or expired link (the compare-and-set takes nothing)', async () => {
@@ -127,7 +149,7 @@ describe('Trainer password change', () => {
     const passwordHash = await bcrypt.hash('old-password', 4);
     const { db, sets } = makeDb([[{ passwordHash }], [], []]);
     await expect(
-      auth(db).changeAdminPassword('trainer-1', 'session-1', {
+      auth(db).changePassword(TRAINER, {
         currentPassword: 'old-password',
         newPassword: 'new-long-password',
       }),
@@ -141,12 +163,39 @@ describe('Trainer password change', () => {
     const passwordHash = await bcrypt.hash('old-password', 4);
     const { db, sets } = makeDb([[{ passwordHash }]]);
     await expect(
-      auth(db).changeAdminPassword('trainer-1', 'session-1', {
+      auth(db).changePassword(TRAINER, {
         currentPassword: 'wrong',
         newPassword: 'new-long-password',
       }),
     ).rejects.toThrow(UnauthorizedException);
     expect(sets).toEqual([]);
+  });
+});
+
+describe('«Мій пароль» for the owner', () => {
+  it("changes the owner's own password and signs out the owner's other sessions", async () => {
+    const passwordHash = await bcrypt.hash('old-password', 4);
+    const { db, sets } = makeDb([[{ passwordHash }], [], []]);
+    await expect(
+      auth(db).changePassword(OWNER, { currentPassword: 'old-password', newPassword: 'new-long-password' }),
+    ).resolves.toEqual({ ok: true });
+    expect(db.update.mock.calls.map((c: unknown[]) => c[0])).toEqual([owners, sessions]);
+    expect(await bcrypt.compare('new-long-password', sets[0].passwordHash as string)).toBe(true);
+  });
+
+  it('a member has no team password (403)', async () => {
+    const { db } = makeDb([]);
+    await expect(
+      auth(db).changePassword(
+        { type: 'member', sessionId: 's', id: 'm1', memberCode: 'GYM-1', displayName: 'Катя' },
+        { currentPassword: 'x', newPassword: 'new-long-password' },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('the password page is for trainers and the owner (TeamGuard)', () => {
+    const guards = Reflect.getMetadata(GUARDS_METADATA, AuthController.prototype.changePassword) as unknown[];
+    expect(guards).toEqual([SessionGuard, TeamGuard]);
   });
 });
 

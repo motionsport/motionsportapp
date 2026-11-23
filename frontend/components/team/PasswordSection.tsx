@@ -1,12 +1,28 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, statusOf } from "@/lib/api";
+import { toAdminLogin } from "@/lib/adminAuth";
+import { elsewhereFor, type TeamRole } from "@/lib/loginRedirect";
 
 const FIELD = "input-field w-full border rounded-lg px-4 py-3 text-sm focus:outline-none";
 const MIN_PASSWORD = 10;
 
-// Own password only; the trainer's other sessions are revoked
-export function PasswordSection() {
+// «Мій пароль» of a trainer or the owner (`role` = whose page); their other sessions are revoked.
+// The page loads no data, so the session is checked on open: signed out → the team login, another role → its home
+export function PasswordSection({ role }: { role: TeamRole }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    api
+      .me()
+      .then((me) => {
+        const elsewhere = elsewhereFor(me.type, role);
+        if (elsewhere) router.replace(elsewhere);
+      })
+      .catch((err: unknown) => toAdminLogin(err, router));
+  }, [role, router]);
+
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [repeat, setRepeat] = useState("");
@@ -28,7 +44,15 @@ export function PasswordSection() {
       setRepeat("");
       setDone(true);
     } catch (err) {
-      setError(statusOf(err) === 401 ? "Поточний пароль невірний." : "Не вдалося змінити пароль. Спробуйте ще раз.");
+      if (statusOf(err) !== 401) {
+        setError("Не вдалося змінити пароль. Спробуйте ще раз.");
+      } else {
+        // 401 = a wrong current password, or the session ended meanwhile: ask which
+        await api
+          .me()
+          .then(() => setError("Поточний пароль невірний."))
+          .catch((e: unknown) => toAdminLogin(e, router));
+      }
     } finally {
       setBusy(false);
     }

@@ -28,15 +28,12 @@ export interface Trainer {
   id: string;
   username: string;
   createdAt: string;
-  invitedBy: string | null; // null = added by the seed script
   disabledAt: string | null;
-  disabledBy: string | null;
 }
 
-// Unused invite link of any trainer
+// An unused invite link (only the owner invites)
 export interface TrainerInvite {
   id: string;
-  createdBy: string;
   createdAt: string;
   expiresAt: string;
 }

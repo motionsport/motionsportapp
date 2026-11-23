@@ -143,18 +143,22 @@ export const api = {
   registerTrainer: (token: string, username: string, password: string) =>
     post<{ username: string }>("/auth/admin/register", { token, username, password }),
 
+  // «Мій пароль»: a trainer or the owner
   changePassword: (currentPassword: string, newPassword: string) =>
     post("/auth/admin/password", { currentPassword, newPassword }),
 
-  createTrainerInvite: () => post<{ id: string; token: string; expiresAt: string }>("/admin/trainer-invites"),
+  // The owner's «Тренери»: invites and disabling are the owner's only
+  createTrainerInvite: () => post<{ id: string; token: string; expiresAt: string }>("/owner/trainer-invites"),
 
-  getTrainerInvites: () => get<TrainerInvite[]>("/admin/trainer-invites"),
+  getTrainerInvites: () => get<TrainerInvite[]>("/owner/trainer-invites"),
 
-  revokeTrainerInvite: (id: string) => del(`/admin/trainer-invites/${id}`),
+  revokeTrainerInvite: (id: string) => del(`/owner/trainer-invites/${id}`),
+
+  getOwnerTrainers: () => get<Trainer[]>("/owner/trainers"),
 
   // Clients and pending cash purchases move to transferToId; trainings not over yet are cancelled
   disableTrainer: (id: string, transferToId: string) =>
-    post<{ movedClients: number; cancelledTrainings: number }>(`/admin/trainers/${id}/disable`, { transferToId }),
+    post<{ movedClients: number; cancelledTrainings: number }>(`/owner/trainers/${id}/disable`, { transferToId }),
 
   getAdminSchedule: () => get<AdminSchedule | null>("/admin/schedule"),
 

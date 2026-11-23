@@ -2,11 +2,10 @@
 import { useState } from "react";
 import { api, Trainer } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
-import { AdminMenu } from "@/components/admin/AdminMenu";
+import { OwnerMenu } from "@/components/owner/OwnerMenu";
 import { useAdminData } from "@/lib/useAdminData";
 import { DisableDialog } from "./DisableDialog";
 import { InviteSection } from "./InviteSection";
-import { PasswordSection } from "./PasswordSection";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("uk-UA", {
@@ -18,23 +17,19 @@ function formatDate(iso: string) {
 }
 
 const loadTrainersPage = () =>
-  Promise.all([api.getTrainers(), api.getTrainerInvites(), api.me()]).then(([trainers, invites, user]) => ({
-    trainers,
-    invites,
-    me: user.type === "admin" ? (user.username ?? null) : null,
-  }));
+  Promise.all([api.getOwnerTrainers(), api.getTrainerInvites()]).then(([trainers, invites]) => ({ trainers, invites }));
 
-export default function TrainersPage() {
+// The owner's: invite, list, disable (trainers can't, since 2026-11-23)
+export default function OwnerTrainersPage() {
   const { data, error, reload: load } = useAdminData(loadTrainersPage);
   const trainers = data?.trainers ?? null;
   const invites = data?.invites ?? [];
-  const me = data?.me ?? null;
   const loadError = error != null;
   const [disabling, setDisabling] = useState<Trainer | null>(null);
   const [disabledText, setDisabledText] = useState("");
 
   return (
-    <PageLayout variant="top" loading={!trainers && !loadError} action={<AdminMenu />}>
+    <PageLayout variant="top" loading={!trainers && !loadError} action={<OwnerMenu />}>
       <h1 className="font-geologica font-semibold text-title sm:text-display text-heading uppercase mb-6">Тренери</h1>
 
       {loadError && (
@@ -54,21 +49,11 @@ export default function TrainersPage() {
               {trainers.map((t) => (
                 <li key={t.id} className="flex items-center justify-between space-x-3 py-3 border-b border-line">
                   <div className="min-w-0">
-                    <p className={t.disabledAt ? "text-subtle" : "text-heading"}>
-                      {t.username}
-                      {t.username === me && <span className="text-subtle"> · це ви</span>}
-                    </p>
-                    <p className="text-subtle text-sm">
-                      з {formatDate(t.createdAt)}
-                      {t.invitedBy && ` · запросив(ла) ${t.invitedBy}`}
-                    </p>
-                    {t.disabledAt && (
-                      <p className="text-danger text-sm">
-                        вимкнено{t.disabledBy && ` · ${t.disabledBy}`} · {formatDate(t.disabledAt)}
-                      </p>
-                    )}
+                    <p className={t.disabledAt ? "text-subtle" : "text-heading"}>{t.username}</p>
+                    <p className="text-subtle text-sm">з {formatDate(t.createdAt)}</p>
+                    {t.disabledAt && <p className="text-danger text-sm">вимкнено · {formatDate(t.disabledAt)}</p>}
                   </div>
-                  {!t.disabledAt && t.username !== me && t.id !== firstId(trainers) && (
+                  {!t.disabledAt && t.id !== firstId(trainers) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -84,18 +69,14 @@ export default function TrainersPage() {
               ))}
             </ul>
           </section>
-
-          <PasswordSection />
         </div>
       )}
 
       {disabling && trainers && (
         <DisableDialog
           trainer={disabling}
-          // Enabled trainers only, me first
-          targets={trainers
-            .filter((t) => !t.disabledAt && t.id !== disabling.id)
-            .sort((a, b) => Number(b.username === me) - Number(a.username === me))}
+          // Enabled trainers only
+          targets={trainers.filter((t) => !t.disabledAt && t.id !== disabling.id)}
           onClose={() => setDisabling(null)}
           // Someone disabled them first: reload shows it
           onConflict={load}

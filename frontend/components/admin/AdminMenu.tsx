@@ -8,7 +8,7 @@ const LINKS = [
   { href: "/admin/history", label: "Історія" },
   { href: "/admin/stats", label: "Статистика" },
   { href: "/admin/prices", label: "Ціни" },
-  { href: "/admin/trainers", label: "Тренери" },
+  { href: "/admin/password", label: "Мій пароль" },
 ];
 
 export function AdminMenu() {

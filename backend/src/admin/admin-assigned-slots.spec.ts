@@ -583,17 +583,10 @@ describe('Clients per trainer', () => {
     expect(db.update).not.toHaveBeenCalled();
   });
 
-  it('trainer list never selects password hashes, and says who disabled whom', async () => {
+  it('trainer list never selects password hashes; no inviter / disabler (the owner does both)', async () => {
     const { db } = makeDb([[{ id: 'trainer-1', username: 'ilona' }]]);
     await expect(makeTrainers(db).getTrainers()).resolves.toEqual([{ id: 'trainer-1', username: 'ilona' }]);
-    expect(Object.keys(db.select.mock.calls[0][0]).sort()).toEqual([
-      'createdAt',
-      'disabledAt',
-      'disabledBy',
-      'id',
-      'invitedBy',
-      'username',
-    ]);
+    expect(Object.keys(db.select.mock.calls[0][0]).sort()).toEqual(['createdAt', 'disabledAt', 'id', 'username']);
   });
 });
 

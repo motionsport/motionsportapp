@@ -3,6 +3,7 @@ import { AdminGuard } from './admin.guard';
 import { MemberGuard } from './member.guard';
 import { OwnerGuard } from './owner.guard';
 import { MemberOrAdminGuard } from './member-or-admin.guard';
+import { TeamGuard } from './team.guard';
 
 const ctx = (type?: string) =>
   ({ switchToHttp: () => ({ getRequest: () => ({ user: type ? { type } : undefined }) }) }) as ExecutionContext;
@@ -22,6 +23,7 @@ describe('role guards', () => {
     ['AdminGuard', new AdminGuard(), ['admin']],
     ['MemberGuard', new MemberGuard(), ['member']],
     ['MemberOrAdminGuard', new MemberOrAdminGuard(), ['member', 'admin']],
+    ['TeamGuard', new TeamGuard(), ['admin', 'owner']],
   ])('%s lets in only %j, 403 for the rest and for no session', (_, guard, allowed) => {
     for (const type of ['member', 'admin', 'owner']) expect(lets(guard, type)).toBe(allowed.includes(type));
     expect(lets(guard)).toBe(false);
