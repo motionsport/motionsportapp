@@ -8,6 +8,8 @@ export function packageEndingWarning(e: AssignedSlotView["packageEnding"]) {
   return {
     title: e.endsInDays === 1 ? "Сьогодні останній день пакета" : `Пакет діє до ${ddmm(e.validUntil)}`,
     details: "Невикористані тренування згорять.",
+    // The card drops «Залишилось 6 тренувань»: today only one or two can be used, the rest burns tonight
+    lastDay: e.endsInDays === 1,
   };
 }
 

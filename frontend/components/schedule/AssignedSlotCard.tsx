@@ -48,7 +48,7 @@ export function AssignedSlotCard({ slot, onMutate }: AssignedSlotCardProps) {
               <p className="text-sm text-body">оплачено</p>
             ) : slot.packageLeft > 0 ? (
               <>
-                <p className="text-sm text-body">Залишилось {trainingsCount(slot.packageLeft)}</p>
+                {!ending?.lastDay && <p className="text-sm text-body">Залишилось {trainingsCount(slot.packageLeft)}</p>}
                 {ending && <WarnNote title={ending.title}>{ending.details}</WarnNote>}
               </>
             ) : (

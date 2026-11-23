@@ -21,6 +21,7 @@ describe("packageEndingWarning (an assigned training card)", () => {
     expect(packageEndingWarning({ validUntil: "2026-11-23", endsInDays: 1 })).toEqual({
       title: "Сьогодні останній день пакета",
       details: "Невикористані тренування згорять.",
+      lastDay: true,
     });
   });
 
@@ -28,6 +29,7 @@ describe("packageEndingWarning (an assigned training card)", () => {
     expect(packageEndingWarning({ validUntil: "2026-11-27", endsInDays: 5 })).toEqual({
       title: "Пакет діє до 27.11",
       details: "Невикористані тренування згорять.",
+      lastDay: false,
     });
   });
 });
