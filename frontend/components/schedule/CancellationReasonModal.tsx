@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { api, CancelFeePreview } from "@/lib/api";
 import { feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
 import { Modal } from "@/components/ui/Modal";
+import { WarnNote } from "@/components/ui/WarnNote";
 
 interface Props {
   action: "cancel" | "switch";
@@ -53,20 +54,16 @@ export function CancellationReasonModal({ action, switchTime, slotId, crowded, o
         {title}
       </h2>
       {often && (
-        <div className="text-warn bg-warn-bg border border-warn-line rounded-xl px-3 py-2.5 text-sm mb-4 space-y-1">
-          {often.map((line) => (
+        <WarnNote title={often.title} className="mb-3">
+          {often.details.map((line) => (
             <p key={line}>{line}</p>
           ))}
-        </div>
+        </WarnNote>
       )}
       {warning && (
-        <p className="text-warn bg-warn-bg border border-warn-line rounded-xl px-3 py-2.5 text-sm mb-4">
-          Скасування зараз: {warning.charAt(0).toLowerCase() + warning.slice(1)}
-        </p>
+        <WarnNote title={`Скасування зараз: ${warning.charAt(0).toLowerCase() + warning.slice(1)}`} className="mb-4" />
       )}
-      {action === "switch" && crowded && (
-        <p className="text-warn bg-warn-bg border border-warn-line rounded-xl px-3 py-2.5 text-sm mb-4">{crowded}</p>
-      )}
+      {action === "switch" && crowded && <WarnNote title={crowded} className="mb-4" />}
       <p className="text-muted text-sm mb-4">{prompt}</p>
 
       <textarea

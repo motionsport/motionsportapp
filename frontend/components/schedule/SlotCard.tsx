@@ -5,6 +5,7 @@ import { ensurePushSubscribed } from "@/lib/pushUtils";
 import { CancellationReasonModal } from "./CancellationReasonModal";
 import { GroupPassModal } from "./GroupPassModal";
 import { OverNormModal } from "./OverNormModal";
+import { WarnNote } from "@/components/ui/WarnNote";
 import { crowdedText, lighterHint, lighterSlot, overNorm } from "@/lib/groupLoad";
 import { kyivTime } from "@/lib/kyivTime";
 
@@ -102,26 +103,9 @@ export function SlotCard({
         {lighter && <p className="text-accent text-xs -mt-2 mb-4">На {lighter.slotTime} вільніше</p>}
 
         {smallGroup && (
-          <div className="mb-4 flex items-start space-x-2.5 rounded-lg border border-warn-line bg-warn-bg px-3 py-2.5">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              className="text-warn w-5 h-5 mt-0.5 shrink-0"
-            >
-              <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-              <path d="M12 9v4" />
-              <path d="M12 17h.01" />
-            </svg>
-            <div>
-              <p className="text-warn text-base font-medium">Записалось мало людей</p>
-              <p className="text-subtle text-xs mt-1">Тренування відбудеться, якщо запишеться ще кілька людей</p>
-            </div>
-          </div>
+          <WarnNote title="Записалось мало людей" className="mb-4">
+            Тренування відбудеться, якщо запишеться ще кілька людей
+          </WarnNote>
         )}
 
         {slot.status === "CANCELLED" ? (

@@ -62,15 +62,16 @@ describe("frequentCancelWarning (the member's «Скасувати», from the 3
   });
 
   it("a started package: the number and its end date", () => {
-    expect(frequentCancelWarning({ ...p, cancelNumber: 3, packUntil: "2026-11-27" })).toEqual([
-      "Скасувань за місяць: 3. Плануйте тренування заздалегідь.",
-      "Пакет діє до 27.11, невикористані тренування згорять.",
-    ]);
+    expect(frequentCancelWarning({ ...p, cancelNumber: 3, packUntil: "2026-11-27" })).toEqual({
+      title: "Скасувань за місяць: 3",
+      details: ["Плануйте тренування заздалегідь.", "Пакет діє до 27.11, невикористані тренування згорять."],
+    });
   });
 
   it("a package not started yet: the number only", () => {
-    expect(frequentCancelWarning({ ...p, cancelNumber: 4, packUntil: null })).toEqual([
-      "Скасувань за місяць: 4. Плануйте тренування заздалегідь.",
-    ]);
+    expect(frequentCancelWarning({ ...p, cancelNumber: 4, packUntil: null })).toEqual({
+      title: "Скасувань за місяць: 4",
+      details: ["Плануйте тренування заздалегідь."],
+    });
   });
 });

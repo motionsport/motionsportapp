@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { TransferDetails as Details } from "@/lib/api";
 import { formatUah } from "@/lib/prices";
+import { WarnNote } from "@/components/ui/WarnNote";
 
 // IBAN in groups of four, easier to check by eye
 const spaced = (iban: string) => iban.replace(/(.{4})/g, "$1 ").trim();
@@ -40,9 +41,9 @@ function CopyRow({ label, value, shown = value }: { label: string; value: string
 export function TransferDetails({ transfer }: { transfer: Details }) {
   return (
     <div className="space-y-3">
-      <p className="rounded-xl border border-warn-line bg-warn-bg px-4 py-3 text-sm text-warn">
-        Обов&apos;язково вкажіть призначення з кодом {transfer.code}: за ним тренер знайде ваш переказ.
-      </p>
+      <WarnNote title={`Обов'язково вкажіть призначення з кодом ${transfer.code}`}>
+        За ним тренер знайде ваш переказ.
+      </WarnNote>
       <div className="space-y-2">
         <a
           href={transfer.bankLinks.privat24}

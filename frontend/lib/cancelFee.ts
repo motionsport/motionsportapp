@@ -14,9 +14,9 @@ export function feeWarning(p: CancelFeePreview | null) {
 // Member's warning when cancelling often a training a package pays for; the date only once the package started
 export function frequentCancelWarning(p: CancelFeePreview | null) {
   if (!p?.cancelNumber || p.cancelNumber < FREQUENT_CANCELLATIONS) return null;
-  const lines = [`Скасувань за місяць: ${p.cancelNumber}. Плануйте тренування заздалегідь.`];
-  if (p.packUntil) lines.push(`Пакет діє до ${ddmm(p.packUntil)}, невикористані тренування згорять.`);
-  return lines;
+  const details = ["Плануйте тренування заздалегідь."];
+  if (p.packUntil) details.push(`Пакет діє до ${ddmm(p.packUntil)}, невикористані тренування згорять.`);
+  return { title: `Скасувань за місяць: ${p.cancelNumber}`, details };
 }
 
 // Trainer's fee tag on a cancellation
