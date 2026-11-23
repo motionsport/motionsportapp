@@ -270,6 +270,10 @@ export interface CancelFeePreview {
   fee: "FULL" | "HALF" | null;
   single: boolean;
   refundUah: number | null;
+  // From the 3rd own cancellation in 30 days of a training a package pays for: «Це вже 3-тє скасування»
+  cancelNumber: number | null;
+  // That package's end, once started
+  packUntil: string | null;
 }
 
 // Half refund of a late-cancelled single assigned training. Online: sent from the app («Повернути»),

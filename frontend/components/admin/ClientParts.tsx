@@ -9,8 +9,6 @@ import { Badge } from "@/components/ui/Badge";
 // Shared by the clients list and the client page
 
 const NOTE_MAX = 300;
-// Cancellations in 30 days from which a client is highlighted
-export const FREQUENT_CANCELLATIONS = 3;
 
 // Plural forms for 1, 2-4, 5+
 const TYPE_FORMS: Record<AdminMember["packagesLeft"][number]["trainingType"], [string, string, string]> = {

@@ -7,7 +7,8 @@ import { CashRequests } from "./CashRequests";
 import { StrayPayments } from "./StrayPayments";
 import { FreezeRequests } from "./FreezeRequests";
 import { CancelRefunds } from "./CancelRefunds";
-import { FREQUENT_CANCELLATIONS, NoteCell, PurchaseSummary, TrainerPicker } from "@/components/admin/ClientParts";
+import { NoteCell, PurchaseSummary, TrainerPicker } from "@/components/admin/ClientParts";
+import { FREQUENT_CANCELLATIONS } from "@/lib/cancelFee";
 import { useAdminData } from "@/lib/useAdminData";
 
 const loadClientsPage = () =>

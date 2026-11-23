@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { api, CancelFeePreview } from "@/lib/api";
-import { feeWarning } from "@/lib/cancelFee";
+import { feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
 import { Modal } from "@/components/ui/Modal";
 
 interface Props {
@@ -31,6 +31,8 @@ export function CancellationReasonModal({ action, switchTime, slotId, crowded, o
   }, [action, slotId]);
 
   const warning = action === "cancel" ? feeWarning(fee) : null;
+  // From the 3rd cancellation in 30 days of a training a package pays for
+  const often = action === "cancel" ? frequentCancelWarning(fee) : null;
 
   const title = action === "switch" ? `Перенести на ${switchTime}` : "Скасувати запис";
 
@@ -50,6 +52,13 @@ export function CancellationReasonModal({ action, switchTime, slotId, crowded, o
       <h2 id="cancel-reason-title" className="font-geologica font-semibold text-lg text-heading mb-1">
         {title}
       </h2>
+      {often && (
+        <div className="text-warn bg-warn-bg border border-warn-line rounded-xl px-3 py-2.5 text-sm mb-4 space-y-1">
+          {often.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      )}
       {warning && (
         <p className="text-warn bg-warn-bg border border-warn-line rounded-xl px-3 py-2.5 text-sm mb-4">
           Скасування зараз: {warning.charAt(0).toLowerCase() + warning.slice(1)}
