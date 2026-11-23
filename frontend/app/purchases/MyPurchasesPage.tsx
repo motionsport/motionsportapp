@@ -11,6 +11,7 @@ import { ClubCardBlock } from "./ClubCardBlock";
 import { PackageCard, packageTitle } from "./PackageCard";
 import { PendingPurchase } from "./PendingPurchase";
 import { BuyBlock } from "./BuyBlock";
+import { toAdminLogin } from "@/lib/adminAuth";
 
 const sectionTitle = "font-geologica font-semibold text-heading uppercase text-xs tracking-wide";
 
@@ -30,9 +31,9 @@ export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
         })
         .catch((err: unknown) => {
           const status = statusOf(err);
-          // 403 = a trainer's session
+          // 403 = a team session (trainer or owner): to their own home
           if (status === 401) router.push("/login");
-          else if (status === 403) router.push("/admin");
+          else if (status === 403) toAdminLogin(err, router);
           else setLoadError(true);
         }),
     [router],

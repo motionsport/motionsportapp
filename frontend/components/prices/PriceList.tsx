@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { PriceListItem, PriceSection } from "@/lib/api";
 import { formatUah, groupByTitle } from "@/lib/prices";
 
-// Shared by the admin and member price pages; the admin passes `renderOption` to make prices editable
+// Shared by the member, trainer and owner price pages; the owner passes `renderOption` to make prices editable
 
 const SECTIONS: { key: PriceSection; title: string; note?: string }[] = [
   { key: "club_card", title: "Абонементи (клубні карти)" },

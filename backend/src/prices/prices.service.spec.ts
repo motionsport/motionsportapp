@@ -4,9 +4,10 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DateTime } from 'luxon';
 import { PricesService } from './prices.service';
-import { PricesController, MemberPricesController } from './prices.controller';
-import { AdminGuard } from '../common/guards/admin.guard';
-import { MemberGuard } from '../common/guards/member.guard';
+import { OwnerPricesController, PriceListController } from './prices.controller';
+import { OwnerGuard } from '../common/guards/owner.guard';
+import { MemberOrAdminGuard } from '../common/guards/member-or-admin.guard';
+import { PATH_METADATA } from '@nestjs/common/constants';
 import { SessionGuard } from '../auth/session.guard';
 import { UpdatePriceDto } from './dto/update-price.dto';
 import { DEFAULT_PRICE_LIST, PRICE_SECTIONS } from './price-list';
@@ -47,23 +48,29 @@ function makeService(db: any) {
 }
 
 describe('Prices', () => {
-  it('changes the amount and logs who changed it', async () => {
+  it('changes the amount and logs the owner who changed it (no trainer author)', async () => {
     const { db, sets, inserts } = makeDb([[{ id: 'p1', amountUah: 650 }], []]);
     await expect(
-      makeService(db).updatePrice('trainer-1', 'p1', { amountUah: 650, expectedAmountUah: 600 }),
+      makeService(db).updatePrice('owner-1', 'p1', { amountUah: 650, expectedAmountUah: 600 }),
     ).resolves.toEqual({ id: 'p1', amountUah: 650 });
 
-    expect(sets).toEqual([{ amountUah: 650, updatedBy: 'trainer-1', updatedAt: NOW.toJSDate() }]);
+    expect(sets).toEqual([{ amountUah: 650, updatedBy: null, updatedByOwnerId: 'owner-1', updatedAt: NOW.toJSDate() }]);
     expect(inserts).toEqual([
-      { priceItemId: 'p1', oldAmountUah: 600, newAmountUah: 650, changedBy: 'trainer-1', changedAt: NOW.toJSDate() },
+      {
+        priceItemId: 'p1',
+        oldAmountUah: 600,
+        newAmountUah: 650,
+        changedByOwnerId: 'owner-1',
+        changedAt: NOW.toJSDate(),
+      },
     ]);
   });
 
-  it('answers 409 with the current amount when another trainer changed it meanwhile', async () => {
+  it('answers 409 with the current amount when another owner changed it meanwhile', async () => {
     // Lost compare-and-set, then the current row is read
     const { db, inserts } = makeDb([[], [{ amountUah: 700, updatedBy: 'demo' }]]);
     const err = await makeService(db)
-      .updatePrice('trainer-1', 'p1', { amountUah: 650, expectedAmountUah: 600 })
+      .updatePrice('owner-1', 'p1', { amountUah: 650, expectedAmountUah: 600 })
       .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(ConflictException);
@@ -74,14 +81,14 @@ describe('Prices', () => {
   it('answers 404 for an unknown price', async () => {
     const { db } = makeDb([[], []]);
     await expect(
-      makeService(db).updatePrice('trainer-1', 'missing', { amountUah: 650, expectedAmountUah: 600 }),
+      makeService(db).updatePrice('owner-1', 'missing', { amountUah: 650, expectedAmountUah: 600 }),
     ).rejects.toThrow(NotFoundException);
   });
 
   it('saving the same amount writes nothing', async () => {
     const { db, sets, inserts } = makeDb([[{ amountUah: 600, updatedBy: null }]]);
     await expect(
-      makeService(db).updatePrice('trainer-1', 'p1', { amountUah: 600, expectedAmountUah: 600 }),
+      makeService(db).updatePrice('owner-1', 'p1', { amountUah: 600, expectedAmountUah: 600 }),
     ).resolves.toEqual({ id: 'p1', amountUah: 600 });
     expect(sets).toEqual([]);
     expect(inserts).toEqual([]);
@@ -122,14 +129,16 @@ describe('Prices', () => {
     });
   });
 
-  it('the client price list is for signed-in members only (MemberGuard)', () => {
-    const guards = Reflect.getMetadata(GUARDS_METADATA, MemberPricesController) as unknown[];
-    expect(guards).toEqual([SessionGuard, MemberGuard]);
+  it('the read-only price list is for signed-in members and trainers (MemberOrAdminGuard)', () => {
+    const guards = Reflect.getMetadata(GUARDS_METADATA, PriceListController) as unknown[];
+    expect(guards).toEqual([SessionGuard, MemberOrAdminGuard]);
+    expect(Reflect.getMetadata(PATH_METADATA, PriceListController)).toBe('prices');
   });
 
-  it('price endpoints are admin-only (AdminGuard on the controller)', () => {
-    const guards = Reflect.getMetadata(GUARDS_METADATA, PricesController) as unknown[];
-    expect(guards).toContain(AdminGuard);
+  it('only the owner changes prices: /owner/prices behind OwnerGuard, no /admin/prices', () => {
+    const guards = Reflect.getMetadata(GUARDS_METADATA, OwnerPricesController) as unknown[];
+    expect(guards).toEqual([SessionGuard, OwnerGuard]);
+    expect(Reflect.getMetadata(PATH_METADATA, OwnerPricesController)).toBe('owner/prices');
   });
 
   it('seed price list: unique codes, known sections, whole positive amounts', () => {

@@ -1,3 +1,4 @@
+import type { TeamRole } from "@/lib/loginRedirect";
 import type {
   AdminMember,
   AdminSchedule,
@@ -23,6 +24,7 @@ import type {
   PaymentStatus,
   PriceChange,
   PriceItem,
+  PriceListItem,
   PurchaseMethod,
   RegisterResponse,
   ScheduleNext,
@@ -32,6 +34,7 @@ import type {
   TrainerInvite,
   TrainerSchedule,
   TrainerStats,
+  GymStats,
   TrainingType,
   TransferDetails,
 } from "./apiTypes";
@@ -132,8 +135,9 @@ export const api = {
 
   switchSlot: (newSlotId: string, reason: string) => patch("/bookings/current", { newSlotId, reason }),
 
+  // The team login: a trainer's username or the owner's email
   adminLogin: (username: string, password: string) =>
-    post<{ username: string }>("/auth/admin/login", { username, password }),
+    post<{ role: TeamRole }>("/auth/admin/login", { username, password }),
 
   checkTrainerInvite: (token: string) => get<{ valid: boolean }>(`/auth/admin/invite/${encodeURIComponent(token)}`),
 
@@ -175,6 +179,8 @@ export const api = {
   requestUnfreeze: () => post("/freezes/unfreeze"),
 
   getStats: () => get<TrainerStats>("/admin/stats"),
+
+  getOwnerStats: () => get<GymStats>("/owner/stats"),
 
   waiveCancelFee: (bookingId: string) => post(`/admin/bookings/${bookingId}/waive-fee`),
   getPendingCancelRefunds: () => get<CancelRefund[]>("/admin/cancel-refunds/pending"),
@@ -248,11 +254,15 @@ export const api = {
   updateMemberNote: (memberId: string, note: string) =>
     patch<{ id: string; trainerNote: string | null }>(`/admin/members/${memberId}/note`, { note }),
 
-  getPrices: () => get<{ items: PriceItem[]; changes: PriceChange[] }>("/admin/prices"),
+  // The read-only price list (members and trainers): «+ Додати абонемент з рецепції»
+  getPriceList: () => get<PriceListItem[]>("/prices"),
+
+  // The owner's price list with the change history; only the owner changes prices
+  getOwnerPrices: () => get<{ items: PriceItem[]; changes: PriceChange[] }>("/owner/prices"),
 
   // Compare-and-set: 409 body carries the current amountUah and updatedBy
-  updatePrice: (id: string, amountUah: number, expectedAmountUah: number) =>
-    patch<{ id: string; amountUah: number }>(`/admin/prices/${id}`, { amountUah, expectedAmountUah }),
+  updateOwnerPrice: (id: string, amountUah: number, expectedAmountUah: number) =>
+    patch<{ id: string; amountUah: number }>(`/owner/prices/${id}`, { amountUah, expectedAmountUah }),
 
   getCalendar: (month: string) => get<CalendarSlot[]>(`/admin/calendar?month=${month}`),
 

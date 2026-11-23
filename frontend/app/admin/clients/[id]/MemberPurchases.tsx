@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { api, MemberPurchases as MemberPurchasesData, PriceItem, Purchase } from "@/lib/api";
+import { api, MemberPurchases as MemberPurchasesData, PriceListItem, Purchase } from "@/lib/api";
 import { errorText } from "@/lib/apiErrors";
 import { ddmm } from "@/lib/dates";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -60,7 +60,7 @@ const STATUS: Record<Purchase["status"], string> = {
 export function MemberPurchases({ memberId, onChanged }: { memberId: string; onChanged: () => void }) {
   const [data, setData] = useState<MemberPurchasesData | null>(null);
   const [failed, setFailed] = useState(false);
-  const [cardItems, setCardItems] = useState<PriceItem[] | null>(null);
+  const [cardItems, setCardItems] = useState<PriceListItem[] | null>(null);
   const [cardId, setCardId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -80,8 +80,8 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
 
   const openAddCard = () =>
     api
-      .getPrices()
-      .then(({ items }) => setCardItems(items.filter((i) => i.section === "club_card")))
+      .getPriceList()
+      .then((items) => setCardItems(items.filter((i) => i.section === "club_card")))
       .catch(() => setError("Не вдалося завантажити абонементи"));
 
   const activate = async (id: string) => {

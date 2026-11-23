@@ -11,7 +11,9 @@ import * as crypto from 'crypto';
 import { eq, and, isNull, gt, ne } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
-import { members, admins, sessions, trainerInvites } from '../database/schema';
+import { members, admins, owners, sessions, trainerInvites } from '../database/schema';
+import { loginTarget } from './login-target';
+import type { Role } from './roles';
 import { newToken, hashToken } from './token';
 import { deleteDeadSessions } from './dead-sessions';
 import type { RegisterMemberDto } from './dto/register-member.dto';
@@ -97,15 +99,26 @@ export class AuthService {
     return { memberCode: member.memberCode, recoveryCode: newRawRecovery, sessionToken };
   }
 
+  // The team login: a trainer's username, or the owner's email. Every failure is the same 401
   async loginAdmin(dto: LoginAdminDto) {
-    const [admin] = await this.database.db.select().from(admins).where(eq(admins.username, dto.username)).limit(1);
+    const target = loginTarget(dto.username);
+    if (target.kind === 'owner') {
+      const [owner] = await this.database.db.select().from(owners).where(eq(owners.email, target.email)).limit(1);
+      const valid = await secretMatches(dto.password, owner?.passwordHash);
+      if (!owner || !valid) throw new UnauthorizedException('Invalid credentials');
+
+      const sessionToken = await this.createSession('owner', owner.id);
+      return { role: 'owner' as const, name: owner.name, sessionToken };
+    }
+
+    const [admin] = await this.database.db.select().from(admins).where(eq(admins.username, target.username)).limit(1);
 
     // A disabled trainer gets the same answer as a wrong password
     const valid = await secretMatches(dto.password, admin?.passwordHash);
     if (!admin || admin.disabledAt || !valid) throw new UnauthorizedException('Invalid credentials');
 
     const sessionToken = await this.createSession('admin', admin.id);
-    return { username: admin.username, sessionToken };
+    return { role: 'admin' as const, username: admin.username, sessionToken };
   }
 
   // Lets the invite page show a message for a dead link instead of a form
@@ -204,7 +217,7 @@ export class AuthService {
     throw new InternalServerErrorException('Failed to generate unique member code');
   }
 
-  private async createSession(principalType: 'member' | 'admin', principalId: string) {
+  private async createSession(principalType: Role, principalId: string) {
     const rawToken = newToken();
     const tokenHash = hashToken(rawToken);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);

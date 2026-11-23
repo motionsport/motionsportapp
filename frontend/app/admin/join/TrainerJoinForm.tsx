@@ -63,7 +63,7 @@ export function TrainerJoinForm({ token }: { token: string }) {
             Його вже використали, відкликали або минуло 7 днів. Попросіть тренера надіслати нове.
           </p>
           <Link href="/admin/login" className="text-accent hover:underline text-sm">
-            Вхід для тренера
+            Вхід для команди
           </Link>
         </div>
       </PageLayout>

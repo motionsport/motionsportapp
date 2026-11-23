@@ -242,8 +242,22 @@ export interface Revenue {
   total: number;
 }
 
+export type RevenueByMonth = { allTime: Revenue; months: (Revenue & { month: string })[] }; // months: "2026-10", newest first
+
+// The owner's «Статистика залу»: every trainer (disabled ones too) and money no trainer is credited with
+export interface GymStats {
+  trainers: {
+    id: string;
+    username: string;
+    disabledAt: string | null;
+    revenue: RevenueByMonth;
+    present: { allTime: number; months: { month: string; present: number }[] }; // people ✓, guests too
+  }[];
+  unassigned: { revenue: RevenueByMonth };
+}
+
 export interface TrainerStats {
-  revenue: { allTime: Revenue; months: (Revenue & { month: string })[] }; // months: "2026-10", newest first
+  revenue: RevenueByMonth;
   busiestDays: { localDate: string; present: number }[];
   weekdays: { weekday: number; days: number; avgPresent: number }[]; // weekday 1 = Mon … 7 = Sun
 }
@@ -303,12 +317,17 @@ export interface MemberCancellation extends Cancellation {
 
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "EXPIRED" | "REPLACED";
 
+// Who a session belongs to (backend auth/roles.ts ROLES)
+export type Role = "member" | "admin" | "owner";
+
 export interface MeResponse {
-  type: "member" | "admin";
+  type: Role;
   id: string;
   memberCode?: string;
   displayName?: string;
   username?: string;
+  email?: string; // owner
+  name?: string; // owner
 }
 
 export interface SlotView {

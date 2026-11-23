@@ -1,23 +1,16 @@
 "use client";
 import { useState } from "react";
-import { api, Revenue, TrainerStats } from "@/lib/api";
+import { api, TrainerStats } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { AdminMenu } from "@/components/admin/AdminMenu";
-import { TYPE_COLORS } from "@/lib/trainingTypes";
 import { formatUah } from "@/lib/prices";
 import { useAdminData } from "@/lib/useAdminData";
-import { kyivToday } from "@/lib/dates";
+import { monthKeysUpToNow, monthName } from "@/lib/statsMonths";
+import { RevenueRows } from "@/components/stats/RevenueRows";
+import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 
 const sectionTitle = "font-geologica font-semibold text-heading uppercase mb-3";
 const label = "text-subtle text-xs font-semibold uppercase tracking-wide mb-2";
-
-// Dot colors: training types as in the calendar, club cards in the secondary text color
-const REVENUE_ROWS: [keyof Omit<Revenue, "total">, string, string][] = [
-  ["clubCards", "Абонементи", ""], // bg-subtle class: theme colors aren't CSS variables here
-  ["personal", "Персональні", TYPE_COLORS["personal"].border],
-  ["split", "Спліт", TYPE_COLORS["split"].border],
-  ["group", "Групові", TYPE_COLORS["group"].border],
-];
 
 const CHART_MONTHS = 12;
 const SHORT_MONTHS = ["січ", "лют", "бер", "кві", "тра", "чер", "лип", "сер", "вер", "жов", "лис", "гру"];
@@ -28,25 +21,10 @@ const noRevenue = (month: string): MonthRevenue => ({ month, clubCards: 0, perso
 
 // From the first paid month (at least the last 12) to the current Kyiv month, zero-filled
 function monthsUpToNow(months: MonthRevenue[]) {
-  const [y, m] = kyivToday().split("-").map(Number);
-  const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  const firstPaid = months.reduce((first, x) => (x.month < first ? x.month : first), key(new Date(y, m - 1, 1)));
-  const result: MonthRevenue[] = [];
-  for (let i = 0; ; i++) {
-    const k = key(new Date(y, m - 1 - i, 1));
-    if (i >= CHART_MONTHS && k < firstPaid) break;
-    result.unshift(months.find((x) => x.month === k) ?? noRevenue(k));
-  }
-  return result;
+  return monthKeysUpToNow(months.map((m) => m.month)).map((k) => months.find((x) => x.month === k) ?? noRevenue(k));
 }
 
 const WEEKDAYS = ["", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
-
-// "Жовтень 2026"
-function monthName(month: string) {
-  const name = new Date(`${month}-01T12:00:00`).toLocaleDateString("uk-UA", { month: "long" });
-  return `${name[0].toUpperCase()}${name.slice(1)} ${month.slice(0, 4)}`;
-}
 
 // "ср, 21 жовтня"
 function dayName(localDate: string) {
@@ -65,33 +43,11 @@ function people(n: number) {
   return `${n} ${word}`;
 }
 
-function RevenueRows({ revenue, small }: { revenue: Revenue; small?: boolean }) {
-  return (
-    <div className="flex flex-col space-y-1.5">
-      {REVENUE_ROWS.map(([key, title, color]) => (
-        <div key={key} className={`flex justify-between space-x-3 ${small ? "text-xs" : ""}`}>
-          <span className="text-subtle flex items-center">
-            <span
-              className={`w-2 h-2 rounded-full mr-2 shrink-0${color ? "" : " bg-subtle"}`}
-              style={color ? { backgroundColor: color } : undefined}
-            />
-            {title}
-          </span>
-          <span className={`tabular-nums ${revenue[key] ? "text-body" : "text-muted"}`}>{formatUah(revenue[key])}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 const BarsIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
     <path d="M5 20V12M12 20V5M19 20v-9" strokeLinecap="round" />
   </svg>
 );
-
-const segButton = (on: boolean) =>
-  `px-3.5 py-1.5 rounded-full transition-colors ${on ? "bg-teal text-on-teal font-semibold" : "text-subtle hover:text-body"}`;
 
 // One period card, or a 12-month bar chart; the picked month carries over between them
 function RevenueBlock({ revenue }: { revenue: TrainerStats["revenue"] }) {
@@ -112,28 +68,7 @@ function RevenueBlock({ revenue }: { revenue: TrainerStats["revenue"] }) {
             За весь час: <span className="text-heading tabular-nums">{formatUah(revenue.allTime.total)}</span>
           </span>
         ) : (
-          <div
-            className="inline-flex border border-line rounded-full p-[3px] bg-surface"
-            role="group"
-            aria-label="Період"
-          >
-            <button
-              type="button"
-              onClick={() => setAllTime(true)}
-              aria-pressed={allTime}
-              className={segButton(allTime)}
-            >
-              Весь час
-            </button>
-            <button
-              type="button"
-              onClick={() => setAllTime(false)}
-              aria-pressed={!allTime}
-              className={segButton(!allTime)}
-            >
-              Місяць
-            </button>
-          </div>
+          <PeriodSwitch allTime={allTime} onChange={setAllTime} />
         )}
         <button
           type="button"
@@ -180,27 +115,7 @@ function RevenueBlock({ revenue }: { revenue: TrainerStats["revenue"] }) {
       )}
 
       {!chart && !allTime && (
-        <div className="flex items-center justify-between space-x-3">
-          <button
-            type="button"
-            onClick={() => setSelected(selected - 1)}
-            disabled={selected === 0}
-            aria-label="Попередній місяць"
-            className="w-9 h-9 rounded-full border border-line bg-surface text-heading disabled:opacity-35"
-          >
-            ‹
-          </button>
-          <span className="text-heading font-semibold">{monthName(month.month)}</span>
-          <button
-            type="button"
-            onClick={() => setSelected(selected + 1)}
-            disabled={selected === months.length - 1}
-            aria-label="Наступний місяць"
-            className="w-9 h-9 rounded-full border border-line bg-surface text-heading disabled:opacity-35"
-          >
-            ›
-          </button>
-        </div>
+        <MonthStepper months={months.map((m) => m.month)} index={selected} onChange={setSelected} />
       )}
 
       <div className="rounded-xl border border-line bg-surface p-4">

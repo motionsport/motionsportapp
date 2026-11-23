@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PricesController, MemberPricesController } from './prices.controller';
+import { OwnerPricesController, PriceListController } from './prices.controller';
 import { PricesService } from './prices.service';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [AuthModule],
-  controllers: [PricesController, MemberPricesController],
+  controllers: [OwnerPricesController, PriceListController],
   providers: [PricesService],
 })
 export class PricesModule {}

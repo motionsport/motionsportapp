@@ -13,56 +13,52 @@ import {
 } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { SessionGuard } from '../auth/session.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
-import type { SessionUser } from '../auth/session.guard';
+import { CurrentMember } from '../auth/current-user.decorator';
+import type { UserOf } from '../auth/roles';
+import { MemberGuard } from '../common/guards/member.guard';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { SwitchBookingDto } from './dto/switch-booking.dto';
 import { AddGuestDto } from './dto/add-guest.dto';
 
 @Controller('bookings')
-@UseGuards(SessionGuard)
+// Members only: the guard answers 403 to a trainer or the owner
+@UseGuards(SessionGuard, MemberGuard)
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Post()
-  async book(@CurrentUser() user: SessionUser, @Body() dto: CreateBookingDto) {
-    if (user.type !== 'member') throw new Error('Members only');
+  async book(@CurrentMember() user: UserOf<'member'>, @Body() dto: CreateBookingDto) {
     return this.bookingService.book(user.id, dto.slotId);
   }
 
   // Late-cancellation warning shown before the member confirms
   @Get('cancel-fee')
-  async cancelFee(@CurrentUser() user: SessionUser, @Query('slotId', ParseUUIDPipe) slotId: string) {
-    if (user.type !== 'member') throw new Error('Members only');
+  async cancelFee(@CurrentMember() user: UserOf<'member'>, @Query('slotId', ParseUUIDPipe) slotId: string) {
     return this.bookingService.cancelFeePreview(user.id, slotId);
   }
 
   @Delete('current')
   @HttpCode(HttpStatus.OK)
-  async cancelCurrent(@CurrentUser() user: SessionUser, @Body() dto: CancelBookingDto) {
-    if (user.type !== 'member') throw new Error('Members only');
+  async cancelCurrent(@CurrentMember() user: UserOf<'member'>, @Body() dto: CancelBookingDto) {
     return this.bookingService.cancel(user.id, dto.slotId, dto.reason);
   }
 
   @Patch('current')
   @HttpCode(HttpStatus.OK)
-  async switchSlot(@CurrentUser() user: SessionUser, @Body() dto: SwitchBookingDto) {
-    if (user.type !== 'member') throw new Error('Members only');
+  async switchSlot(@CurrentMember() user: UserOf<'member'>, @Body() dto: SwitchBookingDto) {
     return this.bookingService.switchSlot(user.id, dto.newSlotId, dto.reason);
   }
 
   @Post('guest')
   @HttpCode(HttpStatus.OK)
-  async addGuest(@CurrentUser() user: SessionUser, @Body() dto: AddGuestDto) {
-    if (user.type !== 'member') throw new Error('Members only');
+  async addGuest(@CurrentMember() user: UserOf<'member'>, @Body() dto: AddGuestDto) {
     return this.bookingService.addGuest(user.id, dto.slotId, dto.name);
   }
 
   @Delete('guest')
   @HttpCode(HttpStatus.OK)
-  async removeGuest(@CurrentUser() user: SessionUser, @Body() dto: CreateBookingDto) {
-    if (user.type !== 'member') throw new Error('Members only');
+  async removeGuest(@CurrentMember() user: UserOf<'member'>, @Body() dto: CreateBookingDto) {
     return this.bookingService.removeGuest(user.id, dto.slotId);
   }
 }

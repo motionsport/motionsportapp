@@ -1,14 +1,15 @@
 import { Controller, Get, Patch, Body, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { PricesService } from './prices.service';
 import { SessionGuard, SessionUser } from '../auth/session.guard';
-import { AdminGuard } from '../common/guards/admin.guard';
-import { MemberGuard } from '../common/guards/member.guard';
+import { OwnerGuard } from '../common/guards/owner.guard';
+import { MemberOrAdminGuard } from '../common/guards/member-or-admin.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { UpdatePriceDto } from './dto/update-price.dto';
 
-@Controller('admin/prices')
-@UseGuards(SessionGuard, AdminGuard)
-export class PricesController {
+// Only the owner changes prices (since 2026-11-23); the list comes with the change history
+@Controller('owner/prices')
+@UseGuards(SessionGuard, OwnerGuard)
+export class OwnerPricesController {
   constructor(private readonly pricesService: PricesService) {}
 
   @Get()
@@ -22,10 +23,10 @@ export class PricesController {
   }
 }
 
-// Member view: amounts only
+// Members and trainers: amounts only, read-only
 @Controller('prices')
-@UseGuards(SessionGuard, MemberGuard)
-export class MemberPricesController {
+@UseGuards(SessionGuard, MemberOrAdminGuard)
+export class PriceListController {
   constructor(private readonly pricesService: PricesService) {}
 
   @Get()

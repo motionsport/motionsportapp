@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, eq, lt, sql, type SQL } from 'drizzle-orm';
 import { DateTime } from 'luxon';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
 import {
+  admins,
   attendance,
   bookingGuests,
   bookings,
@@ -28,7 +29,60 @@ export function revenueKey(section: string, trainingType: string | null): keyof 
   return trainingType === 'split' ? 'split' : 'personal';
 }
 
-// Revenue: PAID purchases with this trainer, by Kyiv month paid, at the amounts copied at purchase.
+type RevenueRow = { month: string; section: string; trainingType: string | null; amount: number };
+export type RevenueSummary = { allTime: Revenue; months: ({ month: string } & Revenue)[] };
+
+// Columns per Kyiv month and all time, newest month first
+export function summarizeRevenue(rows: RevenueRow[]): RevenueSummary {
+  const byMonth = new Map<string, Revenue>();
+  const allTime = emptyRevenue();
+  for (const r of rows) {
+    const key = revenueKey(r.section, r.trainingType);
+    const m = byMonth.get(r.month) ?? emptyRevenue();
+    m[key] += r.amount;
+    m.total += r.amount;
+    byMonth.set(r.month, m);
+    allTime[key] += r.amount;
+    allTime.total += r.amount;
+  }
+  return {
+    allTime,
+    months: [...byMonth].sort(([a], [b]) => b.localeCompare(a)).map(([m, revenue]) => ({ month: m, ...revenue })),
+  };
+}
+
+type GymTrainer = { id: string; username: string; disabledAt: Date | null };
+type GymRevenueRow = RevenueRow & { payee: string | null };
+type GymPresentRow = { trainerId: string; month: string; present: number };
+
+// The owner's page: one entry per trainer (zeros included), and money no trainer is credited with
+export function buildGymStats(trainers: GymTrainer[], revenueRows: GymRevenueRow[], presentRows: GymPresentRow[]) {
+  const present = (trainerId: string) => {
+    const byMonth = new Map<string, number>();
+    for (const r of presentRows.filter((p) => p.trainerId === trainerId)) {
+      byMonth.set(r.month, (byMonth.get(r.month) ?? 0) + r.present);
+    }
+    const months = [...byMonth].sort(([a], [b]) => b.localeCompare(a)).map(([month, n]) => ({ month, present: n }));
+    return { allTime: months.reduce((sum, m) => sum + m.present, 0), months };
+  };
+  return {
+    trainers: trainers.map((t) => ({
+      id: t.id,
+      username: t.username,
+      disabledAt: t.disabledAt?.toISOString() ?? null,
+      revenue: summarizeRevenue(revenueRows.filter((r) => r.payee === t.id)),
+      present: present(t.id),
+    })),
+    unassigned: { revenue: summarizeRevenue(revenueRows.filter((r) => r.payee === null)) },
+  };
+}
+
+// Whose money: the client's trainer, or (no trainer) who confirmed the cash. Null = online, no trainer
+const payee = sql<string | null>`coalesce(${purchases.trainerId}, ${purchases.decidedBy})`;
+// decided_at is the payment moment; created_at only for old rows without it
+const paidMonth = sql<string>`to_char(coalesce(${purchases.decidedAt}, ${purchases.createdAt}) at time zone 'Europe/Kyiv', 'YYYY-MM')`;
+
+// Revenue: PAID purchases, by Kyiv month paid, at the amounts copied at purchase.
 // Load: people marked present on the trainer's trainings, guests included
 @Injectable()
 export class StatsService {
@@ -39,17 +93,25 @@ export class StatsService {
 
   async forTrainer(trainerId: string) {
     return {
-      revenue: await this.revenue(trainerId),
+      revenue: summarizeRevenue(await this.revenueRows(eq(payee, trainerId))),
       ...(await this.load(trainerId)),
     };
   }
 
-  private async revenue(trainerId: string) {
-    // decided_at is the payment moment; created_at only for old rows without it
-    const month = sql<string>`to_char(coalesce(${purchases.decidedAt}, ${purchases.createdAt}) at time zone 'Europe/Kyiv', 'YYYY-MM')`;
-    const rows = await this.database.db
+  // Every trainer, disabled ones too (their money was real), first trainer first
+  async forGym() {
+    const trainers = await this.database.db
+      .select({ id: admins.id, username: admins.username, disabledAt: admins.disabledAt })
+      .from(admins)
+      .orderBy(asc(admins.createdAt));
+    return buildGymStats(trainers, await this.revenueRows(), await this.presentByMonth());
+  }
+
+  private revenueRows(only?: SQL) {
+    return this.database.db
       .select({
-        month,
+        payee,
+        month: paidMonth,
         section: priceItems.section,
         trainingType: priceItems.trainingType,
         amount: sql<number>`sum(${purchaseItems.amountUah})::int`,
@@ -57,30 +119,39 @@ export class StatsService {
       .from(purchaseItems)
       .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
       .innerJoin(priceItems, eq(priceItems.id, purchaseItems.priceItemId))
-      // Their clients' purchases, and cash a member without a trainer paid to them
+      .where(and(only, eq(purchases.status, 'PAID')))
+      .groupBy(payee, paidMonth, priceItems.section, priceItems.trainingType);
+  }
+
+  // People marked ✓ (members and guests) per trainer and month, days before today, as in load()
+  private async presentByMonth(): Promise<GymPresentRow[]> {
+    const today = this.clock.now().toISODate()!;
+    const month = sql<string>`substr(${trainingDays.localDate}::text, 1, 7)`;
+    const past = and(eq(trainingSlots.status, 'ACTIVE'), lt(trainingDays.localDate, today));
+    const members = await this.database.db
+      .select({ trainerId: trainingSlots.trainerId, month, present: sql<number>`count(*)::int` })
+      .from(attendance)
+      .innerJoin(bookings, eq(bookings.id, attendance.bookingId))
+      .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
+      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
+      .where(and(past, eq(bookings.status, 'ACTIVE'), eq(attendance.status, 'PRESENT')))
+      .groupBy(trainingSlots.trainerId, month);
+    const guests = await this.database.db
+      .select({ trainerId: trainingSlots.trainerId, month, present: sql<number>`count(*)::int` })
+      .from(bookingGuests)
+      .innerJoin(bookings, eq(bookings.id, bookingGuests.bookingId))
+      .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
+      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
       .where(
         and(
-          or(eq(purchases.trainerId, trainerId), and(isNull(purchases.trainerId), eq(purchases.decidedBy, trainerId))),
-          eq(purchases.status, 'PAID'),
+          past,
+          eq(bookings.status, 'ACTIVE'),
+          eq(bookingGuests.status, 'ACTIVE'),
+          eq(bookingGuests.attendance, 'PRESENT'),
         ),
       )
-      .groupBy(month, priceItems.section, priceItems.trainingType);
-
-    const byMonth = new Map<string, Revenue>();
-    const allTime = emptyRevenue();
-    for (const r of rows) {
-      const key = revenueKey(r.section, r.trainingType);
-      const m = byMonth.get(r.month) ?? emptyRevenue();
-      m[key] += r.amount;
-      m.total += r.amount;
-      byMonth.set(r.month, m);
-      allTime[key] += r.amount;
-      allTime.total += r.amount;
-    }
-    return {
-      allTime,
-      months: [...byMonth].sort(([a], [b]) => b.localeCompare(a)).map(([m, revenue]) => ({ month: m, ...revenue })),
-    };
+      .groupBy(trainingSlots.trainerId, month);
+    return [...members, ...guests];
   }
 
   private async load(trainerId: string) {

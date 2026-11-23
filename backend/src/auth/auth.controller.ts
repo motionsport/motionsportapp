@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { SessionGuard, SessionUser } from './session.guard';
 import { CurrentUser } from './current-user.decorator';
+import { byRole } from './roles';
 import { RegisterMemberDto } from './dto/register-member.dto';
 import { LoginMemberDto } from './dto/login-member.dto';
 import { RecoverMemberDto } from './dto/recover-member.dto';
@@ -54,9 +55,9 @@ export class AuthController {
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
   async loginAdmin(@Body() dto: LoginAdminDto, @Res({ passthrough: true }) res: Response) {
-    const { username, sessionToken } = await this.authService.loginAdmin(dto);
+    const { sessionToken, ...who } = await this.authService.loginAdmin(dto);
     setSessionCookie(res, sessionToken);
-    return { username };
+    return who;
   }
 
   @Get('admin/invite/:token')
@@ -90,9 +91,10 @@ export class AuthController {
   @Get('me')
   @UseGuards(SessionGuard)
   me(@CurrentUser() user: SessionUser) {
-    if (user.type === 'member') {
-      return { type: user.type, id: user.id, memberCode: user.memberCode, displayName: user.displayName };
-    }
-    return { type: user.type, id: user.id, username: user.username };
+    return byRole(user, {
+      member: (u) => ({ type: u.type, id: u.id, memberCode: u.memberCode, displayName: u.displayName }),
+      admin: (u) => ({ type: u.type, id: u.id, username: u.username }),
+      owner: (u) => ({ type: u.type, id: u.id, email: u.email, name: u.name }),
+    });
   }
 }

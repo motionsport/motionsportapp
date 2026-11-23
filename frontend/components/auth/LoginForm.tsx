@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
+import { homeFor } from "@/lib/loginRedirect";
 
 interface FieldConfig {
   label: string;
@@ -22,8 +23,8 @@ interface VariantConfig {
   footer?: ReactNode;
   login: FieldConfig;
   secret: FieldConfig;
-  submit: (login: string, secret: string) => Promise<unknown>;
-  redirectTo: string;
+  // Resolves to where to go next
+  submit: (login: string, secret: string) => Promise<string>;
   invalidCredentials: string;
 }
 
@@ -59,14 +60,14 @@ const VARIANTS: Record<"member" | "admin", VariantConfig> = {
       maxLength: 6,
       normalize: (v) => v.replace(/\D/g, "").slice(0, 6),
     },
-    submit: (login, secret) => api.login(login.trim().toUpperCase(), secret),
-    redirectTo: "/",
+    submit: (login, secret) => api.login(login.trim().toUpperCase(), secret).then(() => "/"),
     invalidCredentials: "Невірний код або PIN.",
   },
+  // Trainers and the owner: a username, or the owner's email
   admin: {
-    title: "Тренер",
+    title: "Команда",
     login: {
-      label: "Логін",
+      label: "Логін або пошта",
       type: "text",
       autoComplete: "username",
       placeholder: "admin",
@@ -77,8 +78,7 @@ const VARIANTS: Record<"member" | "admin", VariantConfig> = {
       autoComplete: "current-password",
       placeholder: "••••••••",
     },
-    submit: (login, secret) => api.adminLogin(login.trim(), secret),
-    redirectTo: "/admin",
+    submit: (login, secret) => api.adminLogin(login.trim(), secret).then((res) => homeFor(res.role)),
     invalidCredentials: "Невірний логін або пароль.",
   },
 };
@@ -115,11 +115,11 @@ export function LoginForm({ variant }: { variant: "member" | "admin" }) {
     setError("");
     setLoading(true);
     try {
-      await config.submit(login, secret);
+      const next = await config.submit(login, secret);
       try {
         localStorage.setItem("mg_authed", "1");
       } catch {}
-      router.push(config.redirectTo);
+      router.push(next);
     } catch (err: unknown) {
       const status = statusOf(err);
       if (status === 401) {

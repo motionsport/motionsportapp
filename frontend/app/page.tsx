@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback, useState, useSyncExternalStore } from "
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ScheduleNext, statusOf } from "@/lib/api";
+import { toAdminLogin } from "@/lib/adminAuth";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { SlotCard } from "@/components/schedule/SlotCard";
 import { kyivTime } from "@/lib/kyivTime";
@@ -53,9 +54,9 @@ export default function SchedulePage() {
       data = await api.getScheduleNext();
       setSchedule(data);
     } catch (err: unknown) {
-      // 403 = a trainer's session
+      // 403 = a team session (trainer or owner): to their own home
       if (statusOf(err) === 403) {
-        router.replace("/admin");
+        toAdminLogin(err, { push: (href) => router.replace(href) });
         throw err;
       }
       if (statusOf(err) === 401 && !authedRef.current) {
@@ -147,7 +148,7 @@ export default function SchedulePage() {
             href="/admin/login"
             className="btn-secondary w-full py-4 rounded-lg border font-medium text-sm transition-colors text-center"
           >
-            Вхід для тренера
+            Вхід для команди
           </Link>
         </div>
       </PageLayout>

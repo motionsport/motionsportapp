@@ -14,7 +14,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("a failed call", () => {
   it("throws ApiError with the backend's message, the status and the body", async () => {
     answer(409, { message: "Price changed", amountUah: 900, updatedBy: "demo" });
-    const err = await api.updatePrice("p1", 1000, 800).catch((e: unknown) => e);
+    const err = await api.updateOwnerPrice("p1", 1000, 800).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toBeInstanceOf(Error);
     expect((err as ApiError).message).toBe("Price changed");
@@ -39,10 +39,28 @@ describe("a failed call", () => {
 });
 
 describe("toAdminLogin", () => {
-  it.each([401, 403])("sends %i to the trainer login", (status) => {
+  it("sends 401 (signed out) to the team login", () => {
     const router = { push: vi.fn() };
-    expect(toAdminLogin(new ApiError("x", status, {}), router)).toBe(true);
+    expect(toAdminLogin(new ApiError("x", 401, {}), router)).toBe(true);
     expect(router.push).toHaveBeenCalledWith("/admin/login");
+  });
+
+  it.each([
+    ["owner", "/owner"],
+    ["admin", "/admin"],
+    ["member", "/"],
+  ])("sends 403 (another role's page) home: %s → %s", async (type, home) => {
+    answer(200, { type, id: "x" });
+    const router = { push: vi.fn() };
+    expect(toAdminLogin(new ApiError("x", 403, {}), router)).toBe(true);
+    await vi.waitFor(() => expect(router.push).toHaveBeenCalledWith(home));
+  });
+
+  it("403 and the session is gone meanwhile: the team login", async () => {
+    answer(401, {});
+    const router = { push: vi.fn() };
+    expect(toAdminLogin(new ApiError("x", 403, {}), router)).toBe(true);
+    await vi.waitFor(() => expect(router.push).toHaveBeenCalledWith("/admin/login"));
   });
 
   it.each([400, 404, 409, 500])("leaves %i to the page", (status) => {

@@ -1,3 +1,4 @@
+import { ROLES } from '../auth/roles';
 import {
   pgTable,
   uuid,
@@ -50,6 +51,15 @@ export const admins = pgTable('admins', {
   disabledByAdminId: uuid('disabled_by_admin_id').references((): AnyPgColumn => admins.id),
 });
 
+// The gym owner: sees every trainer's stats and is the only one who changes prices. Not a trainer
+export const owners = pgTable('owners', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull().unique(), // lowercased (normalizeOwnerEmail); the login
+  name: text('name').notNull(), // shown in the price change history
+  passwordHash: text('password_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // One-time trainer sign-up link. Only the token's SHA-256 is stored, so the link is shown once
 export const trainerInvites = pgTable('trainer_invites', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -76,7 +86,7 @@ export const sessions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    oneOf('sessions_principal_type_check', 'principal_type', ['member', 'admin']),
+    oneOf('sessions_principal_type_check', 'principal_type', ROLES),
     // Looked up on every request
     index('sessions_token_hash_idx').on(table.tokenHash),
   ],
@@ -366,8 +376,9 @@ export const priceItems = pgTable(
     durationMonths: integer('duration_months'),
     trainingType: text('training_type'),
     trainingCount: integer('training_count'),
-    // null = seeded value
+    // Both null = seeded value; trainers changed prices until 2026-11-23, now only the owner does
     updatedBy: uuid('updated_by').references(() => admins.id),
+    updatedByOwnerId: uuid('updated_by_owner_id').references(() => owners.id),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   () => [
@@ -377,19 +388,22 @@ export const priceItems = pgTable(
   ],
 );
 
-// Append-only
-export const priceChanges = pgTable('price_changes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  priceItemId: uuid('price_item_id')
-    .notNull()
-    .references(() => priceItems.id),
-  oldAmountUah: integer('old_amount_uah').notNull(),
-  newAmountUah: integer('new_amount_uah').notNull(),
-  changedBy: uuid('changed_by')
-    .notNull()
-    .references(() => admins.id),
-  changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
-});
+// Append-only. Exactly one author: a trainer (rows until 2026-11-23) or the owner
+export const priceChanges = pgTable(
+  'price_changes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    priceItemId: uuid('price_item_id')
+      .notNull()
+      .references(() => priceItems.id),
+    oldAmountUah: integer('old_amount_uah').notNull(),
+    newAmountUah: integer('new_amount_uah').notNull(),
+    changedBy: uuid('changed_by').references(() => admins.id),
+    changedByOwnerId: uuid('changed_by_owner_id').references(() => owners.id),
+    changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  () => [check('price_changes_author_check', sql`(changed_by IS NULL) <> (changed_by_owner_id IS NULL)`)],
+);
 
 // A group pass alone, or a club card and / or a trainer service. Paid by LiqPay or in cash (trainer confirms)
 export const purchases = pgTable(
