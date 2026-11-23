@@ -7,6 +7,8 @@ const FALLBACK_TEXT = 'Записуйтесь на тренування! Чек�
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 // Bump when the instructions change (ai_generations.prompt_version)
 export const PROMPT_VERSION = 'v4';
+// Gemini usually answers in about a second; the booking-open push waits for it, so not longer than this
+const GEMINI_TIMEOUT_MS = 10_000;
 
 // The gym's weekly programme by weekday (1 = понеділок). Picked in code, not by the model: a day outside it
 // (вт, чт) once got «завтра пʼятниця, ручки». Change it here and bump PROMPT_VERSION
@@ -93,7 +95,13 @@ ${examplesText}`;
     const start = Date.now();
     try {
       const geminiModel = ai.getGenerativeModel({ model: GEMINI_MODEL, systemInstruction: SYSTEM_INSTRUCTION });
-      const result = await geminiModel.generateContent(prompt);
+      let timer: NodeJS.Timeout | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`timeout after ${GEMINI_TIMEOUT_MS} ms`)), GEMINI_TIMEOUT_MS);
+      });
+      const result = await Promise.race([geminiModel.generateContent(prompt), timeout]).finally(() =>
+        clearTimeout(timer),
+      );
       const latencyMs = Date.now() - start;
       const raw = result.response.text().trim().replace(/\n+/g, ' ');
       const text = withoutLongDash(raw).substring(0, 300);

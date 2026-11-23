@@ -108,6 +108,21 @@ describe('AnnouncementGeneratorService', () => {
       expect(capturedPrompt).toContain('Тема тренування: Спина');
     });
 
+    it('Gemini silent for 10 seconds: the fallback text, so the push never waits longer', async () => {
+      jest.useFakeTimers();
+      const { GoogleGenerativeAI } = jest.requireMock('@google/generative-ai');
+      GoogleGenerativeAI.mockImplementationOnce(() => ({
+        getGenerativeModel: jest.fn().mockReturnValue({ generateContent: () => new Promise(() => {}) }),
+      }));
+      (service as any).genAI = null;
+      const pending = service.generate([], null, MONDAY);
+      await jest.advanceTimersByTimeAsync(10_000);
+      const result = await pending;
+      jest.useRealTimers();
+      expect(result).toMatchObject({ source: 'fallback', text: 'Записуйтесь на тренування! Чекаємо вас сьогодні.' });
+      expect(result.fallbackReason).toContain('timeout');
+    });
+
     it('returns fallback when Gemini returns empty text', async () => {
       const { GoogleGenerativeAI } = jest.requireMock('@google/generative-ai');
       GoogleGenerativeAI.mockImplementationOnce(() => ({

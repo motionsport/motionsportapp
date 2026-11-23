@@ -12,6 +12,9 @@ import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store'
 import { getDefaultTrainerId } from '../schedule/default-trainer';
 import { trainingDayOn } from '../schedule/training-day.store';
 
+// cron-job.org runs booking-open every 15 minutes: the announcement is made one run before the opening
+const ANNOUNCEMENT_LEAD_MINUTES = 15;
+
 // Jobs behind /internal/cron/*; InternalCronController checks the secret
 @Injectable()
 export class CronService {
@@ -43,6 +46,7 @@ export class CronService {
     const firstTrainerId = await getDefaultTrainerId(this.database.db);
 
     const sent: string[] = [];
+    let generated = false;
     for (const trainerId of [...new Set(trainers.map((t) => t.trainerId))]) {
       const { bookingOpensAt: opensAt } = await loadTrainerSchedule(this.database.db, trainerId);
       // A training before the opening time can't be booked, so it doesn't count
@@ -50,13 +54,17 @@ export class CronService {
         .filter((t) => t.trainerId === trainerId && t.slotTime > opensAt)
         .map((t) => t.slotTime)
         .sort()[0];
-      if (!firstTime || now < bookingOpensAt(today, opensAt) || now >= slotStartsAt(today, firstTime)) continue;
-      // The day's announcement with the first opening (once: done = published, nothing else asked); a failure never stops the push
-      if (sent.length === 0) {
+      if (!firstTime || now >= slotStartsAt(today, firstTime)) continue;
+      const openAt = bookingOpensAt(today, opensAt);
+      // The day's announcement one run before the first opening, so it is ready with the push (once: a published
+      // one is left alone; members see it only from the opening). A failure never stops the push
+      if (!generated && now >= openAt.minus({ minutes: ANNOUNCEMENT_LEAD_MINUTES })) {
+        generated = true;
         await this.announcementsService
           .autoGenerate(today)
           .catch((e: unknown) => this.logger.error(`Announcement: ${String(e)}`));
       }
+      if (now < openAt) continue;
       await this.notifications.enqueueAndProcess('BOOKING_OPEN', `booking-open:${today}:${trainerId}`, {
         localDate: today,
         trainerIds: [trainerId],

@@ -239,8 +239,13 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
     expect(order).toEqual(['ann:2026-10-23', 'booking-open:2026-10-23:t1', 'booking-open:2026-10-23:t2']);
   });
 
-  it('no announcement before any opening', async () => {
-    await runAt(9);
+  it('the announcement is ready one run (15 min) before the opening, with no push yet', async () => {
+    expect(await runAt(9, 45)).toEqual([]);
+    expect(order).toEqual(['ann:2026-10-23']);
+  });
+
+  it('no announcement earlier than that', async () => {
+    await runAt(9, 30);
     expect(autoGenerate).not.toHaveBeenCalled();
   });
 
