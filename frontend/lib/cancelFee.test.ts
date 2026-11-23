@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { feeLabel, feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
+import { cancelWarning, feeLabel, feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
 
 describe("feeWarning (the member's «Скасувати»)", () => {
   it("says nothing when cancelling is free or the preview hasn't come", () => {
@@ -79,6 +79,39 @@ describe("frequentCancelWarning (the member's «Скасувати», from the 3
     expect(frequentCancelWarning({ ...p, cancelNumber: 4, packUntil: null })).toEqual({
       title: "Скасувань за місяць: 4",
       details: ["Плануйте тренування заздалегідь."],
+    });
+  });
+});
+
+describe("cancelWarning (one block in «Скасувати»)", () => {
+  const none = { fee: null, single: false, refundUah: null, cancelNumber: null, packUntil: null };
+
+  it("nothing to warn about", () => {
+    expect(cancelWarning(null, "2026-11-23")).toBeNull();
+    expect(cancelWarning(none, "2026-11-23")).toBeNull();
+  });
+
+  it("a fee only: the fee is the title", () => {
+    expect(cancelWarning({ ...none, fee: "FULL" }, "2026-11-23")).toEqual({
+      title: "Скасування зараз: з пакета спишеться 1 тренування.",
+      details: [],
+    });
+  });
+
+  it("often only: the count is the title", () => {
+    expect(cancelWarning({ ...none, cancelNumber: 4, packUntil: "2026-11-27" }, "2026-11-23")).toEqual({
+      title: "Скасувань за місяць: 4",
+      details: ["Плануйте тренування заздалегідь.", "Пакет діє до 27.11, невикористані тренування згорять."],
+    });
+  });
+
+  it("both: the fee on top, the count and the date under it", () => {
+    expect(cancelWarning({ ...none, fee: "FULL", cancelNumber: 4, packUntil: "2026-11-23" }, "2026-11-23")).toEqual({
+      title: "Скасування зараз: з пакета спишеться 1 тренування.",
+      details: [
+        "Скасувань за місяць: 4. Плануйте тренування заздалегідь.",
+        "Сьогодні останній день пакета, невикористані тренування згорять.",
+      ],
     });
   });
 });

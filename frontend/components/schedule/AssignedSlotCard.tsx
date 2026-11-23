@@ -6,6 +6,8 @@ import { trainingsCount } from "@/lib/plural";
 import { CancellationReasonModal } from "./CancellationReasonModal";
 import { longDay } from "@/lib/dates";
 import { TYPE_LABEL } from "@/lib/trainingTypes";
+import { packageEndingWarning } from "@/lib/endingPackages";
+import { WarnNote } from "@/components/ui/WarnNote";
 
 interface AssignedSlotCardProps {
   slot: AssignedSlotView;
@@ -15,6 +17,8 @@ interface AssignedSlotCardProps {
 // Assigned = already booked; paid from a package on the attendance mark. No package left: «Оплатити» to buy one
 export function AssignedSlotCard({ slot, onMutate }: AssignedSlotCardProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
+  // «Сьогодні останній день пакета» / «Пакет діє до 27.11»: the package ends within 10 days
+  const ending = packageEndingWarning(slot.packageEnding);
 
   return (
     <>
@@ -43,7 +47,10 @@ export function AssignedSlotCard({ slot, onMutate }: AssignedSlotCardProps) {
             {slot.spent ? (
               <p className="text-sm text-body">оплачено</p>
             ) : slot.packageLeft > 0 ? (
-              <p className="text-sm text-body">Залишилось {trainingsCount(slot.packageLeft)}</p>
+              <>
+                <p className="text-sm text-body">Залишилось {trainingsCount(slot.packageLeft)}</p>
+                {ending && <WarnNote title={ending.title}>{ending.details}</WarnNote>}
+              </>
             ) : (
               <Link
                 href={`/purchases?type=${encodeURIComponent(slot.trainingType)}`}

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { api, CancelFeePreview } from "@/lib/api";
-import { feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
+import { cancelWarning } from "@/lib/cancelFee";
 import { Modal } from "@/components/ui/Modal";
 import { WarnNote } from "@/components/ui/WarnNote";
 
@@ -31,9 +31,8 @@ export function CancellationReasonModal({ action, switchTime, slotId, crowded, o
       .catch(() => setFee(null));
   }, [action, slotId]);
 
-  const warning = action === "cancel" ? feeWarning(fee) : null;
-  // From the 3rd cancellation in 30 days of a training a package pays for
-  const often = action === "cancel" ? frequentCancelWarning(fee) : null;
+  // The fee and «Скасувань за місяць: 3» in one block
+  const warning = action === "cancel" ? cancelWarning(fee) : null;
 
   const title = action === "switch" ? `Перенести на ${switchTime}` : "Скасувати запис";
 
@@ -53,15 +52,10 @@ export function CancellationReasonModal({ action, switchTime, slotId, crowded, o
       <h2 id="cancel-reason-title" className="font-geologica font-semibold text-lg text-heading mb-1">
         {title}
       </h2>
-      {often && (
-        <WarnNote title={often.title} className="mb-3">
-          {often.details.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-        </WarnNote>
-      )}
       {warning && (
-        <WarnNote title={`Скасування зараз: ${warning.charAt(0).toLowerCase() + warning.slice(1)}`} className="mb-4" />
+        <WarnNote title={warning.title} className="mb-4">
+          {warning.details.length > 0 && warning.details.map((line) => <p key={line}>{line}</p>)}
+        </WarnNote>
       )}
       {action === "switch" && crowded && <WarnNote title={crowded} className="mb-4" />}
       <p className="text-muted text-sm mb-4">{prompt}</p>

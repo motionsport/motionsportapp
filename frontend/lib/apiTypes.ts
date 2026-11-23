@@ -337,6 +337,8 @@ export interface AssignedSlotView {
   isMyBooking: boolean;
   spent: boolean; // paid from a package (attendance marked)
   packageLeft: number; // trainings left in usable packages of this type
+  // The package that pays for it ends within 10 days (endsInDays 1 = today), else null
+  packageEnding: { validUntil: string; endsInDays: number } | null;
   started: boolean;
 }
 

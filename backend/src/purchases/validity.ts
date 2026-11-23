@@ -58,3 +58,16 @@ export function endsInDays(
     ) + 1;
   return days <= ENDING_SOON_DAYS ? days : null;
 }
+
+// An assigned training's card: the package of its type that pays on that date and ends soon (endsInDays set,
+// trainings left); several: the one ending first. «Сьогодні останній день пакета» / «Пакет діє до 27.11»
+export function packageEnding(
+  pkgs: (PassDates & { trainingType: string; left: number; endsInDays: number | null })[],
+  trainingType: string,
+  date: string,
+): { validUntil: string; endsInDays: number } | null {
+  const ending = pkgs
+    .filter((p) => p.trainingType === trainingType && p.left > 0 && p.endsInDays !== null && passUsableOn(p, date))
+    .sort((a, b) => a.validUntil!.localeCompare(b.validUntil!))[0];
+  return ending ? { validUntil: ending.validUntil!, endsInDays: ending.endsInDays! } : null;
+}

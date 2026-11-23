@@ -23,7 +23,7 @@ import { bookingOpensAt, groupTimeError } from '../trainer-schedule/rules';
 import { loadFreezes } from '../freezes/freeze.store';
 import { frozenOn, plusDays } from '../freezes/rules';
 import { lateCancelledSlotIds } from '../booking/group-booking';
-import { passUsableOn } from '../purchases/validity';
+import { packageEnding, passUsableOn } from '../purchases/validity';
 import { reminderWindow } from './booking-reminder';
 
 // An assigned slot stays visible until it ends; cancelling closes at the start
@@ -352,6 +352,8 @@ export class ScheduleService {
       isMyBooking: mine.some((b) => b.slotId === r.id),
       spent: mine.some((b) => b.slotId === r.id && !!b.spentFrom),
       packageLeft: leftFor(r.trainingType, r.localDate),
+      // «Сьогодні останній день пакета» / «Пакет діє до 27.11» on the card
+      packageEnding: packageEnding(packages, r.trainingType, r.localDate),
       started: now >= slotStartsAt(r.localDate, r.slotTime),
     }));
   }

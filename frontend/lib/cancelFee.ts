@@ -20,6 +20,17 @@ export function frequentCancelWarning(p: CancelFeePreview | null, today = kyivTo
   return { title: `Скасувань за місяць: ${p.cancelNumber}`, details };
 }
 
+// «Скасувати»: one warn block. The fee (what happens now) on top, the cancellation count and the package's end under it
+export function cancelWarning(p: CancelFeePreview | null, today = kyivToday()) {
+  const fee = feeWarning(p);
+  const often = frequentCancelWarning(p, today);
+  if (!fee) return often;
+  const title = `Скасування зараз: ${fee.charAt(0).toLowerCase() + fee.slice(1)}`;
+  if (!often) return { title, details: [] as string[] };
+  const [plan, ...rest] = often.details;
+  return { title, details: [`${often.title}. ${plan}`, ...rest] };
+}
+
 // Trainer's fee tag on a cancellation
 export function feeLabel(fee: NonNullable<Cancellation["fee"]>) {
   if (fee.waived) return "не списано";

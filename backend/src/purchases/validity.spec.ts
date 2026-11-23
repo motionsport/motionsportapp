@@ -1,4 +1,12 @@
-import { activateByFor, cardState, endsInDays, passState, passUsableOn, validUntilFor } from './validity';
+import {
+  activateByFor,
+  cardState,
+  endsInDays,
+  packageEnding,
+  passState,
+  passUsableOn,
+  validUntilFor,
+} from './validity';
 
 describe('Validity — dates', () => {
   it('a month to activate, to the same date (or the month end)', () => {
@@ -78,5 +86,33 @@ describe('Validity — «Пакет скоро закінчиться»', () => 
     expect(endsInDays(pack('2026-11-27', { total: 1 }), '2026-11-19')).toBeNull();
     for (const state of ['waiting', 'used', 'expired', 'burned'] as const)
       expect(endsInDays(pack('2026-11-27', { state }), '2026-11-19')).toBeNull();
+  });
+});
+
+describe('packageEnding (an assigned training card)', () => {
+  const pack = {
+    trainingType: 'personal',
+    left: 6,
+    purchasedOn: '2026-10-23',
+    activateBy: '2027-01-23',
+    activatedOn: '2026-10-23',
+    validUntil: '2026-11-23',
+    endsInDays: 1,
+  };
+
+  it('the package that pays on that date, ending soon', () => {
+    expect(packageEnding([pack], 'personal', '2026-11-23')).toEqual({ validUntil: '2026-11-23', endsInDays: 1 });
+  });
+
+  it('nothing when not ending soon, another type, nothing left, or not usable on that date', () => {
+    expect(packageEnding([{ ...pack, endsInDays: null }], 'personal', '2026-11-23')).toBeNull();
+    expect(packageEnding([pack], 'split', '2026-11-23')).toBeNull();
+    expect(packageEnding([{ ...pack, left: 0 }], 'personal', '2026-11-23')).toBeNull();
+    expect(packageEnding([pack], 'personal', '2026-11-24')).toBeNull();
+  });
+
+  it('several: the one ending first', () => {
+    const later = { ...pack, validUntil: '2026-11-30', endsInDays: 8 };
+    expect(packageEnding([later, pack], 'personal', '2026-11-23')).toEqual({ validUntil: '2026-11-23', endsInDays: 1 });
   });
 });
