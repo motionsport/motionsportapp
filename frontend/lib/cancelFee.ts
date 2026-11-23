@@ -1,5 +1,5 @@
 import type { Cancellation, CancelFeePreview } from "@/lib/api";
-import { ddmm } from "@/lib/dates";
+import { ddmm, kyivToday } from "@/lib/dates";
 
 // Own cancellations in 30 days from which it counts as often: red on «Клієнти», the warning in «Скасувати»
 export const FREQUENT_CANCELLATIONS = 3;
@@ -12,10 +12,11 @@ export function feeWarning(p: CancelFeePreview | null) {
 }
 
 // Member's warning when cancelling often a training a package pays for; the date only once the package started
-export function frequentCancelWarning(p: CancelFeePreview | null) {
+export function frequentCancelWarning(p: CancelFeePreview | null, today = kyivToday()) {
   if (!p?.cancelNumber || p.cancelNumber < FREQUENT_CANCELLATIONS) return null;
   const details = ["Плануйте тренування заздалегідь."];
-  if (p.packUntil) details.push(`Пакет діє до ${ddmm(p.packUntil)}, невикористані тренування згорять.`);
+  if (p.packUntil === today) details.push("Сьогодні останній день пакета, невикористані тренування згорять.");
+  else if (p.packUntil) details.push(`Пакет діє до ${ddmm(p.packUntil)}, невикористані тренування згорять.`);
   return { title: `Скасувань за місяць: ${p.cancelNumber}`, details };
 }
 
