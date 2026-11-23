@@ -1,6 +1,6 @@
 import { sql, type SQL } from 'drizzle-orm';
 
-// The trainer's «Клієнти» counter and the member's «Це вже 3-тє скасування»: one rule for both
+// The trainer's «Клієнти» counter and the member's «Скасувань за місяць: 3»: one rule for both
 export const CANCELLATION_STATS_DAYS = 30;
 
 // A member's own cancellations since `since`: a reason written, moves 19:00 ↔ 20:00 left out (system

@@ -270,7 +270,7 @@ export interface CancelFeePreview {
   fee: "FULL" | "HALF" | null;
   single: boolean;
   refundUah: number | null;
-  // From the 3rd own cancellation in 30 days of a training a package pays for: «Це вже 3-тє скасування»
+  // From the 3rd own cancellation in 30 days of a training a package pays for: «Скасувань за місяць: 3»
   cancelNumber: number | null;
   // That package's end, once started
   packUntil: string | null;

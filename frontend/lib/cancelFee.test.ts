@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { feeLabel, feeWarning, frequentCancelWarning, ordinal } from "@/lib/cancelFee";
+import { feeLabel, feeWarning, frequentCancelWarning } from "@/lib/cancelFee";
 
 describe("feeWarning (the member's «Скасувати»)", () => {
   it("says nothing when cancelling is free or the preview hasn't come", () => {
@@ -63,35 +63,14 @@ describe("frequentCancelWarning (the member's «Скасувати», from the 3
 
   it("a started package: the number and its end date", () => {
     expect(frequentCancelWarning({ ...p, cancelNumber: 3, packUntil: "2026-11-27" })).toEqual([
-      "Це вже 3-тє скасування за місяць. Плануйте тренування заздалегідь.",
+      "Скасувань за місяць: 3. Плануйте тренування заздалегідь.",
       "Пакет діє до 27.11, невикористані тренування згорять.",
     ]);
   });
 
   it("a package not started yet: the number only", () => {
     expect(frequentCancelWarning({ ...p, cancelNumber: 4, packUntil: null })).toEqual([
-      "Це вже 4-те скасування за місяць. Плануйте тренування заздалегідь.",
+      "Скасувань за місяць: 4. Плануйте тренування заздалегідь.",
     ]);
-  });
-});
-
-describe("ordinal", () => {
-  it("Ukrainian neuter endings", () => {
-    const cases: [number, string][] = [
-      [3, "3-тє"],
-      [4, "4-те"],
-      [5, "5-те"],
-      [7, "7-ме"],
-      [8, "8-ме"],
-      [13, "13-те"],
-      [17, "17-те"],
-      [23, "23-тє"],
-      [27, "27-ме"],
-      [21, "21-ше"],
-      [22, "22-ге"],
-      [12, "12-те"],
-      [40, "40-ве"],
-    ];
-    for (const [n, text] of cases) expect(ordinal(n)).toBe(text);
   });
 });

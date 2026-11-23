@@ -299,7 +299,7 @@ export class BookingService {
       // A single training burns; a pass loses one
       single: payer?.total === 1,
       refundUah: fee === 'HALF' && payer ? halfBack(payer.amountUah) : null,
-      // «Це вже 3-тє скасування за місяць»: counted like the trainer's «Клієнти»
+      // «Скасувань за місяць: 3»: counted like the trainer's «Клієнти»
       ...frequentCancel(payer, await this.recentCancellations(memberId)),
     };
   }

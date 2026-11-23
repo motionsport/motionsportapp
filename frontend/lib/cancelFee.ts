@@ -11,23 +11,10 @@ export function feeWarning(p: CancelFeePreview | null) {
   return p.single ? "Тренування згорить, гроші не повертаються." : "З пакета спишеться 1 тренування.";
 }
 
-// «3-тє», «4-те», «7-ме», «21-ше», «22-ге», «40-ве»: the neuter ordinal (скасування)
-export function ordinal(n: number) {
-  const tens = n % 100;
-  const last = n % 10;
-  if (tens >= 11 && tens <= 19) return `${n}-те`;
-  if (tens === 40) return `${n}-ве`;
-  if (last === 1) return `${n}-ше`;
-  if (last === 2) return `${n}-ге`;
-  if (last === 3) return `${n}-тє`;
-  if (last === 7 || last === 8) return `${n}-ме`;
-  return `${n}-те`;
-}
-
 // Member's warning when cancelling often a training a package pays for; the date only once the package started
 export function frequentCancelWarning(p: CancelFeePreview | null) {
   if (!p?.cancelNumber || p.cancelNumber < FREQUENT_CANCELLATIONS) return null;
-  const lines = [`Це вже ${ordinal(p.cancelNumber)} скасування за місяць. Плануйте тренування заздалегідь.`];
+  const lines = [`Скасувань за місяць: ${p.cancelNumber}. Плануйте тренування заздалегідь.`];
   if (p.packUntil) lines.push(`Пакет діє до ${ddmm(p.packUntil)}, невикористані тренування згорять.`);
   return lines;
 }
