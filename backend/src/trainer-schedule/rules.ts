@@ -24,11 +24,13 @@ export const LEGACY_DEFAULT: TrainerSchedule = {
 };
 
 const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
-const onGrid = (time: string) => /^\d{2}:\d{2}$/.test(time) && minutes(time) % 15 === 0 && minutes(time) < 24 * 60;
+const validTime = (time: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+// The booking opening only: the booking-open push runs every 15 minutes
+const onGrid = (time: string) => validTime(time) && minutes(time) % 15 === 0;
 
 // Shared by the schedule page and the calendar
 export function groupTimeError(slotTime: string, sameDayTimes: string[]): string | null {
-  if (!onGrid(slotTime)) return API_ERRORS.TIME_GRID;
+  if (!validTime(slotTime)) return API_ERRORS.TIME_INVALID;
   if (slotTime < GROUP_EARLIEST || slotTime > GROUP_LATEST) return API_ERRORS.GROUP_HOURS;
   if (sameDayTimes.some((t) => Math.abs(minutes(t) - minutes(slotTime)) < GROUP_MIN_GAP_MINUTES))
     return API_ERRORS.GROUP_GAP;

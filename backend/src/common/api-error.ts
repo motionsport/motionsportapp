@@ -33,6 +33,7 @@ export const API_ERRORS = {
   GROUP_HOURS: 'Group trainings are from 06:00 to 21:00',
   GROUP_GAP: 'Group trainings must be at least an hour apart',
   TIME_GRID: 'Time must be in 15-minute steps',
+  TIME_INVALID: 'Invalid time',
   TIME_PAST: 'Training time is in the past',
   OPENS_AFTER_TRAINING: 'Booking must open before the first training',
   ATTENDANCE_MARKED: 'Attendance already marked',

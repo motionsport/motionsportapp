@@ -18,7 +18,9 @@ const WEEKDAYS = [
   { n: 7, short: "Нд" },
 ];
 
-const TIME_RE = /^([01]\d|2[0-3]):(00|15|30|45)$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+// The booking opening only: the booking-open push runs every 15 minutes
+const OPENS_RE = /^([01]\d|2[0-3]):(00|15|30|45)$/;
 const TIME_FIELD =
   "input-field border rounded-lg px-3 py-2 text-sm focus:outline-none block min-w-0 appearance-none [color-scheme:dark] [&::-webkit-date-and-time-value]:text-left";
 
@@ -82,7 +84,7 @@ export default function GroupSchedulePage() {
 
   const addTime = (weekday: number) => {
     if (!schedule) return;
-    if (!TIME_RE.test(draft)) return setError("Час кроком 15 хвилин, наприклад 18:30");
+    if (!TIME_RE.test(draft)) return setError("Вкажіть час, наприклад 18:20");
     if (!timesOf(weekday).includes(draft)) {
       change({ ...schedule, times: [...schedule.times, { weekday, slotTime: draft }] });
     }
@@ -100,8 +102,8 @@ export default function GroupSchedulePage() {
 
   const save = async () => {
     if (!schedule) return;
-    if (!TIME_RE.test(schedule.bookingOpensAt))
-      return setError("Вкажіть, о котрій відкривається запис, наприклад 14:00");
+    if (!OPENS_RE.test(schedule.bookingOpensAt))
+      return setError("Запис відкривається о :00, :15, :30 або :45, наприклад 14:00 чи 10:15");
     setSaving(true);
     setError("");
     try {
@@ -159,7 +161,6 @@ export default function GroupSchedulePage() {
                         <input
                           autoFocus
                           type="time"
-                          step={900}
                           aria-label={`Новий час, ${short}`}
                           value={draft}
                           onChange={(e) => setDraft(e.target.value)}

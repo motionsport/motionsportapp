@@ -5,13 +5,8 @@ import { errorText } from "@/lib/apiErrors";
 export const TYPES: TrainingType[] = ["group", "personal", "split"];
 // Member pickers per type: personal exactly 1, split 1 required + 2 optional
 const MEMBER_FIELDS: Record<TrainingType, number> = { group: 0, personal: 1, split: 3 };
-export const TIME_RE = /^([01]\d|2[0-3]):(00|15|30|45)$/;
-const ANY_MINUTE_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-// Group: on the 15-minute grid (the booking-open push runs every 15 minutes); personal / split: any minute
-export function timeOk(time: string, assigned: boolean) {
-  return (assigned ? ANY_MINUTE_RE : TIME_RE).test(time);
-}
+// Any minute (18:20); only the booking opening keeps 15-minute steps («Розклад групових»)
+export const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const FIELD_CLASS = "input-field w-full border rounded-lg px-4 py-3 text-sm focus:outline-none";
 
 // Backend numbering: 1 = Mon … 7 = Sun

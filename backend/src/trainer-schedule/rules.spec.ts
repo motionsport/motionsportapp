@@ -10,9 +10,10 @@ describe('Trainer schedule rules', () => {
     expect(groupTimeError('21:00', [])).toBeNull();
   });
 
-  it('times go in 15-minute steps', () => {
-    expect(groupTimeError('19:10', [])).toBe('Time must be in 15-minute steps');
-    expect(groupTimeError('7:00', [])).toBe('Time must be in 15-minute steps');
+  it('a group training may start at any minute, a malformed time is refused', () => {
+    expect(groupTimeError('19:10', [])).toBeNull();
+    expect(groupTimeError('7:00', [])).toBe('Invalid time');
+    expect(groupTimeError('19:60', [])).toBe('Invalid time');
   });
 
   it('two group trainings of a day are at least an hour apart', () => {
