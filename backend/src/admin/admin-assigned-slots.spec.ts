@@ -108,14 +108,17 @@ async function errorsOf(cls: any, body: object) {
 describe('Assigned slots — DTO validation', () => {
   const valid = { slotTime: '18:15', trainingType: 'split', memberIds: [M1, M2] };
 
-  it('accepts any time in 15-minute steps', async () => {
+  it('accepts any minute (no 15-minute steps, unlike group trainings)', async () => {
     expect(await errorsOf(CreateAssignedSlotDto, valid)).toHaveLength(0);
     expect(await errorsOf(CreateAssignedSlotDto, { ...valid, slotTime: '07:45' })).toHaveLength(0);
+    expect(await errorsOf(CreateAssignedSlotDto, { ...valid, slotTime: '18:10' })).toHaveLength(0);
+    expect(await errorsOf(CreateAssignedSlotDto, { ...valid, slotTime: '09:07' })).toHaveLength(0);
   });
 
-  it('rejects other minutes and malformed times', async () => {
-    expect(await errorsOf(CreateAssignedSlotDto, { ...valid, slotTime: '18:10' })).not.toHaveLength(0);
+  it('rejects malformed times', async () => {
+    expect(await errorsOf(CreateAssignedSlotDto, { ...valid, slotTime: '18:60' })).not.toHaveLength(0);
     expect(await errorsOf(CreateAssignedSlotDto, { ...valid, slotTime: '24:00' })).not.toHaveLength(0);
+    expect(await errorsOf(CreateAssignedSlotDto, { ...valid, slotTime: '8:30' })).not.toHaveLength(0);
   });
 
   it('rejects group as an assigned slot type', async () => {

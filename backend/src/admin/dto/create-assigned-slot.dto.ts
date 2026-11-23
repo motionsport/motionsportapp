@@ -3,7 +3,7 @@ import { ASSIGNED_TYPES } from '../../schedule/training-types';
 import { SlotMembersDto } from './update-slot-members.dto';
 
 export class CreateAssignedSlotDto extends SlotMembersDto {
-  @Matches(/^([01]\d|2[0-3]):(00|15|30|45)$/)
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   slotTime: string;
 
   @IsIn(ASSIGNED_TYPES)

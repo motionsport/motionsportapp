@@ -6,7 +6,7 @@ import { errorText } from "@/lib/apiErrors";
 import { longDay } from "@/lib/dates";
 import { Modal } from "@/components/ui/Modal";
 import { MemberPickers } from "./MemberPickers";
-import { FIELD_CLASS, TIME_RE, TYPES, fieldsFor, useSave, weekdayOf } from "./slotForm";
+import { FIELD_CLASS, TIME_RE, TYPES, fieldsFor, timeOk, useSave, weekdayOf } from "./slotForm";
 
 // Adds one training on the clicked day; click the day again for another
 export function AddSlotModal({
@@ -43,7 +43,8 @@ export function AddSlotModal({
   };
 
   const handleAdd = () => {
-    if (!TIME_RE.test(time)) return setError("Вкажіть час з кроком 15 хвилин, наприклад 18:30");
+    if (!timeOk(time, assigned))
+      return setError(assigned ? "Вкажіть час, наприклад 18:20" : "Вкажіть час з кроком 15 хвилин, наприклад 18:30");
     if (selectedType === "group") {
       if (!weekly) return run(() => api.upsertGroupSlot(date, time), "Помилка збереження. Спробуйте ще раз.");
       return addWeekly();
@@ -127,7 +128,7 @@ export function AddSlotModal({
         <input
           id="slot-time"
           type="time"
-          step={900}
+          step={assigned ? 60 : 900}
           value={time}
           onChange={(e) => setTime(e.target.value)}
           // iOS Safari ignores w-full on a time input without these
