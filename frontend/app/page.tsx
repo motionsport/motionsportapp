@@ -15,21 +15,13 @@ import { errorText } from "@/lib/apiErrors";
 import { ddmm, longDay } from "@/lib/dates";
 import BookingReminderBanner from "./BookingReminderBanner";
 import EndingPackagesBanner from "./EndingPackagesBanner";
-
-// No flag: show the landing without calling the API (avoids a 401 in the console)
-function readAuthFlag(): boolean {
-  try {
-    return localStorage.getItem("mg_authed") === "1";
-  } catch {
-    return true;
-  }
-}
+import { forgetSignIn, rememberedRole, rememberedSignIn, teamHomeOnStart } from "@/lib/authFlag";
 
 export default function SchedulePage() {
   const router = useRouter();
   const [schedule, setSchedule] = useState<ScheduleNext | null>(null);
   // null on the server and during hydration
-  const hasFlag = useSyncExternalStore<boolean | null>(noopSubscribe, readAuthFlag, () => null);
+  const hasFlag = useSyncExternalStore<boolean | null>(noopSubscribe, rememberedSignIn, () => null);
   // false = session expired
   const [sessionOk, setAuthed] = useState<boolean | null>(null);
   const authed = hasFlag === false ? false : sessionOk;
@@ -60,9 +52,7 @@ export default function SchedulePage() {
         throw err;
       }
       if (statusOf(err) === 401 && !authedRef.current) {
-        try {
-          localStorage.removeItem("mg_authed");
-        } catch {}
+        forgetSignIn();
         setAuthed(false);
         setLoading(false);
         throw err;
@@ -88,6 +78,12 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (hasFlag !== true) return;
+    // A trainer or the owner: straight home, no schedule request (it would only answer 403)
+    const teamHome = teamHomeOnStart(rememberedRole());
+    if (teamHome) {
+      router.replace(teamHome);
+      return;
+    }
 
     pollingRef.current = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSchedule is async: state is set after the await, not synchronously
@@ -111,7 +107,7 @@ export default function SchedulePage() {
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [hasFlag, fetchSchedule, startPolling, stopPolling]);
+  }, [hasFlag, fetchSchedule, startPolling, stopPolling, router]);
 
   const handleMutate = async (fn: () => Promise<unknown>) => {
     setMutateError("");

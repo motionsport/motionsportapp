@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
+import { rememberSignIn } from "@/lib/authFlag";
 
 const FIELD = "input-field w-full border rounded-lg px-4 py-3 text-sm focus:outline-none";
 const MIN_PASSWORD = 10;
@@ -36,9 +37,7 @@ export function TrainerJoinForm({ token }: { token: string }) {
     setLoading(true);
     try {
       await api.registerTrainer(token, username, password);
-      try {
-        localStorage.setItem("mg_authed", "1");
-      } catch {}
+      rememberSignIn("admin");
       router.push("/admin");
     } catch (err) {
       const status = statusOf(err);

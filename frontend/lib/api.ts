@@ -1,4 +1,5 @@
 import type { TeamRole } from "@/lib/loginRedirect";
+import { forgetSignIn } from "./authFlag";
 import type {
   AdminMember,
   AdminSchedule,
@@ -105,12 +106,10 @@ export const api = {
 
   login: (memberCode: string, pin: string) => post<LoginResponse>("/auth/member/login", { memberCode, pin }),
 
-  // Clears mg_authed even if the request fails, so `/` won't call the API with a dead session.
+  // Forgets the sign-in (mg_authed, mg_role) even if the request fails, so `/` won't call the API with a dead session.
   // Unsubscribes push on the server first, while the session still says whose it is; the browser keeps it.
   logout: async () => {
-    try {
-      localStorage.removeItem("mg_authed");
-    } catch {}
+    forgetSignIn();
     const endpoint = await currentPushEndpoint();
     // Best effort: must not block the logout
     if (endpoint) await api.unsubscribePush(endpoint).catch(() => {});

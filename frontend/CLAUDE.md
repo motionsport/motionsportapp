@@ -14,4 +14,4 @@ Key files:
 
 Page container (`max-w-xl`, `px-5`) is defined once in `app/layout.tsx`. `PageLayout variant="top"` adds the bottom padding (`3rem` + the iPhone safe area); centered pages have none. Pages return content directly without wrapper `<main>` tags.
 
-Auth state: `mg_authed` key in `localStorage` — set on login, cleared on logout or 401. Used on `/` to skip the API call for unauthenticated users (avoids 401 in console).
+Auth state: `mg_authed` + `mg_role` in `localStorage`, only through `lib/authFlag.ts` (`rememberSignIn(role)` on login, register, PIN recovery, trainer sign-up and when `toAdminLogin` learns the role from `/auth/me`; `forgetSignIn()` on logout / 401). `/` skips the API when the flag is absent (no 401 in the console for visitors) and sends a remembered trainer or owner straight home (`teamHomeOnStart`, no 403 from `/schedule/next`). Only a hint: the session cookie decides, a wrong hint ends on a 401 / 403 that `toAdminLogin` corrects

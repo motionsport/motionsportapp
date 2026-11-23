@@ -2,10 +2,11 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, statusOf } from "@/lib/api";
+import { api, statusOf, type Role } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
 import { homeFor } from "@/lib/loginRedirect";
+import { rememberSignIn } from "@/lib/authFlag";
 
 interface FieldConfig {
   label: string;
@@ -23,8 +24,8 @@ interface VariantConfig {
   footer?: ReactNode;
   login: FieldConfig;
   secret: FieldConfig;
-  // Resolves to where to go next
-  submit: (login: string, secret: string) => Promise<string>;
+  // Resolves to whose session it is
+  submit: (login: string, secret: string) => Promise<Role>;
   invalidCredentials: string;
 }
 
@@ -60,7 +61,7 @@ const VARIANTS: Record<"member" | "admin", VariantConfig> = {
       maxLength: 6,
       normalize: (v) => v.replace(/\D/g, "").slice(0, 6),
     },
-    submit: (login, secret) => api.login(login.trim().toUpperCase(), secret).then(() => "/"),
+    submit: (login, secret) => api.login(login.trim().toUpperCase(), secret).then(() => "member" as const),
     invalidCredentials: "Невірний код або PIN.",
   },
   // Trainers and the owner: a username, or the owner's email
@@ -78,7 +79,7 @@ const VARIANTS: Record<"member" | "admin", VariantConfig> = {
       autoComplete: "current-password",
       placeholder: "••••••••",
     },
-    submit: (login, secret) => api.adminLogin(login.trim(), secret).then((res) => homeFor(res.role)),
+    submit: (login, secret) => api.adminLogin(login.trim(), secret).then((res) => res.role),
     invalidCredentials: "Невірний логін або пароль.",
   },
 };
@@ -115,11 +116,9 @@ export function LoginForm({ variant }: { variant: "member" | "admin" }) {
     setError("");
     setLoading(true);
     try {
-      const next = await config.submit(login, secret);
-      try {
-        localStorage.setItem("mg_authed", "1");
-      } catch {}
-      router.push(next);
+      const role = await config.submit(login, secret);
+      rememberSignIn(role);
+      router.push(homeFor(role));
     } catch (err: unknown) {
       const status = statusOf(err);
       if (status === 401) {
