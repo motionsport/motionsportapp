@@ -55,12 +55,9 @@ describe('InternalCronController — cron secret', () => {
 
 describe('InternalCronController — routes', () => {
   // Vercel Cron calls GET; a POST route would 404 and the job would silently never run
-  it.each(['bookingOpen', 'generateAnnouncement', 'autoConfirmAttendance', 'expirePayments'] as const)(
-    '%s is a GET route',
-    (handler) => {
-      expect(Reflect.getMetadata(METHOD_METADATA, InternalCronController.prototype[handler])).toBe(RequestMethod.GET);
-    },
-  );
+  it.each(['bookingOpen', 'autoConfirmAttendance', 'expirePayments'] as const)('%s is a GET route', (handler) => {
+    expect(Reflect.getMetadata(METHOD_METADATA, InternalCronController.prototype[handler])).toBe(RequestMethod.GET);
+  });
 });
 
 describe('InternalCronController — 22:00 auto-confirm', () => {
@@ -174,6 +171,15 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
     process.env = { ...env };
   });
 
+  // The day's announcement, generated with the first opening; `order` records it next to the pushes
+  let order: string[] = [];
+  const autoGenerate = jest.fn();
+  let generationFails = false;
+  beforeEach(() => {
+    autoGenerate.mockReset();
+    generationFails = false;
+  });
+
   // t1 opens at 10:00 (first group 18:00) and is the first trainer; t2 opens at 16:00 (first group 19:00)
   async function runAt(hour: number, minute = 5, times?: { trainerId: string; slotTime: string }[]) {
     process.env.NODE_ENV = 'development';
@@ -196,9 +202,23 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
       return chain;
     }
     const db: any = { select: () => link() };
-    const notifications = { enqueueAndProcess: jest.fn().mockResolvedValue(undefined) };
+    order = [];
+    const notifications = {
+      enqueueAndProcess: jest.fn((...args: [string, string, unknown]) => {
+        order.push(args[1]);
+        return Promise.resolve();
+      }),
+    };
+    const announcements = {
+      autoGenerate: autoGenerate.mockImplementation(
+        (d: string) => (
+          order.push(`ann:${d}`),
+          generationFails ? Promise.reject(new Error('gemini down')) : Promise.resolve()
+        ),
+      ),
+    };
     const clock = { now: () => DateTime.fromISO('2026-10-23T00:00:00', { zone: 'Europe/Kyiv' }).set({ hour, minute }) };
-    const cron = new CronService({ db } as any, notifications as any, {} as any, clock, {} as any);
+    const cron = new CronService({ db } as any, notifications as any, announcements as any, clock, {} as any);
     const controller = new InternalCronController(cron, {} as any);
     await controller.bookingOpen(undefined as any);
     return notifications.enqueueAndProcess.mock.calls;
@@ -212,6 +232,21 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
         { localDate: '2026-10-23', trainerIds: ['t1'], includeUnassigned: true },
       ],
     ]);
+  });
+
+  it('the announcement is generated once, before the first push', async () => {
+    await runAt(16);
+    expect(order).toEqual(['ann:2026-10-23', 'booking-open:2026-10-23:t1', 'booking-open:2026-10-23:t2']);
+  });
+
+  it('no announcement before any opening', async () => {
+    await runAt(9);
+    expect(autoGenerate).not.toHaveBeenCalled();
+  });
+
+  it('a failed announcement still sends the push', async () => {
+    generationFails = true;
+    expect((await runAt(10)).map((c) => c[1])).toEqual(['booking-open:2026-10-23:t1']);
   });
 
   it('at 16:05 both (t1 again is dropped by its dedupe key)', async () => {

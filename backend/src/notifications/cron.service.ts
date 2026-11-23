@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { NotificationService } from './notification.service';
@@ -15,6 +15,8 @@ import { trainingDayOn } from '../schedule/training-day.store';
 // Jobs behind /internal/cron/*; InternalCronController checks the secret
 @Injectable()
 export class CronService {
+  private readonly logger = new Logger(CronService.name);
+
   constructor(
     private readonly database: DatabaseService,
     private readonly notifications: NotificationService,
@@ -49,6 +51,12 @@ export class CronService {
         .map((t) => t.slotTime)
         .sort()[0];
       if (!firstTime || now < bookingOpensAt(today, opensAt) || now >= slotStartsAt(today, firstTime)) continue;
+      // The day's announcement with the first opening (once: done = published, nothing else asked); a failure never stops the push
+      if (sent.length === 0) {
+        await this.announcementsService
+          .autoGenerate(today)
+          .catch((e: unknown) => this.logger.error(`Announcement: ${String(e)}`));
+      }
       await this.notifications.enqueueAndProcess('BOOKING_OPEN', `booking-open:${today}:${trainerId}`, {
         localDate: today,
         trainerIds: [trainerId],
@@ -59,23 +67,6 @@ export class CronService {
     }
 
     return { ok: true, localDate: today, trainerIds: sent };
-  }
-
-  async generateAnnouncement() {
-    const nowAnn = this.clock.now();
-    const todayAnn = nowAnn.toISODate()!;
-
-    const day = await trainingDayOn(this.database.db, todayAnn);
-
-    if (!day || day.status !== 'SCHEDULED') {
-      return { ok: true, skipped: 'no scheduled day today' };
-    }
-    if ((await this.groupTrainersToday(day.id)).length === 0) {
-      return { ok: true, skipped: 'no group trainings today' };
-    }
-
-    await this.announcementsService.autoGenerate(todayAnn);
-    return { ok: true, localDate: todayAnn };
   }
 
   // 22:00 Kyiv (23:00 in summer): marks unmarked bookings and guests of finished trainings PRESENT

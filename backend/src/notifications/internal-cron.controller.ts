@@ -18,12 +18,6 @@ export class InternalCronController {
     return this.cron.bookingOpen();
   }
 
-  @Get('cron/generate-announcement')
-  async generateAnnouncement(@Headers('authorization') auth: string) {
-    this.verifyCronSecret(auth);
-    return this.cron.generateAnnouncement();
-  }
-
   @Get('cron/auto-confirm-attendance')
   async autoConfirmAttendance(@Headers('authorization') auth: string) {
     this.verifyCronSecret(auth);
