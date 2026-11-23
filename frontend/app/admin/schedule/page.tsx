@@ -6,6 +6,7 @@ import { AdminMenu } from "@/components/admin/AdminMenu";
 import { errorText } from "@/lib/apiErrors";
 import { trainingsCount } from "@/lib/plural";
 import { useAdminData } from "@/lib/useAdminData";
+import { opensAtError } from "./opensAt";
 
 // Backend numbering: 1 = Mon … 7 = Sun
 const WEEKDAYS = [
@@ -19,8 +20,6 @@ const WEEKDAYS = [
 ];
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-// The booking opening only: the booking-open push runs every 15 minutes
-const OPENS_RE = /^([01]\d|2[0-3]):(00|15|30|45)$/;
 const TIME_FIELD =
   "input-field border rounded-lg px-3 py-2 text-sm focus:outline-none block min-w-0 appearance-none [color-scheme:dark] [&::-webkit-date-and-time-value]:text-left";
 
@@ -102,8 +101,8 @@ export default function GroupSchedulePage() {
 
   const save = async () => {
     if (!schedule) return;
-    if (!OPENS_RE.test(schedule.bookingOpensAt))
-      return setError("Запис відкривається о :00, :15, :30 або :45, наприклад 14:00 чи 10:15");
+    const opensError = opensAtError(schedule.bookingOpensAt);
+    if (opensError) return setError(opensError);
     setSaving(true);
     setError("");
     try {
