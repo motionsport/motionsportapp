@@ -11,11 +11,14 @@ export function feeWarning(p: CancelFeePreview | null) {
   return p.single ? "Тренування згорить, гроші не повертаються." : "З пакета спишеться 1 тренування.";
 }
 
-// «3-тє», «4-те», «7-ме»: the neuter ordinal (скасування)
+// «3-тє», «4-те», «7-ме», «21-ше», «22-ге», «40-ве»: the neuter ordinal (скасування)
 export function ordinal(n: number) {
   const tens = n % 100;
   const last = n % 10;
   if (tens >= 11 && tens <= 19) return `${n}-те`;
+  if (tens === 40) return `${n}-ве`;
+  if (last === 1) return `${n}-ше`;
+  if (last === 2) return `${n}-ге`;
   if (last === 3) return `${n}-тє`;
   if (last === 7 || last === 8) return `${n}-ме`;
   return `${n}-те`;
