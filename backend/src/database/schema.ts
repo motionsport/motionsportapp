@@ -504,8 +504,10 @@ export const packageSpends = pgTable(
   ],
 );
 
-// 'HH:MM' on the 15-minute grid
+// 'HH:MM' on the 15-minute grid: the booking opening only (the booking-open push runs every 15 minutes)
 const QUARTER_HOUR = "'^([01][0-9]|2[0-3]):(00|15|30|45)$'";
+// 'HH:MM', any minute: training times
+const ANY_MINUTE = "'^([01][0-9]|2[0-3]):[0-5][0-9]$'";
 
 // Weekly group schedule. No row: the first trainer gets LEGACY_DEFAULT, others an empty one (`loadTrainerSchedule`)
 export const trainerSchedules = pgTable(
@@ -536,7 +538,7 @@ export const trainerScheduleTimes = pgTable(
   (table) => [
     primaryKey({ columns: [table.trainerId, table.weekday, table.slotTime] }),
     check('trainer_schedule_times_weekday_check', sql`weekday between 1 and 7`),
-    check('trainer_schedule_times_slot_time_check', sql.raw(`slot_time ~ ${QUARTER_HOUR}`)),
+    check('trainer_schedule_times_slot_time_check', sql.raw(`slot_time ~ ${ANY_MINUTE}`)),
   ],
 );
 
