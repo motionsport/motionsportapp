@@ -105,12 +105,23 @@ describe("cancelWarning (one block in «Скасувати»)", () => {
     });
   });
 
-  it("both: the fee on top, the count and the date under it", () => {
+  it("the package's last day: no fee line (what's left burns tonight anyway)", () => {
     expect(cancelWarning({ ...none, fee: "FULL", cancelNumber: 4, packUntil: "2026-11-23" }, "2026-11-23")).toEqual({
+      title: "Скасувань за місяць: 4",
+      details: ["Плануйте тренування заздалегідь.", "Сьогодні останній день пакета, невикористані тренування згорять."],
+    });
+    expect(cancelWarning({ ...none, fee: "FULL", cancelNumber: 1, packUntil: "2026-11-23" }, "2026-11-23")).toEqual({
+      title: "Сьогодні останній день пакета",
+      details: ["Невикористані тренування згорять."],
+    });
+  });
+
+  it("both: the fee on top, the count and the date under it", () => {
+    expect(cancelWarning({ ...none, fee: "FULL", cancelNumber: 4, packUntil: "2026-11-27" }, "2026-11-23")).toEqual({
       title: "Скасування зараз: з пакета спишеться 1 тренування.",
       details: [
         "Скасувань за місяць: 4. Плануйте тренування заздалегідь.",
-        "Сьогодні останній день пакета, невикористані тренування згорять.",
+        "Пакет діє до 27.11, невикористані тренування згорять.",
       ],
     });
   });

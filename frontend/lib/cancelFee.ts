@@ -21,9 +21,14 @@ export function frequentCancelWarning(p: CancelFeePreview | null, today = kyivTo
 }
 
 // «Скасувати»: one warn block. The fee (what happens now) on top, the cancellation count and the package's end under it
+// On the package's last day the fee says nothing (what's left burns tonight anyway): the package's end instead
 export function cancelWarning(p: CancelFeePreview | null, today = kyivToday()) {
-  const fee = feeWarning(p);
+  const lastDay = !!p?.packUntil && p.packUntil === today;
+  const fee = lastDay ? null : feeWarning(p);
   const often = frequentCancelWarning(p, today);
+  if (!fee && !often && lastDay && p?.fee) {
+    return { title: "Сьогодні останній день пакета", details: ["Невикористані тренування згорять."] };
+  }
   if (!fee) return often;
   const title = `Скасування зараз: ${fee.charAt(0).toLowerCase() + fee.slice(1)}`;
   if (!often) return { title, details: [] as string[] };
