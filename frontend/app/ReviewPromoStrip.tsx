@@ -22,38 +22,19 @@ function GiftIcon() {
   );
 }
 
-// A running strip above the header, edge to edge, for a member with no review discount given;
-// the ✕ hides it in this browser for a week (a cookie). With reduced motion it stands still
+// A strip above the header, edge to edge, for a member with no review discount given; the text and ✕ sit
+// in the page column, so nothing important is at the screen's edges. The ✕ hides it in this browser for a week (a cookie)
 export default function ReviewPromoStrip({ percent }: { percent: number }) {
   const [hidden, setHidden] = useState(promoStripHidden);
   if (hidden) return null;
 
-  const text = `Знижка ${percent}% за відгук у Google: покажіть його тренеру`;
-  // One copy: the text twice, so the strip never runs out on a wide screen
-  const copy = (
-    <span className="flex shrink-0 items-center">
-      {[0, 1].map((i) => (
-        <span key={i} className="flex items-center space-x-2 pr-8">
-          <GiftIcon />
-          <span>{text}</span>
-        </span>
-      ))}
-    </span>
-  );
-
   return (
     <div className="relative left-1/2 w-screen -translate-x-1/2 bg-background border-y border-teal text-accent">
-      <div className="flex items-center">
-        <p className="sr-only">{text}</p>
-        <div
-          aria-hidden="true"
-          className="flex-1 overflow-hidden whitespace-nowrap font-geologica font-bold text-xs uppercase tracking-wide py-2"
-        >
-          <div className="promo-marquee flex w-max">
-            {copy}
-            {copy}
-          </div>
-        </div>
+      <div className="max-w-xl mx-auto flex items-center space-x-1 pl-5 pr-2">
+        <p className="flex-1 flex items-center justify-center space-x-2 py-2 font-geologica font-bold text-xs uppercase tracking-wide text-center">
+          <GiftIcon />
+          <span>Знижка {percent}% за відгук у Google: покажіть його тренеру</span>
+        </p>
         <button
           type="button"
           onClick={() => {
@@ -61,7 +42,7 @@ export default function ReviewPromoStrip({ percent }: { percent: number }) {
             setHidden(true);
           }}
           aria-label="Сховати"
-          className="w-9 h-9 shrink-0 flex items-center justify-center bg-background text-subtle text-xs hover:text-body transition-colors"
+          className="w-9 h-9 shrink-0 flex items-center justify-center text-subtle text-xs hover:text-body transition-colors"
         >
           ✕
         </button>

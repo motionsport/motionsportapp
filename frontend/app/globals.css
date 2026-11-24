@@ -140,22 +140,10 @@ h6 {
   }
 }
 
-/* Review discount strip on the home page: two copies of the text side by side, shifted by one copy */
-@keyframes promo-marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.promo-marquee {
-  animation: promo-marquee 18s linear infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .gym-loader__outer,
   .gym-loader__inner,
-  .gym-loader__center,
-  .promo-marquee {
+  .gym-loader__center {
     animation: none;
   }
 }
