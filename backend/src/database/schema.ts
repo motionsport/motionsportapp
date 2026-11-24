@@ -444,6 +444,7 @@ export const purchaseItems = pgTable('purchase_items', {
   title: text('title').notNull(),
   optionLabel: text('option_label'),
   amountUah: integer('amount_uah').notNull(),
+  discountUah: integer('discount_uah').notNull().default(0),
 });
 
 const ACTIVATE_BY_DEFAULT = sql`(CURRENT_DATE + INTERVAL '3 months')::date`;
@@ -467,6 +468,35 @@ export const clubCards = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index('club_cards_member_id_idx').on(table.memberId)],
+);
+
+// One review discount per member, ever. Held by a PENDING purchase, used by a PAID one (purchase_id)
+// or at the reception / bar (used_via)
+export const reviewDiscounts = pgTable(
+  'review_discounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    memberId: uuid('member_id')
+      .notNull()
+      .unique()
+      .references(() => members.id),
+    code: text('code').notNull().unique(),
+    givenByAdminId: uuid('given_by_admin_id')
+      .notNull()
+      .references(() => admins.id),
+    givenAt: timestamp('given_at', { withTimezone: true }).notNull().defaultNow(),
+    validUntil: date('valid_until').notNull(),
+    purchaseId: uuid('purchase_id').references(() => purchases.id),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    usedVia: text('used_via'),
+    usedByAdminId: uuid('used_by_admin_id').references(() => admins.id),
+    clubCardId: uuid('club_card_id').references(() => clubCards.id),
+    discountUah: integer('discount_uah'),
+  },
+  (table) => [
+    index('review_discounts_purchase_id_idx').on(table.purchaseId),
+    oneOf('review_discounts_used_via_check', 'used_via', ['BAR', 'RECEPTION']),
+  ],
 );
 
 // A trainer service or group pass. Left = total minus spends. The first attendance mark activates it

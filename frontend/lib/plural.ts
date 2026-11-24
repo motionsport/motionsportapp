@@ -10,3 +10,7 @@ export function plural(n: number, forms: [string, string, string]) {
 export function trainingsCount(n: number) {
   return plural(n, ["тренування", "тренування", "тренувань"]);
 }
+
+export function purchasesCount(n: number) {
+  return plural(n, ["покупка", "покупки", "покупок"]);
+}

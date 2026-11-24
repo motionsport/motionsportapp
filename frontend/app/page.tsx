@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, ScheduleNext, statusOf } from "@/lib/api";
+import { api, DiscountView, ScheduleNext, statusOf } from "@/lib/api";
 import { toAdminLogin } from "@/lib/adminAuth";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { SlotCard } from "@/components/schedule/SlotCard";
@@ -15,6 +15,8 @@ import { errorText } from "@/lib/apiErrors";
 import { ddmm, longDay } from "@/lib/dates";
 import BookingReminderBanner from "./BookingReminderBanner";
 import EndingPackagesBanner from "./EndingPackagesBanner";
+import ReviewPromoStrip from "./ReviewPromoStrip";
+import { ReviewDiscountCard } from "@/components/discount/ReviewDiscountCard";
 import { forgetSignIn, rememberedRole, rememberedSignIn, teamHomeOnStart } from "@/lib/authFlag";
 
 export default function SchedulePage() {
@@ -27,6 +29,10 @@ export default function SchedulePage() {
   const authed = hasFlag === false ? false : sessionOk;
   const [loading, setLoading] = useState(true);
   const [mutateError, setMutateError] = useState("");
+  // undefined = not loaded (or failed: nothing shown), null = no review discount given
+  const [reviewDiscount, setReviewDiscount] = useState<{ percent: number; discount: DiscountView | null } | undefined>(
+    undefined,
+  );
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollingRef = useRef(false);
   const fetchRef = useRef<(() => Promise<void>) | null>(null);
@@ -67,6 +73,15 @@ export default function SchedulePage() {
     }
   }, [router]);
 
+  // Not on every poll: after the first load, a booking with a pass and when the tab comes back.
+  // Deliberately ignored on failure: the page just keeps what it shows
+  const reloadDiscount = useCallback(() => {
+    api
+      .getReviewDiscount()
+      .then(setReviewDiscount)
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchRef.current = fetchSchedule;
   }, [fetchSchedule]);
@@ -94,12 +109,16 @@ export default function SchedulePage() {
         setLoading(false);
         // Logout switched this browser's push off on the server; turn it back on
         resyncExistingSubscription();
+        reloadDiscount();
       })
       .catch(() => stopPolling());
 
     const onVisibility = () => {
       if (document.hidden) stopPolling();
-      else startPolling();
+      else {
+        startPolling();
+        if (authedRef.current) reloadDiscount();
+      }
     };
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -107,7 +126,7 @@ export default function SchedulePage() {
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [hasFlag, fetchSchedule, startPolling, stopPolling, router]);
+  }, [hasFlag, fetchSchedule, startPolling, stopPolling, reloadDiscount, router]);
 
   const handleMutate = async (fn: () => Promise<unknown>) => {
     setMutateError("");
@@ -117,6 +136,11 @@ export default function SchedulePage() {
     } catch (err: unknown) {
       setMutateError(errorText(err));
     }
+  };
+
+  const refreshAll = async () => {
+    reloadDiscount();
+    await fetchSchedule();
   };
 
   const handleLogout = async () => {
@@ -182,6 +206,7 @@ export default function SchedulePage() {
       {schedule && (
         <>
           <BookingReminderBanner reminder={schedule.bookingReminder} serverTime={schedule.serverTime} />
+          {reviewDiscount && reviewDiscount.discount === null && <ReviewPromoStrip percent={reviewDiscount.percent} />}
           <h1 className="font-geologica font-semibold text-title sm:text-display text-heading mb-1 uppercase">
             Наступне тренування
           </h1>
@@ -242,7 +267,7 @@ export default function SchedulePage() {
                     bookingOpenAt={schedule.bookingOpenAt}
                     frozen={frozenThatDay}
                     onMutate={handleMutate}
-                    onRefresh={fetchSchedule}
+                    onRefresh={refreshAll}
                   />
                 ))}
               </div>
@@ -258,6 +283,10 @@ export default function SchedulePage() {
                 ))}
               </div>
             </>
+          )}
+
+          {reviewDiscount?.discount && (
+            <ReviewDiscountCard discount={reviewDiscount.discount} percent={reviewDiscount.percent} className="mt-8" />
           )}
 
           {mutateError && (

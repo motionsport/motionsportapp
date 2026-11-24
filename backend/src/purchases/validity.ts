@@ -4,7 +4,7 @@ import { KY_ZONE } from '../schedule/training-types';
 // Club card and package dates: Kyiv YYYY-MM-DD, compared as strings. A month ends on the same date
 // (or the month's last day), inclusive
 
-const plusMonths = (date: string, months: number) =>
+export const plusMonths = (date: string, months: number) =>
   DateTime.fromISO(date, { zone: KY_ZONE }).plus({ months }).toISODate()!;
 
 // Months to activate a club card or start a package; not activated by then: it burns

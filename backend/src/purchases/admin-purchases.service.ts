@@ -22,6 +22,8 @@ import { memberFrozenOn } from '../freezes/freeze.store';
 import { requireVisibleMember, visibleTo } from '../schedule/default-trainer';
 import { purchaseViews } from './purchase-views';
 import { apiError } from '../common/api-error';
+import { discountUahFor, REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
+import { loadDiscount, useDiscountAtReception } from '../review-discounts/discount.store';
 import { MANUAL_METHODS, transferCode } from '../payment/payment-methods';
 
 const MEMBER_PURCHASES_LIMIT = 20;
@@ -203,18 +205,33 @@ export class AdminPurchasesService {
       })),
       packages: await this.entitlements.packagesOf(memberId),
       purchases: views.map((v) => ({ ...v, decidedBy: history.find((h) => h.id === v.id)?.decidedBy ?? null })),
+      reviewDiscountPercent: REVIEW_DISCOUNT_PERCENT,
+      reviewDiscount: await loadDiscount(this.database.db, memberId, this.clock.now().toISODate()!),
     };
   }
 
   // «+ Додати абонемент з рецепції»
-  async addCard(trainerId: string, memberId: string, priceItemId: string, activate: boolean) {
+  async addCard(trainerId: string, memberId: string, priceItemId: string, activate: boolean, applyDiscount = false) {
     await requireVisibleMember(this.database.db, trainerId, memberId);
     await this.database.db.transaction(async (tx) => {
       // Serialises with a concurrent add (finds this card) and a freeze approval
       await lockMember(tx, memberId);
       await this.rejectFrozen(tx, memberId);
       if (await this.entitlements.usableCard(memberId, tx)) throw new ConflictException(apiError('CLUB_CARD_EXISTS'));
-      await this.entitlements.addManualCard(tx, memberId, trainerId, priceItemId, activate);
+      const card = await this.entitlements.addManualCard(tx, memberId, trainerId, priceItemId, activate);
+      if (applyDiscount) {
+        // A refusal throws and rolls the card back
+        const now = this.clock.now();
+        await useDiscountAtReception(
+          tx,
+          memberId,
+          trainerId,
+          card.id,
+          discountUahFor(card.amountUah),
+          now.toISODate()!,
+          now.toJSDate(),
+        );
+      }
     });
     return { ok: true };
   }

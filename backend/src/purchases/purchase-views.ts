@@ -11,7 +11,7 @@ export type PurchaseView = {
   status: string;
   totalUah: number;
   createdAt: string;
-  lines: { section: string; title: string; optionLabel: string | null; amountUah: number }[];
+  lines: { section: string; title: string; optionLabel: string | null; amountUah: number; discountUah: number }[];
 };
 
 export async function purchaseViews(db: Q, ids: string[]): Promise<PurchaseView[]> {
@@ -33,6 +33,7 @@ export async function purchaseViews(db: Q, ids: string[]): Promise<PurchaseView[
       title: purchaseItems.title,
       optionLabel: purchaseItems.optionLabel,
       amountUah: purchaseItems.amountUah,
+      discountUah: purchaseItems.discountUah,
     })
     .from(purchaseItems)
     .innerJoin(priceItems, eq(priceItems.id, purchaseItems.priceItemId))
@@ -45,6 +46,12 @@ export async function purchaseViews(db: Q, ids: string[]): Promise<PurchaseView[
       createdAt: r.createdAt.toISOString(),
       lines: lines
         .filter((l) => l.purchaseId === r.id)
-        .map((l) => ({ section: l.section, title: l.title, optionLabel: l.optionLabel, amountUah: l.amountUah })),
+        .map((l) => ({
+          section: l.section,
+          title: l.title,
+          optionLabel: l.optionLabel,
+          amountUah: l.amountUah,
+          discountUah: l.discountUah,
+        })),
     }));
 }

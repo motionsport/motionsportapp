@@ -5,6 +5,7 @@ import { submitLiqPay } from "@/lib/liqpay";
 import { errorText } from "@/lib/apiErrors";
 import { formatUah, lineName } from "@/lib/prices";
 import { TransferDetails } from "@/components/purchases/TransferDetails";
+import { discountNote } from "@/lib/reviewDiscount";
 
 // `onChanged` reloads the page
 export function PendingPurchase({
@@ -62,6 +63,7 @@ export function PendingPurchase({
         {pending.lines.map((l) => (
           <p key={lineName(l)} className="text-muted text-sm">
             {lineName(l)}
+            {discountNote(l) && <span className="text-accent">, {discountNote(l)}</span>}
           </p>
         ))}
         {pending.method === "CASH" && (

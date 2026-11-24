@@ -78,7 +78,13 @@ export class AdminPurchasesController {
     @Body() dto: AddClubCardDto,
     @CurrentUser() user: SessionUser,
   ) {
-    return this.adminPurchasesService.addCard(user.id, memberId, dto.priceItemId, dto.activate ?? false);
+    return this.adminPurchasesService.addCard(
+      user.id,
+      memberId,
+      dto.priceItemId,
+      dto.activate ?? false,
+      dto.applyDiscount ?? false,
+    );
   }
 
   @Post('members/:memberId/club-cards/:cardId/activate')

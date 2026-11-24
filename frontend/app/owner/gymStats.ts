@@ -1,15 +1,18 @@
-import type { GymStats, Revenue, RevenueByMonth } from "@/lib/api";
+import type { DiscountSummary, GymStats, Revenue, RevenueByMonth } from "@/lib/api";
+import { formatUah } from "@/lib/prices";
 
 export type GymPeriod = "all" | string; // "all" or "YYYY-MM"
 
 export type GymCard = { key: string; title: string; disabled: boolean; revenue: Revenue; present: number | null };
 
-const zero = (): Revenue => ({ clubCards: 0, personal: 0, split: 0, group: 0, total: 0 });
+const zero = (): Revenue => ({ clubCards: 0, personal: 0, split: 0, group: 0, total: 0, discount: 0, discounted: 0 });
 
 function revenueIn(r: RevenueByMonth, period: GymPeriod): Revenue {
   if (period === "all") return r.allTime;
   const m = r.months.find((x) => x.month === period);
-  return m ? { clubCards: m.clubCards, personal: m.personal, split: m.split, group: m.group, total: m.total } : zero();
+  if (!m) return zero();
+  const { clubCards, personal, split, group, total, discount, discounted } = m;
+  return { clubCards, personal, split, group, total, discount, discounted };
 }
 
 function presentIn(p: GymStats["trainers"][number]["present"], period: GymPeriod) {
@@ -23,6 +26,8 @@ function add(a: Revenue, b: Revenue): Revenue {
     split: a.split + b.split,
     group: a.group + b.group,
     total: a.total + b.total,
+    discount: a.discount + b.discount,
+    discounted: a.discounted + b.discounted,
   };
 }
 
@@ -51,11 +56,43 @@ export function gymCards(stats: GymStats, period: GymPeriod): GymCard[] {
   return [gym, ...all];
 }
 
-// Every month any card has data in, for the month stepper
+// Every month any card or the review discounts have data in, for the month stepper
 export function gymMonthsWithData(stats: GymStats): string[] {
   const rows = [
     ...stats.trainers.flatMap((t) => [...t.revenue.months, ...t.present.months]),
     ...stats.unassigned.revenue.months,
+    ...stats.reviewDiscounts.months,
   ];
   return rows.map((r) => r.month);
+}
+
+const noDiscounts = (): DiscountSummary => ({
+  given: 0,
+  bar: 0,
+  reception: 0,
+  receptionUah: 0,
+  purchases: 0,
+  purchasesUah: 0,
+});
+
+// Review discounts of the picked month or all time; zeros for a month without any
+export function discountSummaryIn(stats: GymStats, period: GymPeriod): DiscountSummary {
+  if (period === "all") return stats.reviewDiscounts.allTime;
+  const m = stats.reviewDiscounts.months.find((x) => x.month === period);
+  if (!m) return noDiscounts();
+  const { given, bar, reception, receptionUah, purchases, purchasesUah } = m;
+  return { given, bar, reception, receptionUah, purchases, purchasesUah };
+}
+
+// «Знижки за відгук: видано 12, використано 9 (бар 3, рецепція 1: −70 ₴, покупки 5: −350 ₴)»; only the places
+// used go in brackets; null when nothing was given or used
+export function discountSummaryText(s: DiscountSummary): string | null {
+  const used = s.bar + s.reception + s.purchases;
+  if (s.given === 0 && used === 0) return null;
+  const places = [
+    s.bar > 0 ? `бар ${s.bar}` : null,
+    s.reception > 0 ? `рецепція ${s.reception}: −${formatUah(s.receptionUah)}` : null,
+    s.purchases > 0 ? `покупки ${s.purchases}: −${formatUah(s.purchasesUah)}` : null,
+  ].filter(Boolean);
+  return `Знижки за відгук: видано ${s.given}, використано ${used}${places.length ? ` (${places.join(", ")})` : ""}`;
 }

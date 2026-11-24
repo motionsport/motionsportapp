@@ -28,6 +28,13 @@ export const API_ERRORS = {
   PURCHASE_DECIDED: 'Purchase was already decided',
   NOTHING_TO_FREEZE: 'Nothing to freeze',
   FREEZE_REQUESTED: 'Freeze already requested',
+  // Review discount
+  DISCOUNT_NONE: 'No discount',
+  DISCOUNT_GIVEN: 'Discount already given',
+  DISCOUNT_USED: 'Discount already used',
+  DISCOUNT_HELD: 'Discount is held by a purchase waiting for payment',
+  DISCOUNT_EXPIRED: 'Discount has expired',
+  DISCOUNT_NOT_APPLICABLE: 'Discount does not apply here',
   // Trainer: calendar, weekly schedule, marks, refunds
   TIME_TAKEN: 'Time is already taken',
   GROUP_HOURS: 'Group trainings are from 06:00 to 21:00',

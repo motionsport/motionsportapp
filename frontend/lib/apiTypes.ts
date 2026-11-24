@@ -146,7 +146,8 @@ export interface PurchaseLine {
   section?: PriceSection;
   title: string;
   optionLabel: string | null;
-  amountUah: number;
+  amountUah: number; // what is paid, the review discount already taken off
+  discountUah?: number; // the review discount on this line (0 = none)
 }
 
 export interface Purchase {
@@ -181,6 +182,8 @@ export interface MemberPurchases {
   cards: AdminClubCard[];
   packages: TrainingPackage[];
   purchases: (Purchase & { decidedBy: string | null })[];
+  reviewDiscount: DiscountView | null;
+  reviewDiscountPercent: number;
 }
 
 export interface MyPurchases {
@@ -196,6 +199,22 @@ export interface MyPurchases {
   pending: (Purchase & { transfer: TransferDetails | null }) | null;
   canPayCash: boolean; // has a trainer: cash for anything; without one only a club card alone
   methods: { liqpay: boolean; cash: boolean; transfer: boolean }; // switched on; cash also needs canPayCash
+  reviewDiscount: DiscountView | null;
+  reviewDiscountPercent: number;
+}
+
+// Review discount (5% for a Google review), one per member. held = a PENDING purchase has it
+export type DiscountState = "free" | "held" | "used" | "expired";
+
+export interface DiscountView {
+  code: string; // «MG-5-K7Q2»
+  validUntil: string; // YYYY-MM-DD, the last day
+  givenAt: string;
+  givenBy: string;
+  state: DiscountState;
+  usedAt: string | null;
+  usedVia: "BAR" | "RECEPTION" | "PURCHASE" | null;
+  usedOn: { title: string; discountUah: number } | null;
 }
 
 // until = last frozen day; null until the trainer approves
@@ -236,7 +255,9 @@ export interface Revenue {
   personal: number;
   split: number;
   group: number;
-  total: number;
+  total: number; // money actually received, the review discounts already taken off
+  discount: number; // what the review discounts knocked off
+  discounted: number; // purchase lines with a review discount
 }
 
 export type RevenueByMonth = { allTime: Revenue; months: (Revenue & { month: string })[] }; // months: "2026-10", newest first
@@ -251,6 +272,17 @@ export interface GymStats {
     present: { allTime: number; months: { month: string; present: number }[] }; // people ✓, guests too
   }[];
   unassigned: { revenue: RevenueByMonth };
+  // Given by given_at, used by the day used; a purchase counts once paid
+  reviewDiscounts: { allTime: DiscountSummary; months: ({ month: string } & DiscountSummary)[] };
+}
+
+export interface DiscountSummary {
+  given: number;
+  bar: number;
+  reception: number;
+  receptionUah: number;
+  purchases: number;
+  purchasesUah: number;
 }
 
 export interface TrainerStats {

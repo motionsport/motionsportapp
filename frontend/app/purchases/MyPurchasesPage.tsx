@@ -12,6 +12,7 @@ import { PackageCard, packageTitle } from "./PackageCard";
 import { PendingPurchase } from "./PendingPurchase";
 import { BuyBlock } from "./BuyBlock";
 import { toAdminLogin } from "@/lib/adminAuth";
+import { ReviewDiscountCard } from "@/components/discount/ReviewDiscountCard";
 
 const sectionTitle = "font-geologica font-semibold text-heading uppercase text-xs tracking-wide";
 
@@ -97,6 +98,10 @@ export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
                 {p.state === "expired" ? `згоріли, строк до ${ddmm(p.validUntil)}` : "згоріли (не почато вчасно)"}
               </p>
             ))}
+
+          {data.reviewDiscount && (
+            <ReviewDiscountCard discount={data.reviewDiscount} percent={data.reviewDiscountPercent} />
+          )}
 
           {pending && <PendingPurchase pending={pending} onChanged={load} />}
 

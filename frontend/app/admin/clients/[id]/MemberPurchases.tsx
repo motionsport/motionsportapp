@@ -5,7 +5,10 @@ import { errorText } from "@/lib/apiErrors";
 import { ddmm } from "@/lib/dates";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { formatUah, lineName } from "@/lib/prices";
+import { discountNote, discountPreview } from "@/lib/reviewDiscount";
 import { METHOD_LABEL } from "@/lib/paymentMethods";
+import { DiscountToggle } from "@/components/discount/DiscountToggle";
+import { ReviewDiscountBlock } from "./ReviewDiscountBlock";
 
 type Card = MemberPurchasesData["cards"][number];
 type Pack = MemberPurchasesData["packages"][number];
@@ -62,6 +65,7 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
   const [failed, setFailed] = useState(false);
   const [cardItems, setCardItems] = useState<PriceListItem[] | null>(null);
   const [cardId, setCardId] = useState("");
+  const [applyDiscount, setApplyDiscount] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -107,9 +111,11 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
     setSaving(true);
     setError("");
     try {
-      await api.addClubCard(memberId, cardId, activateNow);
+      const withDiscount = applyDiscount && data?.reviewDiscount?.state === "free";
+      await api.addClubCard(memberId, cardId, activateNow, withDiscount || undefined);
       setCardItems(null);
       setCardId("");
+      setApplyDiscount(false);
       await load();
       onChanged();
     } catch (err) {
@@ -118,6 +124,8 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
           MEMBER_FROZEN: "Клієнт заморожений: додайте абонемент після розморозки",
         }),
       );
+      // The discount may have changed meanwhile (held, used, expired): show its state
+      await load();
     } finally {
       setSaving(false);
     }
@@ -130,6 +138,11 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
       </p>
     );
   if (!data) return <p className="text-muted text-xs">Завантаження...</p>;
+
+  // The client's free review discount off the card picked at the reception
+  const picked = cardItems?.find((i) => i.id === cardId);
+  const canDiscount = data.reviewDiscount?.state === "free";
+  const preview = picked ? discountPreview([picked], data.reviewDiscountPercent) : null;
 
   return (
     <div className="flex flex-col">
@@ -201,11 +214,27 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
             </button>
             <button
               type="button"
-              onClick={() => setCardItems(null)}
+              onClick={() => {
+                setCardItems(null);
+                setApplyDiscount(false);
+              }}
               className="text-subtle text-xs hover:text-body m-1"
             >
               Скасувати
             </button>
+            {canDiscount && data.reviewDiscount && picked && preview && preview.discountUah > 0 && (
+              <div className="w-full m-1">
+                <DiscountToggle
+                  code={data.reviewDiscount.code}
+                  percent={data.reviewDiscountPercent}
+                  applied={applyDiscount}
+                  onChange={setApplyDiscount}
+                  discountUah={preview.discountUah}
+                  payUah={preview.payUah}
+                  payLabel="Клієнт платить на рецепції"
+                />
+              </div>
+            )}
           </div>
         ) : (
           // Only without a current club card (none, expired or burned)
@@ -216,6 +245,16 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
           )
         )}
       </section>
+
+      <div className="py-4 border-t border-line">
+        <ReviewDiscountBlock
+          memberId={memberId}
+          discount={data.reviewDiscount}
+          percent={data.reviewDiscountPercent}
+          headingClass={sectionTitle}
+          onGiven={load}
+        />
+      </div>
 
       <section className="py-4 border-t border-line">
         <h3 className={sectionTitle}>Пакети тренувань</h3>
@@ -241,7 +280,9 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
         {data.purchases.map((p) => (
           <div key={p.id} className="py-1.5 border-b border-line last:border-0">
             <div className="flex justify-between space-x-3">
-              <span className="text-heading">{p.lines.map(lineName).join(" + ")}</span>
+              <span className="text-heading">
+                {p.lines.map((l) => [lineName(l), discountNote(l)].filter(Boolean).join(", ")).join(" + ")}
+              </span>
               <span className="tabular-nums text-heading font-semibold whitespace-nowrap">{formatUah(p.totalUah)}</span>
             </div>
             <p className="text-subtle text-xs">

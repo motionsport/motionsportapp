@@ -468,6 +468,7 @@ export class EntitlementsService {
         title: priceItems.title,
         optionLabel: priceItems.optionLabel,
         durationMonths: priceItems.durationMonths,
+        amountUah: priceItems.amountUah,
       })
       .from(priceItems)
       .where(eq(priceItems.id, priceItemId))
@@ -477,15 +478,19 @@ export class EntitlementsService {
 
     const today = this.today();
     const months = item.durationMonths ?? 0;
-    await db.insert(clubCards).values({
-      memberId,
-      purchaseItemId: null,
-      label: cardLabel(item.title, item.optionLabel),
-      validFrom: activateNow ? today : null,
-      validUntil: activateNow ? validUntilFor(today, months) : null,
-      durationMonths: months,
-      activateBy: activateByFor(today),
-      addedBy: trainerId,
-    });
+    const [card] = await db
+      .insert(clubCards)
+      .values({
+        memberId,
+        purchaseItemId: null,
+        label: cardLabel(item.title, item.optionLabel),
+        validFrom: activateNow ? today : null,
+        validUntil: activateNow ? validUntilFor(today, months) : null,
+        durationMonths: months,
+        activateBy: activateByFor(today),
+        addedBy: trainerId,
+      })
+      .returning({ id: clubCards.id });
+    return { id: card.id, amountUah: item.amountUah };
   }
 }

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api, CashRequest } from "@/lib/api";
 import { formatUah, lineName } from "@/lib/prices";
+import { discountNote } from "@/lib/reviewDiscount";
 
 // Cash or a transfer to the gym's account. Confirming marks the purchase paid; rejecting drops it
 export function CashRequests({ requests, onDecided }: { requests: CashRequest[]; onDecided: () => void }) {
@@ -36,6 +37,7 @@ export function CashRequests({ requests, onDecided }: { requests: CashRequest[];
             {r.lines.map((l) => (
               <div key={lineName(l)} className="text-subtle text-xs mt-1">
                 {l.section === "club_card" ? `Абонемент · ${lineName(l)}` : lineName(l)}
+                {discountNote(l) && <span className="text-accent">, {discountNote(l)}</span>}
               </div>
             ))}
             <button
@@ -45,6 +47,7 @@ export function CashRequests({ requests, onDecided }: { requests: CashRequest[];
               className="btn-primary w-full py-3.5 rounded-lg font-semibold mt-4 transition-colors disabled:opacity-60"
             >
               Отримано {formatUah(r.totalUah)}
+              {r.lines.some((l) => l.discountUah) && <span className="font-normal">, знижка за відгук</span>}
             </button>
             <button
               type="button"

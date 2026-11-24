@@ -29,6 +29,12 @@ export const ERROR_TEXT: Record<string, string> = {
   PURCHASE_DECIDED: "Цю оплату вже підтвердили або відхилили. Оновіть сторінку.",
   NOTHING_TO_FREEZE: "Немає чого заморожувати: абонемента чи тренувань.",
   FREEZE_REQUESTED: "Запит уже надіслано.",
+  DISCOUNT_NONE: "Знижки немає",
+  DISCOUNT_GIVEN: "Знижку вже видано",
+  DISCOUNT_USED: "Знижку вже використано",
+  DISCOUNT_HELD: "Знижку застосовано до покупки, що чекає оплати",
+  DISCOUNT_EXPIRED: "Знижка згоріла",
+  DISCOUNT_NOT_APPLICABLE: "Знижка тут не діє",
   // Trainer: calendar, schedule, marks, refunds
   TIME_TAKEN: "На цей час уже є тренування",
   GROUP_HOURS: "Групові можна ставити з 06:00 до 21:00",

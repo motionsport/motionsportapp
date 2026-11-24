@@ -7,6 +7,8 @@ import { errorText } from "@/lib/apiErrors";
 import { Modal } from "@/components/ui/Modal";
 import { formatUah, lineName } from "@/lib/prices";
 import { TransferDetails } from "@/components/purchases/TransferDetails";
+import { DiscountToggle } from "@/components/discount/DiscountToggle";
+import { discountPreview, showDiscountToggle } from "@/lib/reviewDiscount";
 
 // Booking without a group pass: LiqPay books once paid; cash and transfer book at once, the trainer confirms the money
 export function GroupPassModal({
@@ -26,6 +28,7 @@ export function GroupPassModal({
   const [manual, setManual] = useState<"CASH" | "TRANSFER">("CASH");
   const [transfer, setTransfer] = useState<Details | null>(null);
   const [busy, setBusy] = useState(false);
+  const [discountOn, setDiscountOn] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -38,6 +41,13 @@ export function GroupPassModal({
   const passes = data?.catalog.groupPasses ?? [];
   const single = passes.find((p) => p.trainingCount === 1);
   const pass = passes.find((p) => (p.trainingCount ?? 0) > 1);
+  const manualItems = [single, pass].filter((x): x is CatalogItem => !!x);
+  // Review discount on the cash / transfer step only (never online); each item's button shows its own price
+  const discount = data?.reviewDiscount;
+  const percent = data?.reviewDiscountPercent ?? 0;
+  const asGroup = (item: CatalogItem) => [{ section: "group", amountUah: item.amountUah }];
+  const canDiscount = manualItems.some((item) => showDiscountToggle(discount?.state, asGroup(item), true, percent));
+  const applied = canDiscount && discountOn;
 
   const choose = (method: "CASH" | "TRANSFER") => {
     setManual(method);
@@ -48,7 +58,12 @@ export function GroupPassModal({
     setBusy(true);
     setError("");
     try {
-      const { checkout, transfer } = await api.createPurchase([item.id], method, slotId);
+      const { checkout, transfer } = await api.createPurchase(
+        [item.id],
+        method,
+        slotId,
+        applied && method !== "LIQPAY",
+      );
       if (method !== "LIQPAY") {
         setTransfer(transfer ?? null);
         setStep("booked");
@@ -151,25 +166,39 @@ export function GroupPassModal({
                   )}
                 </>
               ) : (
-                [single, pass]
-                  .filter((x): x is CatalogItem => !!x)
-                  .map((item) => (
-                    <button
-                      type="button"
-                      key={item.id}
-                      onClick={() => buy(item, manual)}
-                      disabled={busy}
-                      className="btn-primary w-full py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
-                    >
-                      {lineName(item)} · {formatUah(item.amountUah)}
-                    </button>
-                  ))
+                <>
+                  {canDiscount && discount && (
+                    <div className="mb-2">
+                      <DiscountToggle
+                        code={discount.code}
+                        percent={percent}
+                        applied={applied}
+                        onChange={setDiscountOn}
+                      />
+                    </div>
+                  )}
+                  {manualItems.map((item) => {
+                    const { discountUah, payUah } = discountPreview(asGroup(item), percent);
+                    return (
+                      <button
+                        type="button"
+                        key={item.id}
+                        onClick={() => buy(item, manual)}
+                        disabled={busy}
+                        className="btn-primary w-full py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                      >
+                        {lineName(item)} · {formatUah(applied ? payUah : item.amountUah)}
+                        {applied && discountUah > 0 && ` (−${formatUah(discountUah)})`}
+                      </button>
+                    );
+                  })}
+                </>
               )}
             </div>
           )}
 
           {error && (
-            <p className="text-danger text-sm mt-3">
+            <p role="alert" className="text-danger text-sm mt-3">
               {error}{" "}
               {error.includes("Абонемент і пакети") && (
                 <Link href="/purchases" className="underline">

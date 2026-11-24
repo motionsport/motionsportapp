@@ -472,9 +472,11 @@ describe('Entitlements — manual club card', () => {
 
   it('added by hand, it waits for activation, signed by the trainer', async () => {
     const { db, inserts } = makeDb([
-      [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1 }],
+      [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1, amountUah: 1400 }],
+      [{ id: 'card-1' }],
     ]);
-    await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', false);
+    const added = await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', false);
+    expect(added).toEqual({ id: 'card-1', amountUah: 1400 });
     expect(inserts[0]).toEqual({
       table: clubCards,
       values: {
@@ -492,7 +494,8 @@ describe('Entitlements — manual club card', () => {
 
   it('«Додати й активувати з сьогодні» gives it dates from today', async () => {
     const { db, inserts } = makeDb([
-      [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1 }],
+      [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1, amountUah: 1400 }],
+      [{ id: 'card-1' }],
     ]);
     await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', true);
     expect(inserts[0].values).toMatchObject({ validFrom: '2026-10-23', validUntil: '2026-11-23' });

@@ -21,6 +21,8 @@ import {
   transferPurpose,
 } from '../payment/payment-methods';
 import { nbuBankLinks } from '../payment/nbu-qr';
+import { discountable, discountUahFor, REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
+import { holdDiscountForPurchase, loadDiscount } from '../review-discounts/discount.store';
 
 // Same errors as BookingService.book
 function bookingError(reason: Extract<GroupBookingResult, { ok: false }>['reason']) {
@@ -113,6 +115,8 @@ export class PurchasesService {
           }
         : null,
       packages: await this.entitlements.packagesOf(memberId),
+      reviewDiscountPercent: REVIEW_DISCOUNT_PERCENT,
+      reviewDiscount: await loadDiscount(this.database.db, memberId, this.clock.now().toISODate()!),
       pending: pendingView && { ...pendingView, transfer: transferDetails(pendingView) },
       // Cash for anything; without a trainer only for a club card alone (see insertPurchase)
       canPayCash: !!member?.trainerId,
@@ -129,10 +133,21 @@ export class PurchasesService {
     if (!methodEnabled(dto.method) || (dto.method === 'TRANSFER' && !transferAccount())) {
       throw new BadRequestException(apiError('PAYMENT_METHOD_OFF'));
     }
+    // Before any read or write: the discount is for cash or transfer only
+    if (dto.applyDiscount && dto.method === 'LIQPAY') {
+      throw new BadRequestException(apiError('DISCOUNT_NOT_APPLICABLE'));
+    }
     const items = await this.priceItemsOf(dto.priceItemIds);
     await this.checkCanBuy(memberId, dto, items);
 
-    const lines = [...sectionOf(items, 'club_card'), ...sectionOf(items, 'assigned'), ...sectionOf(items, 'group')];
+    const ordered = [...sectionOf(items, 'club_card'), ...sectionOf(items, 'assigned'), ...sectionOf(items, 'group')];
+    // amountUah = what is paid (price minus discount); the discount is taken off the first club card / group pass
+    const discounted = dto.applyDiscount ? ordered.findIndex((l) => discountable(l.section)) : -1;
+    if (dto.applyDiscount && discounted < 0) throw new BadRequestException(apiError('DISCOUNT_NOT_APPLICABLE'));
+    const lines: PurchaseLine[] = ordered.map((l, i) => {
+      const discountUah = i === discounted ? discountUahFor(l.amountUah) : 0;
+      return { ...l, amountUah: l.amountUah - discountUah, discountUah };
+    });
     const totalUah = lines.reduce((sum, l) => sum + l.amountUah, 0);
     const { purchaseId, trainerId, displayName } = await this.insertPurchase(memberId, dto, lines, totalUah);
 
@@ -202,7 +217,7 @@ export class PurchasesService {
     }
   }
 
-  private async insertPurchase(memberId: string, dto: CreatePurchaseDto, lines: PriceLine[], totalUah: number) {
+  private async insertPurchase(memberId: string, dto: CreatePurchaseDto, lines: PurchaseLine[], totalUah: number) {
     return this.database.db.transaction(async (tx) => {
       const member = await lockMember(tx, memberId);
       if (!member) throw new NotFoundException('Member not found');
@@ -241,8 +256,13 @@ export class PurchasesService {
           title: l.title,
           optionLabel: l.optionLabel,
           amountUah: l.amountUah,
+          discountUah: l.discountUah,
         })),
       );
+      // Same transaction: a discount already held or used fails the whole purchase
+      if (dto.applyDiscount) {
+        await holdDiscountForPurchase(tx, memberId, created.id, this.clock.now().toISODate()!);
+      }
       // Cash or transfer group pass: book now, the trainer confirms the money. Can't book: the throw rolls back
       if (dto.method !== 'LIQPAY' && dto.slotId) {
         const booked = await tryBookGroup(tx, this.clock.now(), memberId, dto.slotId);
@@ -289,6 +309,8 @@ type PriceLine = {
   amountUah: number;
   trainingType: string | null;
 };
+
+type PurchaseLine = PriceLine & { discountUah: number };
 
 // What a member needs to send a transfer; null for other methods or when transfers are switched off
 function transferDetails(p: { id: string; method: string; totalUah: number }) {

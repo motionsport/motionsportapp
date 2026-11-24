@@ -7,12 +7,19 @@ import { AdminPurchasesController } from './admin-purchases.controller';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { KY_ZONE } from '../schedule/training-types';
 import { lockMember } from '../booking/group-booking';
+import { useDiscountAtReception } from '../review-discounts/discount.store';
 
 // lockMember is tested in group-booking.spec; here only that it is taken
 jest.mock('../booking/group-booking', () => ({
   ...jest.requireActual('../booking/group-booking'),
   lockMember: jest.fn().mockResolvedValue({ trainerId: 'trainer-1', displayName: 'Катя' }),
 }));
+jest.mock('../review-discounts/discount.store', () => ({
+  ...jest.requireActual('../review-discounts/discount.store'),
+  useDiscountAtReception: jest.fn().mockResolvedValue(undefined),
+}));
+const mockUseDiscount = useDiscountAtReception as jest.Mock;
+beforeEach(() => mockUseDiscount.mockClear());
 const mockLockMember = lockMember as jest.Mock;
 beforeEach(() => mockLockMember.mockClear());
 
@@ -44,7 +51,7 @@ function makeDb(results: unknown[][], updateResult: () => unknown[] = () => [{ i
 function makeService(db: any) {
   const entitlements = {
     activate: jest.fn().mockResolvedValue(undefined),
-    addManualCard: jest.fn(),
+    addManualCard: jest.fn().mockResolvedValue({ id: 'card-new', amountUah: 1400 }),
     activateCard: jest.fn(),
     usableCard: jest.fn().mockResolvedValue(null),
   };
@@ -153,6 +160,32 @@ describe('Trainer — client purchases', () => {
     const { svc, entitlements } = makeService(db);
     await expect(svc.addCard('trainer-1', 'm1', 'price-card', false)).rejects.toThrow('Member is frozen');
     expect(entitlements.addManualCard).not.toHaveBeenCalled();
+  });
+
+  it('with the review discount: uses it for the new card in the same transaction (5% of 1400 = 70)', async () => {
+    const { db } = makeDb([[{ id: 'm1' }]]);
+    const tx = { ...db };
+    db.transaction = jest.fn((fn: (t: unknown) => unknown) => fn(tx));
+    const { svc, entitlements } = makeService(db);
+    await svc.addCard('trainer-1', 'm1', 'price-card', false, true);
+    expect(mockUseDiscount).toHaveBeenCalledWith(tx, 'm1', 'trainer-1', 'card-new', 70, '2026-10-23', NOW.toJSDate());
+    expect(entitlements.addManualCard.mock.invocationCallOrder[0]).toBeLessThan(
+      mockUseDiscount.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('without applyDiscount the discount is not touched', async () => {
+    const { db } = makeDb([[{ id: 'm1' }]]);
+    await makeService(db).svc.addCard('trainer-1', 'm1', 'price-card', false);
+    expect(mockUseDiscount).not.toHaveBeenCalled();
+  });
+
+  it('a discount that cannot be used (held, none): the error goes up, so the transaction rolls the card back', async () => {
+    const { db } = makeDb([[{ id: 'm1' }]]);
+    mockUseDiscount.mockRejectedValueOnce(new ConflictException({ code: 'DISCOUNT_HELD' }));
+    await expect(makeService(db).svc.addCard('trainer-1', 'm1', 'price-card', false, true)).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('«Додати й активувати з сьогодні» passes activate on', async () => {

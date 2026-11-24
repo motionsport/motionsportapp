@@ -5,11 +5,12 @@ import { PageLayout } from "@/components/ui/PageLayout";
 import { Badge } from "@/components/ui/Badge";
 import { OwnerMenu } from "@/components/owner/OwnerMenu";
 import { RevenueRows } from "@/components/stats/RevenueRows";
+import { DiscountRows } from "@/components/stats/DiscountRows";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 import { formatUah } from "@/lib/prices";
 import { useAdminData } from "@/lib/useAdminData";
 import { monthKeysUpToNow } from "@/lib/statsMonths";
-import { gymCards, gymMonthsWithData, type GymCard } from "./gymStats";
+import { discountSummaryIn, discountSummaryText, gymCards, gymMonthsWithData, type GymCard } from "./gymStats";
 
 function Card({ card }: { card: GymCard }) {
   const gym = card.key === "gym";
@@ -23,6 +24,7 @@ function Card({ card }: { card: GymCard }) {
         <span className="font-geologica text-heading tabular-nums text-sm">{formatUah(card.revenue.total)}</span>
       </div>
       <RevenueRows revenue={card.revenue} />
+      <DiscountRows revenue={card.revenue} withTotal />
       {card.present !== null && (
         <div className="flex justify-between space-x-3 mt-3 pt-3 border-t border-line">
           <span className="text-subtle">Прийшло ✓</span>
@@ -41,6 +43,8 @@ export default function OwnerStatsPage() {
   const [allTime, setAllTime] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
   const selected = picked ?? months.length - 1; // the current month until one is picked
+  const period = allTime ? "all" : months[selected];
+  const discountLine = stats ? discountSummaryText(discountSummaryIn(stats, period)) : null;
 
   return (
     <PageLayout variant="top" loading={!stats && !loadError} action={<OwnerMenu />}>
@@ -64,7 +68,10 @@ export default function OwnerStatsPage() {
             <PeriodSwitch allTime={allTime} onChange={setAllTime} />
           </div>
           {!allTime && <MonthStepper months={months} index={selected} onChange={setPicked} />}
-          {gymCards(stats, allTime ? "all" : months[selected]).map((card) => (
+          {discountLine && (
+            <p className="rounded-xl border border-teal/30 bg-teal/5 px-4 py-3 text-body text-base">{discountLine}</p>
+          )}
+          {gymCards(stats, period).map((card) => (
             <Card key={card.key} card={card} />
           ))}
         </div>

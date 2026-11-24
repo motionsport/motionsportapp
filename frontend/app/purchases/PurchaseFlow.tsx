@@ -7,6 +7,8 @@ import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { formatUah, groupByTitle, lineName } from "@/lib/prices";
 import { TransferDetails } from "@/components/purchases/TransferDetails";
 import { buyableServiceTypes } from "./buyable";
+import { DiscountToggle } from "@/components/discount/DiscountToggle";
+import { discountPreview, showDiscountToggle } from "@/lib/reviewDiscount";
 
 type Step = "service" | "club" | "group" | "checkout" | "sent" | "transfer";
 
@@ -58,6 +60,7 @@ export function PurchaseFlow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [transfer, setTransfer] = useState<Details | null>(null);
+  const [discountOn, setDiscountOn] = useState(false);
 
   const needsCard = !data.card;
   const service = data.catalog.services.find((s) => s.id === serviceId);
@@ -70,6 +73,22 @@ export function PurchaseFlow({
   const canPayCash = data.canPayCash || cardOnly;
   const cashOn = data.methods.cash && canPayCash;
   const noMethod = !data.methods.liqpay && !data.methods.transfer && !cashOn;
+  // Review discount: cash or transfer only, so online payment hides while it is applied
+  const discount = data.reviewDiscount;
+  const priced = [
+    ...(club ? [{ section: "club_card", amountUah: club.amountUah }] : []),
+    ...(service ? [{ section: "assigned", amountUah: service.amountUah }] : []),
+    ...(pass ? [{ section: "group", amountUah: pass.amountUah }] : []),
+  ];
+  const canDiscount = showDiscountToggle(
+    discount?.state,
+    priced,
+    cashOn || data.methods.transfer,
+    data.reviewDiscountPercent,
+  );
+  const applied = canDiscount && discountOn;
+  const preview = discountPreview(priced, data.reviewDiscountPercent);
+  const online = data.methods.liqpay && !applied;
   // Only types with nothing left (the backend refuses the others): split left still lets the member buy personal
   const buyable = buyableServiceTypes(data.packages);
   const groups = SERVICE_GROUPS.filter((g) => buyable.includes(g.type) && (!startType || g.type === startType));
@@ -81,6 +100,8 @@ export function PurchaseFlow({
       const { checkout, transfer } = await api.createPurchase(
         lines.map((l) => l.id),
         method,
+        undefined,
+        applied && method !== "LIQPAY",
       );
       if (method === "CASH") {
         setStep("sent");
@@ -168,12 +189,28 @@ export function PurchaseFlow({
             </div>
           ))}
           <div className="flex justify-between space-x-3 py-2">
-            <span className="text-muted">Разом</span>
-            <span className="font-geologica text-heading text-lg tabular-nums">{formatUah(total)}</span>
+            <span className="text-muted">{applied ? "До сплати" : "Разом"}</span>
+            <span className="font-geologica text-heading text-lg tabular-nums">
+              {formatUah(applied ? preview.payUah : total)}
+            </span>
           </div>
         </div>
+        {canDiscount && discount && (
+          <div className="mb-4">
+            <DiscountToggle
+              code={discount.code}
+              percent={data.reviewDiscountPercent}
+              applied={applied}
+              onChange={setDiscountOn}
+              discountUah={preview.discountUah}
+            />
+            {applied && data.methods.liqpay && (
+              <p className="text-subtle text-xs mt-2">Зі знижкою оплата лише переказом або готівкою.</p>
+            )}
+          </div>
+        )}
         <div className="flex flex-col space-y-2">
-          {data.methods.liqpay && (
+          {online && (
             <button
               type="button"
               onClick={() => pay("LIQPAY")}
@@ -188,7 +225,7 @@ export function PurchaseFlow({
               type="button"
               onClick={() => pay("TRANSFER")}
               disabled={busy}
-              className={`${data.methods.liqpay ? "btn-ghost border" : "btn-primary font-medium"} w-full py-4 rounded-lg text-sm transition-colors disabled:opacity-60`}
+              className={`${online ? "btn-ghost border" : "btn-primary font-medium"} w-full py-4 rounded-lg text-sm transition-colors disabled:opacity-60`}
             >
               Переказ на рахунок
             </button>

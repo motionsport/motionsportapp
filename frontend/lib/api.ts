@@ -11,6 +11,7 @@ import type {
   Cancellation,
   CancelRefund,
   CashRequest,
+  DiscountView,
   FreezeRequest,
   HistoryDay,
   LiqPayCheckout,
@@ -175,6 +176,10 @@ export const api = {
 
   getPurchases: () => get<MyPurchases>("/purchases"),
 
+  // null = no discount given
+  getReviewDiscount: () => get<{ percent: number; discount: DiscountView | null }>("/review-discount"),
+  useDiscountAtBar: () => post<DiscountView>("/review-discount/bar"),
+
   // The member asks, the trainer approves (freeze and early unfreeze)
   getMyFreeze: () => get<MyFreeze>("/freezes"),
   requestFreeze: () => post("/freezes"),
@@ -211,14 +216,18 @@ export const api = {
 
   getMemberPurchases: (memberId: string) => get<MemberPurchases>(`/admin/members/${memberId}/purchases`),
 
-  addClubCard: (memberId: string, priceItemId: string, activate: boolean) =>
-    post(`/admin/members/${memberId}/club-card`, { priceItemId, activate }),
+  // applyDiscount: the client's free review discount off this card
+  addClubCard: (memberId: string, priceItemId: string, activate: boolean, applyDiscount?: boolean) =>
+    post(`/admin/members/${memberId}/club-card`, { priceItemId, activate, applyDiscount }),
+
+  giveReviewDiscount: (memberId: string) => post(`/admin/members/${memberId}/review-discount`),
 
   activateClubCard: (memberId: string, cardId: string) =>
     post(`/admin/members/${memberId}/club-cards/${cardId}/activate`),
 
   // slotId: group pass bought while booking; cash and transfer book at once, LiqPay once paid
-  createPurchase: (priceItemIds: string[], method: PurchaseMethod, slotId?: string) =>
+  // applyDiscount: the review discount, cash or transfer only
+  createPurchase: (priceItemIds: string[], method: PurchaseMethod, slotId?: string, applyDiscount?: boolean) =>
     post<{
       purchaseId: string;
       checkout?: LiqPayCheckout | { status: "PAID" };
@@ -227,6 +236,7 @@ export const api = {
       priceItemIds,
       method,
       slotId,
+      applyDiscount,
     }),
 
   cancelPurchase: (purchaseId: string) => post(`/purchases/${purchaseId}/cancel`),

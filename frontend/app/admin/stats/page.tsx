@@ -7,6 +7,7 @@ import { formatUah } from "@/lib/prices";
 import { useAdminData } from "@/lib/useAdminData";
 import { monthKeysUpToNow, monthName } from "@/lib/statsMonths";
 import { RevenueRows } from "@/components/stats/RevenueRows";
+import { DiscountRows } from "@/components/stats/DiscountRows";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 
 const sectionTitle = "font-geologica font-semibold text-heading uppercase mb-3";
@@ -17,7 +18,16 @@ const SHORT_MONTHS = ["січ", "лют", "бер", "кві", "тра", "чер"
 
 type MonthRevenue = TrainerStats["revenue"]["months"][number];
 
-const noRevenue = (month: string): MonthRevenue => ({ month, clubCards: 0, personal: 0, split: 0, group: 0, total: 0 });
+const noRevenue = (month: string): MonthRevenue => ({
+  month,
+  clubCards: 0,
+  personal: 0,
+  split: 0,
+  group: 0,
+  total: 0,
+  discount: 0,
+  discounted: 0,
+});
 
 // From the first paid month (at least the last 12) to the current Kyiv month, zero-filled
 function monthsUpToNow(months: MonthRevenue[]) {
@@ -121,13 +131,14 @@ function RevenueBlock({ revenue }: { revenue: TrainerStats["revenue"] }) {
       <div className="rounded-xl border border-line bg-surface p-4">
         <div className="flex items-baseline justify-between space-x-3 mb-3">
           <span className={chart ? "text-heading font-semibold" : "text-subtle"}>
-            {chart ? monthName(month.month) : "Разом"}
+            {chart ? monthName(month.month) : "Разом отримано"}
           </span>
           <span className="font-geologica text-heading tabular-nums text-sm">
             {formatUah(allTime && !chart ? revenue.allTime.total : month.total)}
           </span>
         </div>
         <RevenueRows revenue={allTime && !chart ? revenue.allTime : month} />
+        <DiscountRows revenue={allTime && !chart ? revenue.allTime : month} withTotal={chart} />
       </div>
     </div>
   );

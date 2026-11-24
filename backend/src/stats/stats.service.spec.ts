@@ -1,6 +1,13 @@
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { DateTime } from 'luxon';
-import { StatsService, revenueKey, summarizeLoad, summarizeRevenue, buildGymStats } from './stats.service';
+import {
+  StatsService,
+  revenueKey,
+  summarizeLoad,
+  summarizeRevenue,
+  summarizeDiscounts,
+  buildGymStats,
+} from './stats.service';
 import { GUARDS_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { OwnerStatsController } from './stats.controller';
 import { SessionGuard } from '../auth/session.guard';
@@ -72,15 +79,63 @@ describe('stats — load', () => {
 describe('stats — revenue by month', () => {
   it('sums columns per month and all time, newest month first', () => {
     const r = summarizeRevenue([
-      { month: '2026-10', section: 'club_card', trainingType: null, amount: 1000 },
-      { month: '2026-10', section: 'assigned', trainingType: 'split', amount: 600 },
-      { month: '2026-11', section: 'group', trainingType: 'group', amount: 300 },
+      { month: '2026-10', section: 'club_card', trainingType: null, amount: 1000, discount: 0 },
+      { month: '2026-10', section: 'assigned', trainingType: 'split', amount: 600, discount: 0 },
+      { month: '2026-11', section: 'group', trainingType: 'group', amount: 300, discount: 0 },
     ]);
-    expect(r.allTime).toEqual({ clubCards: 1000, personal: 0, split: 600, group: 300, total: 1900 });
+    expect(r.allTime).toEqual({
+      clubCards: 1000,
+      personal: 0,
+      split: 600,
+      group: 300,
+      total: 1900,
+      discount: 0,
+      discounted: 0,
+    });
     expect(r.months.map((m) => [m.month, m.total])).toEqual([
       ['2026-11', 300],
       ['2026-10', 1600],
     ]);
+  });
+});
+
+describe('stats — discounts in revenue', () => {
+  it('discount and discounted per month and all time; total stays what was paid', () => {
+    const r = summarizeRevenue([
+      { month: '2026-10', section: 'club_card', trainingType: null, amount: 950, discount: 50 },
+      { month: '2026-10', section: 'group', trainingType: 'group', amount: 300, discount: 0 },
+      { month: '2026-11', section: 'club_card', trainingType: null, amount: 900, discount: 100 },
+      { month: '2026-11', section: 'group', trainingType: 'group', amount: 280, discount: 20 },
+    ]);
+    expect(r.allTime).toMatchObject({ total: 2430, discount: 170, discounted: 3 });
+    expect(r.months.map((m) => [m.month, m.discount, m.discounted])).toEqual([
+      ['2026-11', 120, 2],
+      ['2026-10', 50, 1],
+    ]);
+  });
+});
+
+describe('stats — review discount summary', () => {
+  const zero = { given: 0, bar: 0, reception: 0, receptionUah: 0, purchases: 0, purchasesUah: 0 };
+
+  it('counts given, bar, reception and purchases per month, newest first, and all time', () => {
+    const s = summarizeDiscounts([
+      { kind: 'given', month: '2026-10', count: 3, uah: 0 },
+      { kind: 'given', month: '2026-11', count: 2, uah: 0 },
+      { kind: 'bar', month: '2026-11', count: 1, uah: 0 },
+      { kind: 'reception', month: '2026-11', count: 2, uah: 150 },
+      { kind: 'purchase', month: '2026-10', count: 1, uah: 50 },
+      { kind: 'purchase', month: '2026-11', count: 2, uah: 120 },
+    ]);
+    expect(s.allTime).toEqual({ given: 5, bar: 1, reception: 2, receptionUah: 150, purchases: 3, purchasesUah: 170 });
+    expect(s.months).toEqual([
+      { month: '2026-11', given: 2, bar: 1, reception: 2, receptionUah: 150, purchases: 2, purchasesUah: 120 },
+      { month: '2026-10', ...zero, given: 3, purchases: 1, purchasesUah: 50 },
+    ]);
+  });
+
+  it('nothing: zeros and no months', () => {
+    expect(summarizeDiscounts([])).toEqual({ allTime: zero, months: [] });
   });
 });
 
@@ -93,7 +148,7 @@ describe('stats — the whole gym (owner)', () => {
   it('one card per trainer, in order; a trainer with nothing gets zeros', () => {
     const gym = buildGymStats(
       trainers,
-      [{ payee: 't1', month: '2026-11', section: 'group', trainingType: 'group', amount: 300 }],
+      [{ payee: 't1', month: '2026-11', section: 'group', trainingType: 'group', amount: 300, discount: 0 }],
       [{ trainerId: 't1', month: '2026-11', present: 4 }],
     );
     expect(gym.trainers.map((t) => t.username)).toEqual(['admin', 'olena']);
@@ -107,7 +162,7 @@ describe('stats — the whole gym (owner)', () => {
   it('money nobody can be credited with (online, member without a trainer) goes to «Без тренера»', () => {
     const gym = buildGymStats(
       trainers,
-      [{ payee: null, month: '2026-11', section: 'club_card', trainingType: null, amount: 500 }],
+      [{ payee: null, month: '2026-11', section: 'club_card', trainingType: null, amount: 500, discount: 0 }],
       [],
     );
     expect(gym.unassigned.revenue.allTime.total).toBe(500);

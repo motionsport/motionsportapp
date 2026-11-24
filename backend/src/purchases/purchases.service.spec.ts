@@ -11,6 +11,7 @@ import { MemberGuard } from '../common/guards/member.guard';
 import { payments, purchases, purchaseItems } from '../database/schema';
 import { KY_ZONE } from '../schedule/training-types';
 import { tryBookGroup } from '../booking/group-booking';
+import { holdDiscountForPurchase, loadDiscount } from '../review-discounts/discount.store';
 import { loadFreezes, memberFrozenOn, openFreeze } from '../freezes/freeze.store';
 
 // No member is frozen unless a test says so
@@ -23,6 +24,16 @@ beforeEach(() => {
   (loadFreezes as jest.Mock).mockResolvedValue([]);
   (memberFrozenOn as jest.Mock).mockResolvedValue(false);
   (openFreeze as jest.Mock).mockResolvedValue(null);
+});
+
+// The discount store is tested in review-discounts; here only what the purchase asks of it
+jest.mock('../review-discounts/discount.store', () => ({
+  loadDiscount: jest.fn(),
+  holdDiscountForPurchase: jest.fn(),
+}));
+beforeEach(() => {
+  (loadDiscount as jest.Mock).mockReset().mockResolvedValue(null);
+  (holdDiscountForPurchase as jest.Mock).mockReset().mockResolvedValue(undefined);
 });
 
 // Booking is tested in group-booking.spec; lockMember stays real and reads the next result
@@ -325,6 +336,7 @@ describe('Purchases — create', () => {
           title: 'Повний день',
           optionLabel: '1 місяць',
           amountUah: 1400,
+          discountUah: 0,
         },
         {
           purchaseId: 'purchase-1',
@@ -332,6 +344,7 @@ describe('Purchases — create', () => {
           title: 'Персональне',
           optionLabel: '8 тренувань',
           amountUah: 3600,
+          discountUah: 0,
         },
       ],
     });
@@ -413,6 +426,87 @@ describe('Purchases — create', () => {
     expect((err as BadRequestException).getResponse()).toMatchObject({ code: 'PAYMENT_METHOD_OFF' });
     expect(db.select).not.toHaveBeenCalled();
     expect(inserts).toEqual([]);
+  });
+});
+
+describe('Purchases — review discount', () => {
+  it('cash: 5% off the club card only, items and total carry it, the discount is held', async () => {
+    const { db, inserts } = makeDb([[CARD, PERSONAL], MEMBER, []]);
+    const { svc, notifications } = makeService(db);
+    await svc.create('m1', { priceItemIds: ['price-card', 'price-p8'], method: 'CASH', applyDiscount: true });
+    expect(inserts[0]).toMatchObject({ table: purchases, values: { totalUah: 4930 } });
+    expect(inserts[1].values).toEqual([
+      expect.objectContaining({ priceItemId: 'price-card', amountUah: 1330, discountUah: 70 }),
+      expect.objectContaining({ priceItemId: 'price-p8', amountUah: 3600, discountUah: 0 }),
+    ]);
+    expect(holdDiscountForPurchase).toHaveBeenCalledWith(expect.anything(), 'm1', 'purchase-1', '2026-10-23');
+    expect(notifications.enqueueAndProcess).toHaveBeenCalledWith(
+      'CASH_REQUESTED',
+      'cash-requested:purchase-1',
+      expect.objectContaining({ totalUah: 4930 }),
+    );
+  });
+
+  it('transfer: the details carry the discounted amount', async () => {
+    const { db } = makeDb([[GROUP], MEMBER, []]);
+    const res = await makeService(db).svc.create('m1', {
+      priceItemIds: ['price-g'],
+      method: 'TRANSFER',
+      applyDiscount: true,
+    });
+    expect(res.transfer?.amountUah).toBe(2090);
+  });
+
+  it('LiqPay with the discount: 400 before anything is read', async () => {
+    const { db } = makeDb([]);
+    await expect(
+      makeService(db).svc.create('m1', { priceItemIds: ['price-card'], method: 'LIQPAY', applyDiscount: true }),
+    ).rejects.toMatchObject({ response: { code: 'DISCOUNT_NOT_APPLICABLE' } });
+    expect(db.select).not.toHaveBeenCalled();
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it('only a trainer service with the discount: 400, nothing bought', async () => {
+    const { db, inserts } = makeDb([[PERSONAL], [{ id: 'card' }], MEMBER, []]);
+    await expect(
+      makeService(db, { card: { id: 'card' } }).svc.create('m1', {
+        priceItemIds: ['price-p8'],
+        method: 'CASH',
+        applyDiscount: true,
+      }),
+    ).rejects.toMatchObject({ response: { code: 'DISCOUNT_NOT_APPLICABLE' } });
+    expect(inserts).toEqual([]);
+  });
+
+  it('another purchase waits for payment: 409 before the discount is touched', async () => {
+    const { db } = makeDb([[CARD], MEMBER, [{ id: 'old' }]]);
+    await expect(
+      makeService(db).svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH', applyDiscount: true }),
+    ).rejects.toThrow(ConflictException);
+    expect(holdDiscountForPurchase).not.toHaveBeenCalled();
+  });
+
+  it('a discount held or used elsewhere fails the purchase', async () => {
+    (holdDiscountForPurchase as jest.Mock).mockRejectedValue(new ConflictException('x'));
+    const { db } = makeDb([[CARD], MEMBER, []]);
+    await expect(
+      makeService(db).svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH', applyDiscount: true }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('without applyDiscount the amounts are as before and the discount is not touched', async () => {
+    const { db, inserts } = makeDb([[CARD], MEMBER, []]);
+    await makeService(db).svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH' });
+    expect(inserts[1].values).toEqual([expect.objectContaining({ amountUah: 1400, discountUah: 0 })]);
+    expect(holdDiscountForPurchase).not.toHaveBeenCalled();
+  });
+
+  it('GET /purchases carries the member discount', async () => {
+    (loadDiscount as jest.Mock).mockResolvedValue({ code: 'MG-5-ABCD', state: 'free' });
+    const { db } = makeDb([[], MEMBER, [], []]);
+    const result = await makeService(db).svc.getForMember('m1');
+    expect(result.reviewDiscount).toMatchObject({ code: 'MG-5-ABCD' });
+    expect(result.reviewDiscountPercent).toBe(5);
   });
 });
 
