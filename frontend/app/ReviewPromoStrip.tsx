@@ -23,15 +23,15 @@ function GiftIcon() {
 }
 
 // A strip above the header for a member with no review discount given: edge to edge on a phone, the page column's
-// width on wider screens. The ✕ hides it in this browser for a week (a cookie)
+// width on wider screens. Text centred on the whole strip; the ✕ sits over its right end (absolute) and hides it in this browser for a week (a cookie)
 export default function ReviewPromoStrip({ percent }: { percent: number }) {
   const [hidden, setHidden] = useState(promoStripHidden);
   if (hidden) return null;
 
   return (
     <div className="relative left-1/2 w-screen -translate-x-1/2 sm:left-0 sm:w-full sm:translate-x-0 sm:mt-3 bg-background border-y sm:border sm:rounded-xl border-teal text-accent">
-      <div className="max-w-xl mx-auto flex items-center space-x-1 pl-5 pr-2">
-        <div className="flex-1 flex items-center justify-center space-x-2 font-geologica font-bold text-xs uppercase tracking-wide">
+      <div className="relative max-w-xl mx-auto">
+        <div className="flex items-center justify-center space-x-2 px-11 py-2.5 font-geologica font-bold text-xs uppercase tracking-wide">
           <GiftIcon />
           <span>Знижка {percent}% за відгук у Google</span>
         </div>
@@ -42,7 +42,7 @@ export default function ReviewPromoStrip({ percent }: { percent: number }) {
             setHidden(true);
           }}
           aria-label="Сховати"
-          className="w-9 h-9 shrink-0 flex items-center justify-center text-subtle text-xs hover:text-body transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-subtle text-xs hover:text-body transition-colors"
         >
           ✕
         </button>
