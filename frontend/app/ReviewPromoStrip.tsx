@@ -23,18 +23,32 @@ function GiftIcon() {
 }
 
 // A strip above the header, edge to edge, for a member with no review discount given; the text and ✕ sit
-// in the page column, so nothing important is at the screen's edges. The ✕ hides it in this browser for a week (a cookie)
+// in the page column, so nothing important is at the screen's edges. «?» opens how to get it; the ✕ hides the strip
+// in this browser for a week (a cookie)
 export default function ReviewPromoStrip({ percent }: { percent: number }) {
   const [hidden, setHidden] = useState(promoStripHidden);
+  const [howOpen, setHowOpen] = useState(false);
   if (hidden) return null;
 
   return (
     <div className="relative left-1/2 w-screen -translate-x-1/2 bg-background border-y border-teal text-accent">
       <div className="max-w-xl mx-auto flex items-center space-x-1 pl-5 pr-2">
-        <p className="flex-1 flex items-center justify-center space-x-2 py-2 font-geologica font-bold text-xs uppercase tracking-wide text-center">
+        <div className="flex-1 flex items-center justify-center space-x-2 font-geologica font-bold text-xs uppercase tracking-wide">
           <GiftIcon />
-          <span>Знижка {percent}% за відгук у Google: покажіть його тренеру</span>
-        </p>
+          <span>Знижка {percent}% за відгук у Google</span>
+          <button
+            type="button"
+            onClick={() => setHowOpen((v) => !v)}
+            aria-expanded={howOpen}
+            aria-controls="review-promo-how"
+            aria-label="Як отримати знижку"
+            className="w-8 h-8 shrink-0 flex items-center justify-center group"
+          >
+            <span className="w-5 h-5 flex items-center justify-center rounded-full border border-teal text-accent group-hover:bg-teal group-hover:text-on-teal transition-colors">
+              ?
+            </span>
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -47,6 +61,11 @@ export default function ReviewPromoStrip({ percent }: { percent: number }) {
           ✕
         </button>
       </div>
+      {howOpen && (
+        <p id="review-promo-how" className="max-w-xl mx-auto px-5 pb-2 -mt-1 text-center text-xs text-body">
+          Покажіть відгук тренеру
+        </p>
+      )}
     </div>
   );
 }
