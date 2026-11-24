@@ -1,6 +1,5 @@
 import type { Revenue } from "@/lib/api";
 import { formatUah } from "@/lib/prices";
-import { purchasesCount } from "@/lib/plural";
 
 // Under «Разом отримано»: what the review discounts took off and the total at price list prices.
 // Only when the period had a discount (trainer's «Статистика», owner's «Статистика залу»). withTotal: a card whose
@@ -16,10 +15,10 @@ export function DiscountRows({ revenue, withTotal }: { revenue: Revenue; withTot
         </div>
       )}
       <div className="flex justify-between space-x-3">
-        <span className="text-subtle">Знижки за відгук</span>
-        <span className="tabular-nums text-body whitespace-nowrap">
-          −{formatUah(revenue.discount)}{" "}
-          <span className="text-subtle text-xs">({purchasesCount(revenue.discounted)})</span>
+        <span className="text-subtle whitespace-nowrap">Знижки за відгук</span>
+        <span className="text-right">
+          <span className="tabular-nums text-body whitespace-nowrap">−{formatUah(revenue.discount)}</span>{" "}
+          <span className="text-subtle text-xs">(тільки абонементи і групові)</span>
         </span>
       </div>
       <div className="flex justify-between space-x-3">

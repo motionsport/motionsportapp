@@ -166,7 +166,9 @@ export default function StatsPage() {
         <div className="flex flex-col space-y-8">
           <section>
             <h2 className={sectionTitle}>Прибуток</h2>
-            <p className="text-subtle text-xs mb-3">Оплачені покупки ваших клієнтів, за датою оплати.</p>
+            <p className="text-subtle text-xs mb-3">
+              Лише покупки ваших клієнтів через застосунок, за датою оплати; абонементи з рецепції сюди не входять.
+            </p>
 
             <RevenueBlock revenue={stats.revenue} />
           </section>

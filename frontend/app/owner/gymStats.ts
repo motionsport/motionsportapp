@@ -84,15 +84,17 @@ export function discountSummaryIn(stats: GymStats, period: GymPeriod): DiscountS
   return { given, bar, reception, receptionUah, purchases, purchasesUah };
 }
 
-// «Знижки за відгук: видано 12, використано 9 (бар 3, рецепція 1: −70 ₴, покупки 5: −350 ₴)»; only the places
-// used go in brackets; null when nothing was given or used
+// «Знижки за відгук: видано 12, використано 9 (бар 3, рецепція 1: −70 ₴, застосунок 5: −350 ₴), разом −420 ₴»; only the
+// places used go in brackets, «разом» only when both the reception and the app have an amount; null when nothing
+// was given or used
 export function discountSummaryText(s: DiscountSummary): string | null {
   const used = s.bar + s.reception + s.purchases;
   if (s.given === 0 && used === 0) return null;
   const places = [
     s.bar > 0 ? `бар ${s.bar}` : null,
     s.reception > 0 ? `рецепція ${s.reception}: −${formatUah(s.receptionUah)}` : null,
-    s.purchases > 0 ? `покупки ${s.purchases}: −${formatUah(s.purchasesUah)}` : null,
+    s.purchases > 0 ? `застосунок ${s.purchases}: −${formatUah(s.purchasesUah)}` : null,
   ].filter(Boolean);
-  return `Знижки за відгук: видано ${s.given}, використано ${used}${places.length ? ` (${places.join(", ")})` : ""}`;
+  const total = s.reception > 0 && s.purchases > 0 ? `, разом −${formatUah(s.receptionUah + s.purchasesUah)}` : "";
+  return `Знижки за відгук: видано ${s.given}, використано ${used}${places.length ? ` (${places.join(", ")})` : ""}${total}`;
 }

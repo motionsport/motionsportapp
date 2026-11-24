@@ -75,13 +75,13 @@ describe("discountSummaryIn (review discounts at the top)", () => {
 describe("discountSummaryText", () => {
   it("given, used and where", () => {
     expect(discountSummaryText(stats.reviewDiscounts.allTime)).toBe(
-      `Знижки за відгук: видано 12, використано 9 (бар 3, рецепція 1: −${formatUah(70)}, покупки 5: −${formatUah(350)})`,
+      `Знижки за відгук: видано 12, використано 9 (бар 3, рецепція 1: −${formatUah(70)}, застосунок 5: −${formatUah(350)}), разом −${formatUah(420)}`,
     );
   });
 
   it("only the places used", () => {
     expect(discountSummaryText({ ...none, given: 2, purchases: 1, purchasesUah: 70 })).toBe(
-      `Знижки за відгук: видано 2, використано 1 (покупки 1: −${formatUah(70)})`,
+      `Знижки за відгук: видано 2, використано 1 (застосунок 1: −${formatUah(70)})`,
     );
     expect(discountSummaryText({ ...none, given: 2 })).toBe("Знижки за відгук: видано 2, використано 0");
   });

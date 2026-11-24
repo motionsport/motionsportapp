@@ -61,7 +61,7 @@ export function AssignedSlotCard({ slot, onMutate }: AssignedSlotCardProps) {
               </Link>
             )}
             {slot.started ? (
-              <p className="text-muted text-sm">Тренування вже почалося</p>
+              <p className="text-muted text-sm text-center">Тренування вже почалося</p>
             ) : (
               <button
                 type="button"

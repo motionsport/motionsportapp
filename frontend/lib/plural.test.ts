@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plural, purchasesCount, trainingsCount } from "@/lib/plural";
+import { plural, trainingsCount } from "@/lib/plural";
 
 describe("trainingsCount", () => {
   it.each([
@@ -35,17 +35,5 @@ describe("plural", () => {
     expect(plural(12, forms)).toBe("12 персональних");
     expect(plural(112, forms)).toBe("112 персональних");
     expect(plural(101, forms)).toBe("101 персональне");
-  });
-});
-
-describe("purchasesCount", () => {
-  it.each([
-    [1, "1 покупка"],
-    [3, "3 покупки"],
-    [5, "5 покупок"],
-    [11, "11 покупок"],
-    [21, "21 покупка"],
-  ])("%i → %s", (n, text) => {
-    expect(purchasesCount(n)).toBe(text);
   });
 });
