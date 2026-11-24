@@ -22,15 +22,14 @@ function GiftIcon() {
   );
 }
 
-// A strip above the header, edge to edge, for a member with no review discount given; the text and ✕ sit
-// in the page column, so nothing important is at the screen's edges. the ✕ hides the strip
-// in this browser for a week (a cookie)
+// A strip above the header for a member with no review discount given: edge to edge on a phone, the page column's
+// width on wider screens. The ✕ hides it in this browser for a week (a cookie)
 export default function ReviewPromoStrip({ percent }: { percent: number }) {
   const [hidden, setHidden] = useState(promoStripHidden);
   if (hidden) return null;
 
   return (
-    <div className="relative left-1/2 w-screen -translate-x-1/2 bg-background border-y border-teal text-accent">
+    <div className="relative left-1/2 w-screen -translate-x-1/2 sm:left-0 sm:w-full sm:translate-x-0 sm:mt-3 bg-background border-y sm:border sm:rounded-xl border-teal text-accent">
       <div className="max-w-xl mx-auto flex items-center space-x-1 pl-5 pr-2">
         <div className="flex-1 flex items-center justify-center space-x-2 font-geologica font-bold text-xs uppercase tracking-wide">
           <GiftIcon />
