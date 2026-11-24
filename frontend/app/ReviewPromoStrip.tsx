@@ -23,11 +23,10 @@ function GiftIcon() {
 }
 
 // A strip above the header, edge to edge, for a member with no review discount given; the text and ✕ sit
-// in the page column, so nothing important is at the screen's edges. «?» opens how to get it; the ✕ hides the strip
+// in the page column, so nothing important is at the screen's edges. the ✕ hides the strip
 // in this browser for a week (a cookie)
 export default function ReviewPromoStrip({ percent }: { percent: number }) {
   const [hidden, setHidden] = useState(promoStripHidden);
-  const [howOpen, setHowOpen] = useState(false);
   if (hidden) return null;
 
   return (
@@ -36,18 +35,6 @@ export default function ReviewPromoStrip({ percent }: { percent: number }) {
         <div className="flex-1 flex items-center justify-center space-x-2 font-geologica font-bold text-xs uppercase tracking-wide">
           <GiftIcon />
           <span>Знижка {percent}% за відгук у Google</span>
-          <button
-            type="button"
-            onClick={() => setHowOpen((v) => !v)}
-            aria-expanded={howOpen}
-            aria-controls="review-promo-how"
-            aria-label="Як отримати знижку"
-            className="w-8 h-8 shrink-0 flex items-center justify-center group"
-          >
-            <span className="w-5 h-5 flex items-center justify-center rounded-full border border-teal text-accent group-hover:bg-teal group-hover:text-on-teal transition-colors">
-              ?
-            </span>
-          </button>
         </div>
         <button
           type="button"
@@ -61,11 +48,6 @@ export default function ReviewPromoStrip({ percent }: { percent: number }) {
           ✕
         </button>
       </div>
-      {howOpen && (
-        <p id="review-promo-how" className="max-w-xl mx-auto px-5 pb-2 -mt-1 text-center text-xs text-body">
-          Покажіть відгук тренеру
-        </p>
-      )}
     </div>
   );
 }
