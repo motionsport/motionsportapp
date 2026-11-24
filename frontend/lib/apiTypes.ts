@@ -207,7 +207,7 @@ export interface MyPurchases {
 export type DiscountState = "free" | "held" | "used" | "expired";
 
 export interface DiscountView {
-  code: string; // «MG-5-K7Q2»
+  code: string; // «MG5K7Q2»
   validUntil: string; // YYYY-MM-DD, the last day
   givenAt: string;
   givenBy: string;

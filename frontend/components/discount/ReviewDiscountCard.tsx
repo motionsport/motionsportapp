@@ -50,7 +50,7 @@ export function ReviewDiscountCard({
       ) : (
         <>
           <p className="text-heading font-medium">
-            🎁 Знижка {percent}% за відгук до {ddmm(shown.validUntil)}
+            🎁 Знижка {percent}% за відгук (дійсна до {ddmm(shown.validUntil)})
           </p>
           {shown.state === "held" ? (
             <p className="text-subtle text-base mt-1">Знижку застосовано до покупки, що чекає оплати</p>

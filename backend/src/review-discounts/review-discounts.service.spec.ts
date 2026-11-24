@@ -46,7 +46,7 @@ function makeDb(reads: unknown[][]) {
 
 const row = (over: Record<string, unknown> = {}) => ({
   id: 'd1',
-  code: 'MG-5-ABCD',
+  code: 'MG5ABCD',
   validUntil: '2026-12-24',
   givenAt: new Date('2026-11-24T10:00:00Z'),
   givenBy: 'olena',
@@ -71,14 +71,14 @@ describe('ReviewDiscountsService', () => {
   it('gives once: valid for a month from the Kyiv date', async () => {
     const { db, writes } = makeDb([[], [], [row()]]);
     const view = await svc(db).give('t1', 'm1');
-    expect(view).toMatchObject({ code: 'MG-5-ABCD', state: 'free', givenBy: 'olena', usedVia: null });
+    expect(view).toMatchObject({ code: 'MG5ABCD', state: 'free', givenBy: 'olena', usedVia: null });
     expect(writes[0].table).toBe(reviewDiscounts);
     expect(writes[0].values).toMatchObject({
       memberId: 'm1',
       givenByAdminId: 't1',
       validUntil: '2026-12-24',
     });
-    expect(writes[0].values?.code).toMatch(/^MG-5-/);
+    expect(writes[0].values?.code).toMatch(/^MG5[A-HJ-NP-Z2-9]{4}$/);
   });
 
   it("another trainer's client is 404, nothing written", async () => {

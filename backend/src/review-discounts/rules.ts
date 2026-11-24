@@ -25,5 +25,5 @@ export function discountState(
 export function newDiscountCode(random: () => number = Math.random): string {
   let tail = '';
   for (let i = 0; i < 4; i++) tail += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
-  return `MG-5-${tail}`;
+  return `MG5${tail}`;
 }

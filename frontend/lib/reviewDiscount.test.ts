@@ -115,7 +115,7 @@ describe("promo strip flag", () => {
 
 describe("the trainer's «Знижка за відгук» block", () => {
   const base: DiscountView = {
-    code: "MG-5-K7Q2",
+    code: "MG5K7Q2",
     validUntil: "2026-12-24",
     givenAt: "2026-11-24T09:00:00.000Z",
     givenBy: "admin",

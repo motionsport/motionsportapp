@@ -502,10 +502,10 @@ describe('Purchases — review discount', () => {
   });
 
   it('GET /purchases carries the member discount', async () => {
-    (loadDiscount as jest.Mock).mockResolvedValue({ code: 'MG-5-ABCD', state: 'free' });
+    (loadDiscount as jest.Mock).mockResolvedValue({ code: 'MG5ABCD', state: 'free' });
     const { db } = makeDb([[], MEMBER, [], []]);
     const result = await makeService(db).svc.getForMember('m1');
-    expect(result.reviewDiscount).toMatchObject({ code: 'MG-5-ABCD' });
+    expect(result.reviewDiscount).toMatchObject({ code: 'MG5ABCD' });
     expect(result.reviewDiscountPercent).toBe(5);
   });
 });

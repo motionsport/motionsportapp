@@ -42,10 +42,10 @@ describe('discountState', () => {
 });
 
 describe('newDiscountCode', () => {
-  it('has the MG-5- shape', () => {
-    for (let i = 0; i < 50; i++) expect(newDiscountCode()).toMatch(/^MG-5-[A-HJ-NP-Z2-9]{4}$/);
+  it('has the MG5 shape, no dashes', () => {
+    for (let i = 0; i < 50; i++) expect(newDiscountCode()).toMatch(/^MG5[A-HJ-NP-Z2-9]{4}$/);
   });
   it('uses the injected random', () => {
-    expect(newDiscountCode(() => 0)).toBe('MG-5-AAAA');
+    expect(newDiscountCode(() => 0)).toBe('MG5AAAA');
   });
 });
