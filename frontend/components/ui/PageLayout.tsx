@@ -9,9 +9,11 @@ interface PageLayoutProps {
   className?: string;
   action?: ReactNode;
   loading?: boolean;
+  // A full-width strip above the header (home page: the review discount promo)
+  topBar?: ReactNode;
 }
 
-export function PageLayout({ children, variant = "centered", className, action, loading }: PageLayoutProps) {
+export function PageLayout({ children, variant = "centered", className, action, loading, topBar }: PageLayoutProps) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -24,6 +26,7 @@ export function PageLayout({ children, variant = "centered", className, action, 
   if (variant === "top") {
     return (
       <div className="flex flex-col flex-1 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+        {topBar}
         <Header action={action} />
         {children}
       </div>

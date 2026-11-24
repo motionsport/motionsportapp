@@ -55,12 +55,14 @@ export function discountStatusLine(d: DiscountView): string {
   }
 }
 
-// The home page's promo strip, hidden by its ✕ in this browser. Storage can be off (private mode): shown then
+// The home page's promo strip, hidden by its ✕ for a week in this browser: a cookie that expires by itself,
+// then the strip shows again. Cookies can be off: shown then
 const PROMO_HIDDEN = "mg_review_promo_hidden";
+export const PROMO_HIDDEN_DAYS = 7;
 
 export function promoStripHidden(): boolean {
   try {
-    return localStorage.getItem(PROMO_HIDDEN) === "1";
+    return document.cookie.split("; ").includes(`${PROMO_HIDDEN}=1`);
   } catch {
     return false;
   }
@@ -68,6 +70,6 @@ export function promoStripHidden(): boolean {
 
 export function hidePromoStrip() {
   try {
-    localStorage.setItem(PROMO_HIDDEN, "1");
+    document.cookie = `${PROMO_HIDDEN}=1; max-age=${PROMO_HIDDEN_DAYS * 24 * 60 * 60}; path=/; SameSite=Lax`;
   } catch {}
 }

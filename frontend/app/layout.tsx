@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="text-base sm:text-sm min-h-full flex flex-col">
         <OfflineBanner />
-        <main className="flex-1 flex flex-col px-5">
+        <main className="flex-1 flex flex-col px-5 overflow-x-clip">
           <div className="w-full max-w-xl mx-auto flex-1 flex flex-col">{children}</div>
         </main>
         <SwRegister />

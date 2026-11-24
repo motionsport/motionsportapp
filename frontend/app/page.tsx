@@ -202,11 +202,19 @@ export default function SchedulePage() {
   const frozenThatDay = !!schedule?.frozenUntil && !!schedule.localDate && schedule.localDate <= schedule.frozenUntil;
 
   return (
-    <PageLayout variant="top" loading={loading} action={scheduleAction}>
+    <PageLayout
+      variant="top"
+      loading={loading}
+      action={scheduleAction}
+      topBar={
+        reviewDiscount && reviewDiscount.discount === null ? (
+          <ReviewPromoStrip percent={reviewDiscount.percent} />
+        ) : null
+      }
+    >
       {schedule && (
         <>
           <BookingReminderBanner reminder={schedule.bookingReminder} serverTime={schedule.serverTime} />
-          {reviewDiscount && reviewDiscount.discount === null && <ReviewPromoStrip percent={reviewDiscount.percent} />}
           <h1 className="font-geologica font-semibold text-title sm:text-display text-heading mb-1 uppercase">
             Наступне тренування
           </h1>

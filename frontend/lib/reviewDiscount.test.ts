@@ -81,23 +81,30 @@ describe("discountNote", () => {
 describe("promo strip flag", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("hidden after hidePromoStrip", () => {
-    const store = new Map<string, string>();
-    vi.stubGlobal("localStorage", {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => void store.set(k, v),
+  it("hidden after hidePromoStrip, for a week", () => {
+    let jar = "other=x";
+    const set: string[] = [];
+    vi.stubGlobal("document", {
+      get cookie() {
+        return jar;
+      },
+      set cookie(v: string) {
+        set.push(v);
+        jar = `${jar}; ${v.split(";")[0]}`;
+      },
     });
     expect(promoStripHidden()).toBe(false);
     hidePromoStrip();
+    expect(set[0]).toBe("mg_review_promo_hidden=1; max-age=604800; path=/; SameSite=Lax");
     expect(promoStripHidden()).toBe(true);
   });
 
-  it("storage off: shown, and hiding doesn't throw", () => {
-    vi.stubGlobal("localStorage", {
-      getItem: () => {
+  it("cookies off: shown, and hiding doesn't throw", () => {
+    vi.stubGlobal("document", {
+      get cookie(): string {
         throw new Error("off");
       },
-      setItem: () => {
+      set cookie(_v: string) {
         throw new Error("off");
       },
     });
