@@ -8,7 +8,7 @@ describe("redirectFor (proxy.ts: each role to its own pages)", () => {
     expect(redirectFor("/owner/trainers", null)).toBe("/admin/login");
     expect(redirectFor("/purchases", null)).toBe("/login");
     expect(redirectFor("/prices", null)).toBe("/login");
-    expect(redirectFor("/hours", null)).toBe("/login");
+    expect(redirectFor("/contacts", null)).toBe("/login");
     expect(redirectFor("/admin/login", null)).toBeNull();
     expect(redirectFor("/admin/join", null)).toBeNull();
     expect(redirectFor("/", null)).toBeNull();
@@ -22,7 +22,7 @@ describe("redirectFor (proxy.ts: each role to its own pages)", () => {
     expect(redirectFor("/owner/prices", "member")).toBe("/");
     expect(redirectFor("/purchases", "admin")).toBe("/admin");
     expect(redirectFor("/prices", "owner")).toBe("/owner");
-    expect(redirectFor("/hours", "admin")).toBe("/admin");
+    expect(redirectFor("/contacts", "admin")).toBe("/admin");
   });
 
   it("own pages stay; `/` sends only the team home", () => {
