@@ -1,5 +1,5 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
 import {
@@ -10,7 +10,6 @@ import {
   clubCards,
   members,
   packageSpends,
-  payments,
   purchases,
   trainingSlots,
 } from '../database/schema';
@@ -19,7 +18,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { cancelGuests, freeSeats, lockMember } from '../booking/group-booking';
 import { cardState } from './validity';
 import { memberFrozenOn } from '../freezes/freeze.store';
-import { requireVisibleMember, visibleTo } from '../schedule/default-trainer';
+import { requireVisibleMember } from '../schedule/default-trainer';
 import { purchaseViews } from './purchase-views';
 import { apiError } from '../common/api-error';
 import { REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
@@ -59,54 +58,6 @@ export class AdminPurchasesService {
       // The code the member puts in the transfer purpose
       return { ...v, memberId: row.memberId, displayName: row.displayName, code: transferCode(v.id) };
     });
-  }
-
-  // «Гроші без покупки»: LiqPay took money after the purchase ended, nothing was given for it
-  async strayPayments(trainerId: string) {
-    const rows = await this.database.db
-      .select({
-        paymentId: payments.id,
-        purchaseId: payments.purchaseId,
-        memberId: members.id,
-        displayName: members.displayName,
-        amountUah: payments.amount,
-        liqpayPaymentId: payments.liqpayPaymentId,
-        paidAt: payments.updatedAt,
-      })
-      .from(payments)
-      .innerJoin(purchases, eq(purchases.id, payments.purchaseId))
-      .innerJoin(members, eq(members.id, purchases.memberId))
-      .where(and(strayPayment(), isNull(payments.handledAt), visibleTo(trainerId)))
-      .orderBy(asc(payments.updatedAt));
-    const views = await purchaseViews(
-      this.database.db,
-      rows.map((r) => r.purchaseId),
-    );
-    return rows.map(({ purchaseId, paidAt, ...r }) => ({
-      ...r,
-      paidAt: paidAt.toISOString(),
-      lines: views.find((v) => v.id === purchaseId)?.lines ?? [],
-    }));
-  }
-
-  // «Розібрано». Compare-and-set: two trainers can't both handle it
-  async markPaymentHandled(trainerId: string, paymentId: string) {
-    const [payment] = await this.database.db
-      .select({ handledAt: payments.handledAt })
-      .from(payments)
-      .innerJoin(purchases, eq(purchases.id, payments.purchaseId))
-      .innerJoin(members, eq(members.id, purchases.memberId))
-      .where(and(eq(payments.id, paymentId), strayPayment(), visibleTo(trainerId)))
-      .limit(1);
-    if (!payment) throw new NotFoundException('Payment not found');
-    if (payment.handledAt) throw new ConflictException('Payment already handled');
-    const [won] = await this.database.db
-      .update(payments)
-      .set({ handledAt: this.clock.now().toJSDate(), handledByAdminId: trainerId })
-      .where(and(eq(payments.id, paymentId), isNull(payments.handledAt)))
-      .returning({ id: payments.id });
-    if (!won) throw new ConflictException('Payment already handled');
-    return { ok: true };
   }
 
   async confirmCash(trainerId: string, purchaseId: string) {
@@ -256,9 +207,4 @@ export class AdminPurchasesService {
       throw new ConflictException(apiError('MEMBER_FROZEN'));
     }
   }
-}
-
-// LiqPay success that was never applied (PaymentService.needsManualHandling)
-function strayPayment() {
-  return and(ne(payments.status, 'PAID'), sql`${payments.rawCallback}->>'status' in ('success', 'sandbox')`);
 }

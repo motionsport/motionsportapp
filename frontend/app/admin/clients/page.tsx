@@ -4,7 +4,6 @@ import { api, AdminMember } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { AdminMenu } from "@/components/admin/AdminMenu";
 import { CashRequests } from "./CashRequests";
-import { StrayPayments } from "./StrayPayments";
 import { FreezeRequests } from "./FreezeRequests";
 import { CancelRefunds } from "./CancelRefunds";
 import { NoteCell, PurchaseSummary, TrainerPicker } from "@/components/admin/ClientParts";
@@ -111,7 +110,6 @@ export default function ClientsPage() {
               Не вдалося оновити список. Оновіть сторінку.
             </p>
           )}
-          <StrayPayments />
           <CashRequests requests={data?.cash ?? []} onDecided={reload} />
           <FreezeRequests requests={data?.freezes ?? []} onDecided={reload} />
           <CancelRefunds refunds={data?.refunds ?? []} onDone={reload} />

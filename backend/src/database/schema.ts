@@ -358,9 +358,6 @@ export const payments = pgTable(
     rawCallback: jsonb('raw_callback'),
     // LiqPay `reversed` callback (refund), kept apart from raw_callback; not acted on yet
     refundCallback: jsonb('refund_callback'),
-    // Stray money (success callback, status not PAID) stays on the trainer's list until handled
-    handledAt: timestamp('handled_at', { withTimezone: true }),
-    handledByAdminId: uuid('handled_by_admin_id').references(() => admins.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

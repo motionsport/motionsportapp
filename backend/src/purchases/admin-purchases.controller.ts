@@ -19,17 +19,6 @@ export class AdminPurchasesController {
     return this.adminPurchasesService.pendingCash(user.id);
   }
 
-  @Get('payments/stray')
-  strayPayments(@CurrentUser() user: SessionUser) {
-    return this.adminPurchasesService.strayPayments(user.id);
-  }
-
-  @Post('payments/:id/handled')
-  @HttpCode(200)
-  markPaymentHandled(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: SessionUser) {
-    return this.adminPurchasesService.markPaymentHandled(user.id, id);
-  }
-
   // «Повернути гроші»: the training's trainer only
   @Get('cancel-refunds/pending')
   pendingCancelRefunds(@CurrentUser() user: SessionUser) {

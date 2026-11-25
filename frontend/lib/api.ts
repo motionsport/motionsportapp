@@ -30,7 +30,6 @@ import type {
   RegisterResponse,
   ScheduleNext,
   SkippedTraining,
-  StrayPayment,
   Trainer,
   TrainerInvite,
   TrainerSchedule,
@@ -207,10 +206,6 @@ export const api = {
   confirmCash: (purchaseId: string) => post(`/admin/purchases/${purchaseId}/confirm`),
 
   rejectCash: (purchaseId: string) => post(`/admin/purchases/${purchaseId}/reject`),
-
-  getStrayPayments: () => get<StrayPayment[]>("/admin/payments/stray"),
-
-  markPaymentHandled: (paymentId: string) => post(`/admin/payments/${paymentId}/handled`),
 
   getMemberPurchases: (memberId: string) => get<MemberPurchases>(`/admin/members/${memberId}/purchases`),
 

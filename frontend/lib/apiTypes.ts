@@ -161,17 +161,6 @@ export interface Purchase {
   lines: PurchaseLine[];
 }
 
-// Money that arrived after its purchase ended; handled by hand
-export interface StrayPayment {
-  paymentId: string;
-  memberId: string;
-  displayName: string;
-  amountUah: number;
-  liqpayPaymentId: string | null; // to find it in the LiqPay cabinet for a refund
-  paidAt: string;
-  lines: PurchaseLine[];
-}
-
 // Cash or transfer the trainer confirms
 export interface CashRequest extends Purchase {
   memberId: string;
