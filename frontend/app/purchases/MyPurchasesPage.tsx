@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { reloadTo } from "@/lib/loginRedirect";
 import { api, AssignedType, MyFreeze, MyPurchases, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { PurchaseFlow, PurchaseMode } from "./PurchaseFlow";
@@ -16,7 +16,6 @@ import { ReviewDiscountCard } from "@/components/discount/ReviewDiscountCard";
 const sectionTitle = "font-geologica font-semibold text-heading uppercase text-xs tracking-wide";
 
 export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
-  const router = useRouter();
   const [data, setData] = useState<MyPurchases | null>(null);
   const [freeze, setFreeze] = useState<MyFreeze | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -32,10 +31,10 @@ export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
         .catch((err: unknown) => {
           const status = statusOf(err);
           // Another role never gets here (proxy.ts); 401 = the session ended
-          if (status === 401) router.push("/login");
+          if (status === 401) reloadTo("/login");
           else setLoadError(true);
         }),
-    [router],
+    [],
   );
 
   useEffect(() => {

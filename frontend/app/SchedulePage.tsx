@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { reloadTo } from "@/lib/loginRedirect";
 import Link from "next/link";
 import { api, DiscountView, ScheduleNext, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
@@ -18,7 +18,6 @@ import { ReviewDiscountCard } from "@/components/discount/ReviewDiscountCard";
 
 // `signedIn` = a member's role cookie (page.tsx): otherwise the landing, with no API call (no 401 in the console)
 export default function SchedulePage({ signedIn }: { signedIn: boolean }) {
-  const router = useRouter();
   const [schedule, setSchedule] = useState<ScheduleNext | null>(null);
   // false = session expired
   const [sessionOk, setAuthed] = useState<boolean | null>(null);
@@ -128,9 +127,9 @@ export default function SchedulePage({ signedIn }: { signedIn: boolean }) {
   };
 
   const handleLogout = async () => {
-    // Deliberately ignored: api.logout() has already cleared the local flag
+    // Deliberately ignored: signed out or not, the login comes next
     await api.logout().catch(() => {});
-    router.push("/login");
+    reloadTo("/login");
   };
 
   if (authed === null) {

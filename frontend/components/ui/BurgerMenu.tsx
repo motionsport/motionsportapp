@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { reloadTo } from "@/lib/loginRedirect";
 import { api } from "@/lib/api";
 
 export type MenuLink = { href: string; label: string };
 
 // The team's burger (trainer and owner pages), same on phone and desktop; «Вийти» goes to the team login
 export function BurgerMenu({ links }: { links: MenuLink[] }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -31,9 +31,9 @@ export function BurgerMenu({ links }: { links: MenuLink[] }) {
 
   const logout = async () => {
     setOpen(false);
-    // Deliberately ignored: api.logout() has already cleared the local flag
+    // Deliberately ignored: signed out or not, the team login comes next
     await api.logout().catch(() => {});
-    router.push("/admin/login");
+    reloadTo("/admin/login");
   };
 
   return (

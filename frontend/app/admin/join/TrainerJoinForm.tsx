@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { reloadTo } from "@/lib/loginRedirect";
 import { api, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 
@@ -9,7 +9,6 @@ const FIELD = "input-field w-full border rounded-lg px-4 py-3 text-sm focus:outl
 const MIN_PASSWORD = 10;
 
 export function TrainerJoinForm({ token }: { token: string }) {
-  const router = useRouter();
   // null while checking the link
   const [valid, setValid] = useState<boolean | null>(token ? null : false);
   const [username, setUsername] = useState("");
@@ -36,7 +35,7 @@ export function TrainerJoinForm({ token }: { token: string }) {
     setLoading(true);
     try {
       await api.registerTrainer(token, username, password);
-      router.push("/admin");
+      reloadTo("/admin");
     } catch (err) {
       const status = statusOf(err);
       if (status === 409) setError("Такий логін уже є. Оберіть інший.");

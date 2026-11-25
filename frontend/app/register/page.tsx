@@ -1,13 +1,12 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { reloadTo } from "@/lib/loginRedirect";
 import { api } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
@@ -96,7 +95,7 @@ export default function RegisterPage() {
 
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => reloadTo("/")}
           className="btn-primary w-full py-4 rounded-lg font-medium text-sm transition-colors"
         >
           Продовжити →

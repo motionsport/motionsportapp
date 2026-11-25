@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { api, statusOf } from "@/lib/api";
 import { toAdminLogin } from "@/lib/adminAuth";
 
@@ -9,8 +8,6 @@ const MIN_PASSWORD = 10;
 
 // «Мій пароль» of a trainer or the owner; their other sessions are revoked. Who may open it is the layout's job
 export function PasswordSection() {
-  const router = useRouter();
-
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [repeat, setRepeat] = useState("");
@@ -39,7 +36,7 @@ export function PasswordSection() {
         await api
           .me()
           .then(() => setError("Поточний пароль невірний."))
-          .catch((e: unknown) => toAdminLogin(e, router));
+          .catch((e: unknown) => toAdminLogin(e));
       }
     } finally {
       setBusy(false);

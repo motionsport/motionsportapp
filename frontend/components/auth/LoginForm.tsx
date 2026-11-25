@@ -1,11 +1,10 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { api, statusOf, type Role } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
-import { homeFor } from "@/lib/loginRedirect";
+import { homeFor, reloadTo } from "@/lib/loginRedirect";
 
 interface FieldConfig {
   label: string;
@@ -104,7 +103,6 @@ function Field({ config, value, onChange }: { config: FieldConfig; value: string
 
 export function LoginForm({ variant }: { variant: "member" | "admin" }) {
   const config = VARIANTS[variant];
-  const router = useRouter();
   const [login, setLogin] = useState("");
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
@@ -116,7 +114,7 @@ export function LoginForm({ variant }: { variant: "member" | "admin" }) {
     setLoading(true);
     try {
       const role = await config.submit(login, secret);
-      router.push(homeFor(role));
+      reloadTo(homeFor(role));
     } catch (err: unknown) {
       const status = statusOf(err);
       if (status === 401) {

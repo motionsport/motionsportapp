@@ -1,7 +1,6 @@
 "use client";
 import { kyivTime } from "@/lib/kyivTime";
 import { useEffect, useRef, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, AdminSchedule, Announcement, AnnouncementExample } from "@/lib/api";
 import { SlotCard as AdminSlotCard } from "@/components/admin/SlotCard";
@@ -16,7 +15,6 @@ import { AnnouncementSection } from "./AnnouncementSection";
 import { CancelDayButton } from "./CancelDayButton";
 
 export default function AdminPage() {
-  const router = useRouter();
   const [schedule, setSchedule] = useState<AdminSchedule | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -41,9 +39,9 @@ export default function AdminPage() {
       setExamples(exs);
     } catch (err: unknown) {
       // Redirect to login only on the first load; later a failed refresh just says so
-      if (authedRef.current || !toAdminLogin(err, router)) setLoadFailed(true);
+      if (authedRef.current || !toAdminLogin(err)) setLoadFailed(true);
     }
-  }, [router]);
+  }, []);
 
   const startPolling = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);

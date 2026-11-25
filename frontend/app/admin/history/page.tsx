@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { api, AdminSlotView, AttendanceStatus, HistoryDay } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { AdminMenu } from "@/components/admin/AdminMenu";
@@ -89,26 +88,22 @@ function HistorySlot({
 
 // Marks stay editable on the training day and 3 days after it (lib/marksLock.ts); older days are read-only
 export default function HistoryPage() {
-  const router = useRouter();
   const [days, setDays] = useState<HistoryDay[] | null>(null);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(
-    async (before?: string) => {
-      try {
-        const page = await api.getHistory(before);
-        setDays((prev) => [...(before ? (prev ?? []) : []), ...page.days]);
-        setNextBefore(page.nextBefore);
-        if (!before && page.days[0]) setOpen(new Set([page.days[0].localDate]));
-      } catch (err: unknown) {
-        if (!toAdminLogin(err, router)) setError("Не вдалося завантажити історію.");
-      }
-    },
-    [router],
-  );
+  const load = useCallback(async (before?: string) => {
+    try {
+      const page = await api.getHistory(before);
+      setDays((prev) => [...(before ? (prev ?? []) : []), ...page.days]);
+      setNextBefore(page.nextBefore);
+      if (!before && page.days[0]) setOpen(new Set([page.days[0].localDate]));
+    } catch (err: unknown) {
+      if (!toAdminLogin(err)) setError("Не вдалося завантажити історію.");
+    }
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load is async: state is set after the await, not synchronously

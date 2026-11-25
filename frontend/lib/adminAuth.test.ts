@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, ApiError, statusOf } from "./api";
 import { toAdminLogin } from "./adminAuth";
 
@@ -39,21 +39,26 @@ describe("a failed call", () => {
 });
 
 describe("toAdminLogin", () => {
+  // A full page load (reloadTo): the node test environment has no window, so it gets a stub
+  const assign = vi.fn();
+  beforeEach(() => {
+    assign.mockClear();
+    vi.stubGlobal("window", { location: { assign } });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
   it("sends 401 (signed out) to the team login", () => {
-    const router = { push: vi.fn() };
-    expect(toAdminLogin(new ApiError("x", 401, {}), router)).toBe(true);
-    expect(router.push).toHaveBeenCalledWith("/admin/login");
+    expect(toAdminLogin(new ApiError("x", 401, {}))).toBe(true);
+    expect(assign).toHaveBeenCalledWith("/admin/login");
   });
 
   it.each([400, 403, 404, 409, 500])("leaves %i to the page", (status) => {
-    const router = { push: vi.fn() };
-    expect(toAdminLogin(new ApiError("x", status, {}), router)).toBe(false);
-    expect(router.push).not.toHaveBeenCalled();
+    expect(toAdminLogin(new ApiError("x", status, {}))).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
   });
 
   it("leaves a network failure to the page", () => {
-    const router = { push: vi.fn() };
-    expect(toAdminLogin(new TypeError("Failed to fetch"), router)).toBe(false);
-    expect(router.push).not.toHaveBeenCalled();
+    expect(toAdminLogin(new TypeError("Failed to fetch"))).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
   });
 });

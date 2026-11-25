@@ -1,6 +1,5 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/classic/theme.css";
 import "@fullcalendar/react/themes/classic/palette.css";
@@ -45,7 +44,6 @@ function pad(n: number) {
 type OpenModal = { mode: "add"; date: string; time: string } | { mode: "edit"; slot: CalendarSlot };
 
 export default function CalendarPage() {
-  const router = useRouter();
   const mounted = useIsClient();
   const [slots, setSlots] = useState<CalendarSlot[]>([]);
   const [members, setMembers] = useState<AdminMember[]>([]);
@@ -56,12 +54,9 @@ export default function CalendarPage() {
 
   // Say so: an empty calendar would look like no trainings
   const [loadError, setLoadError] = useState(false);
-  const handleLoadError = useCallback(
-    (err: unknown) => {
-      if (!toAdminLogin(err, router)) setLoadError(true);
-    },
-    [router],
-  );
+  const handleLoadError = useCallback((err: unknown) => {
+    if (!toAdminLogin(err)) setLoadError(true);
+  }, []);
 
   // For the booking-opening warning, the ↻ marks and «Щотижня»
   const [schedule, setSchedule] = useState<TrainerSchedule | null>(null);

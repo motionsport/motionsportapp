@@ -1,13 +1,12 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { reloadTo } from "@/lib/loginRedirect";
 import { api, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
 
 export default function ForgotPage() {
-  const router = useRouter();
   const [memberCode, setMemberCode] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -82,7 +81,7 @@ export default function ForgotPage() {
 
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => reloadTo("/")}
           className="btn-primary w-full py-4 rounded-lg font-medium text-sm transition-colors"
         >
           Продовжити →
