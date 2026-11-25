@@ -111,7 +111,7 @@ export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
               Усі ціни
             </Link>
             <Link href="/hours" className="text-muted text-sm hover:text-body transition-colors">
-              Графік роботи
+              Графік і адреса
             </Link>
           </div>
         </div>
