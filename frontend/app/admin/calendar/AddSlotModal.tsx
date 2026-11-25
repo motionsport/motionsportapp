@@ -74,8 +74,8 @@ export function AddSlotModal({
     setSaving(true);
     setError("");
     try {
-      const { bookingOpensAt, autoCreate, times } = await api.saveMySchedule(next);
-      onScheduleSaved({ bookingOpensAt, autoCreate, times });
+      const { bookingOpensAt, autoCreate, times, topics } = await api.saveMySchedule(next);
+      onScheduleSaved({ bookingOpensAt, autoCreate, times, topics });
     } catch (err: unknown) {
       setSaving(false);
       return setError(errorText(err, "Помилка збереження. Спробуйте ще раз."));

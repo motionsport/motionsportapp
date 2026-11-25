@@ -64,26 +64,26 @@ describe('AnnouncementGeneratorService', () => {
     });
 
     it('returns AI-generated text', async () => {
-      const result = await service.generate(['Приклад 1'], null, MONDAY);
+      const result = await service.generate(['Приклад 1'], 'ноги', MONDAY);
       expect(result.source).toBe('ai');
       expect(result.text).toBe('Записуйтесь на тренування сьогодні! 💪');
     });
 
     it('prompt and system instruction do not mention the gym name', async () => {
-      await service.generate(['Приклад оголошення'], null, MONDAY);
+      await service.generate(['Приклад оголошення'], 'ноги', MONDAY);
       for (const name of GYM_NAMES) {
         expect(capturedPrompt.toLowerCase()).not.toContain(name.toLowerCase());
         expect(capturedSystem.toLowerCase()).not.toContain(name.toLowerCase());
       }
     });
 
-    it("the weekday's topic goes into the prompt, picked in code (Mon legs, Wed circuit, Fri arms)", async () => {
-      await service.generate([], null, MONDAY);
+    it("the trainer's topic for the weekday goes into the prompt, with the date", async () => {
+      await service.generate([], 'ноги', MONDAY);
       expect(capturedPrompt).toContain('понеділок, 26 жовтня');
       expect(capturedPrompt).toContain('Тема тренування: ноги');
     });
 
-    it('a day outside the programme with no topic of its own: the fallback text, no AI', async () => {
+    it('a weekday with no topic in the programme: the fallback text, no AI', async () => {
       capturedPrompt = '';
       const result = await service.generate([], null, THURSDAY);
       expect(result).toMatchObject({ source: 'fallback', fallbackReason: 'no topic for this day' });
@@ -91,19 +91,17 @@ describe('AnnouncementGeneratorService', () => {
     });
 
     it('the model is told not to mention other days', async () => {
-      await service.generate([], null, MONDAY);
+      await service.generate([], 'ноги', MONDAY);
       expect(capturedSystem).toContain('не згадуй інші дні');
     });
 
     it('prompt includes provided examples', async () => {
-      await service.generate(['Перший приклад', 'Другий приклад'], null, MONDAY);
+      await service.generate(['Перший приклад', 'Другий приклад'], 'ноги', MONDAY);
       expect(capturedPrompt).toContain('Перший приклад');
       expect(capturedPrompt).toContain('Другий приклад');
     });
 
-    it("the trainer's topic for the day wins over the programme, any weekday", async () => {
-      await service.generate([], 'Спина', MONDAY);
-      expect(capturedPrompt).toContain('Тема тренування: Спина');
+    it('any weekday with a topic gets the AI text', async () => {
       await service.generate([], 'Спина', THURSDAY);
       expect(capturedPrompt).toContain('Тема тренування: Спина');
     });
@@ -115,7 +113,7 @@ describe('AnnouncementGeneratorService', () => {
         getGenerativeModel: jest.fn().mockReturnValue({ generateContent: () => new Promise(() => {}) }),
       }));
       (service as any).genAI = null;
-      const pending = service.generate([], null, MONDAY);
+      const pending = service.generate([], 'ноги', MONDAY);
       await jest.advanceTimersByTimeAsync(10_000);
       const result = await pending;
       jest.useRealTimers();
@@ -133,20 +131,17 @@ describe('AnnouncementGeneratorService', () => {
         }),
       }));
       (service as any).genAI = null;
-      const result = await service.generate([], null, MONDAY);
+      const result = await service.generate([], 'ноги', MONDAY);
       expect(result.source).toBe('fallback');
     });
   });
 });
 
 describe('dayTopic', () => {
-  it("the trainer's topic, else the weekday's, else none", () => {
-    expect(dayTopic(' Спина ', THURSDAY)).toBe('Спина');
-    expect(dayTopic(null, MONDAY)).toBe('ноги');
-    expect(dayTopic(null, '2026-10-28')).toBe('кругове тренування');
-    expect(dayTopic(null, '2026-10-30')).toBe('руки');
-    expect(dayTopic(null, THURSDAY)).toBeNull();
-    expect(dayTopic('  ', THURSDAY)).toBeNull();
+  it('the trimmed topic; blank = none', () => {
+    expect(dayTopic(' Спина ')).toBe('Спина');
+    expect(dayTopic('  ')).toBeNull();
+    expect(dayTopic(null)).toBeNull();
   });
 });
 

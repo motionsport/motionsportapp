@@ -26,7 +26,10 @@ export function AnnouncementSection({
 
   return (
     <div className="border-t border-line pt-5 mt-5">
-      <p className="text-muted text-xs mb-3 uppercase tracking-wide font-medium">Оголошення</p>
+      <p className="text-muted text-xs mb-1 uppercase tracking-wide font-medium">Оголошення</p>
+      <p className="text-subtle text-xs mb-3">
+        Його бачать ваші клієнти. Тема дня з «Розкладу групових»; без теми загальний текст.
+      </p>
 
       {announcement?.publishedAt ? (
         <div className="bg-teal/8 border border-teal/20 rounded-xl px-4 py-3 mb-4 text-sm text-body">
@@ -113,7 +116,7 @@ export function AnnouncementSection({
         )}
       </div>
 
-      <p className="text-muted text-xs mb-2 font-medium">Приклади стилю для AI</p>
+      <p className="text-muted text-xs mb-2 font-medium">Ваші приклади стилю для AI</p>
       <div className="space-y-2 mb-3">
         {examples.map((ex) => (
           <div key={ex.id} className="flex items-start space-x-2 bg-surface rounded-lg px-3 py-2">

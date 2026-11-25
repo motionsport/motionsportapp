@@ -287,11 +287,19 @@ export const notificationEvents = pgTable(
   () => [oneOf('notification_events_status_check', 'status', ['PENDING', 'SENT', 'FAILED'])],
 );
 
-export const announcementExamples = pgTable('announcement_examples', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  text: text('text').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+// The trainer's own style examples for the AI announcement
+export const announcementExamples = pgTable(
+  'announcement_examples',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    trainerId: uuid('trainer_id')
+      .notNull()
+      .references(() => admins.id),
+    text: text('text').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('announcement_examples_trainer_idx').on(table.trainerId)],
+);
 
 export const announcements = pgTable(
   'announcements',
@@ -299,15 +307,20 @@ export const announcements = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     trainingDayId: uuid('training_day_id')
       .notNull()
-      .unique()
       .references(() => trainingDays.id),
-    topic: text('topic'),
+    // Each trainer's own announcement of the day; members see their trainer's
+    trainerId: uuid('trainer_id')
+      .notNull()
+      .references(() => admins.id),
     text: text('text'),
     source: text('source'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  () => [oneOf('announcements_source_check', 'source', ['ai', 'fallback', 'manual'])],
+  (table) => [
+    uniqueIndex('announcements_day_trainer_idx').on(table.trainingDayId, table.trainerId),
+    oneOf('announcements_source_check', 'source', ['ai', 'fallback', 'manual']),
+  ],
 );
 
 export const aiGenerations = pgTable(
@@ -582,6 +595,23 @@ export const trainerScheduleTimes = pgTable(
     primaryKey({ columns: [table.trainerId, table.weekday, table.slotTime] }),
     check('trainer_schedule_times_weekday_check', sql`weekday between 1 and 7`),
     check('trainer_schedule_times_slot_time_check', sql.raw(`slot_time ~ ${ANY_MINUTE}`)),
+  ],
+);
+
+// The trainer's weekly programme: the topic of a weekday's group trainings, for the AI announcement
+export const trainerScheduleTopics = pgTable(
+  'trainer_schedule_topics',
+  {
+    trainerId: uuid('trainer_id')
+      .notNull()
+      .references(() => admins.id),
+    weekday: integer('weekday').notNull(),
+    topic: text('topic').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.trainerId, table.weekday] }),
+    check('trainer_schedule_topics_weekday_check', sql`weekday between 1 and 7`),
+    check('trainer_schedule_topics_topic_check', sql`char_length(topic) between 1 and 60`),
   ],
 );
 

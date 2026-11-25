@@ -24,24 +24,40 @@ describe('Trainer schedule rules', () => {
 
   it('booking must open before the first training of the schedule', () => {
     expect(
-      scheduleError({ bookingOpensAt: '19:00', autoCreate: true, times: [{ weekday: 1, slotTime: '19:00' }] }),
+      scheduleError({
+        bookingOpensAt: '19:00',
+        autoCreate: true,
+        topics: [],
+        times: [{ weekday: 1, slotTime: '19:00' }],
+      }),
     ).toBe('Booking must open before the first training');
     expect(
-      scheduleError({ bookingOpensAt: '14:00', autoCreate: true, times: [{ weekday: 1, slotTime: '19:00' }] }),
+      scheduleError({
+        bookingOpensAt: '14:00',
+        autoCreate: true,
+        topics: [],
+        times: [{ weekday: 1, slotTime: '19:00' }],
+      }),
     ).toBeNull();
   });
 
   it('rejects an unknown weekday, a bad time and the same time twice on a day', () => {
     expect(
-      scheduleError({ bookingOpensAt: '14:00', autoCreate: true, times: [{ weekday: 8, slotTime: '19:00' }] }),
+      scheduleError({
+        bookingOpensAt: '14:00',
+        autoCreate: true,
+        topics: [],
+        times: [{ weekday: 8, slotTime: '19:00' }],
+      }),
     ).toBe('Unknown weekday');
-    expect(scheduleError({ bookingOpensAt: '14:05', autoCreate: true, times: [] })).toBe(
+    expect(scheduleError({ bookingOpensAt: '14:05', autoCreate: true, topics: [], times: [] })).toBe(
       'Time must be in 15-minute steps',
     );
     expect(
       scheduleError({
         bookingOpensAt: '14:00',
         autoCreate: true,
+        topics: [],
         times: [
           { weekday: 1, slotTime: '19:00' },
           { weekday: 1, slotTime: '19:00' },
@@ -50,11 +66,31 @@ describe('Trainer schedule rules', () => {
     ).toBe('Group trainings must be at least an hour apart');
   });
 
+  it('a topic per weekday, 1 to 60 characters', () => {
+    const base = { bookingOpensAt: '14:00', autoCreate: true, times: [] };
+    expect(scheduleError({ ...base, topics: [{ weekday: 1, topic: 'ноги' }] })).toBeNull();
+    expect(scheduleError({ ...base, topics: [{ weekday: 1, topic: 'я'.repeat(61) }] })).toBe(
+      'Topic must be 1 to 60 characters',
+    );
+    expect(scheduleError({ ...base, topics: [{ weekday: 1, topic: '  ' }] })).toBe('Topic must be 1 to 60 characters');
+    expect(
+      scheduleError({
+        ...base,
+        topics: [
+          { weekday: 1, topic: 'ноги' },
+          { weekday: 1, topic: 'руки' },
+        ],
+      }),
+    ).toBe('One topic per weekday');
+    expect(scheduleError({ ...base, topics: [{ weekday: 0, topic: 'ноги' }] })).toBe('Unknown weekday');
+  });
+
   it('the same time on different days is fine; the current schedule is valid', () => {
     expect(
       scheduleError({
         bookingOpensAt: '14:00',
         autoCreate: true,
+        topics: [],
         times: [
           { weekday: 1, slotTime: '19:00' },
           { weekday: 3, slotTime: '19:00' },

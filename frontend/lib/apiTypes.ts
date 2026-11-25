@@ -56,6 +56,8 @@ export interface TrainerSchedule {
   bookingOpensAt: string; // "HH:MM"
   autoCreate: boolean;
   times: { weekday: number; slotTime: string }[];
+  // The weekly programme: a weekday's topic for the AI announcement
+  topics: { weekday: number; topic: string }[];
 }
 
 // A schedule training not added on save
@@ -430,7 +432,6 @@ export interface AnnouncementExample {
 export interface Announcement {
   id: string;
   trainingDayId: string;
-  topic: string | null;
   text: string | null;
   source: string | null;
   publishedAt: string | null;

@@ -7,7 +7,11 @@ export type TrainerSchedule = {
   bookingOpensAt: string; // 'HH:MM'
   autoCreate: boolean;
   times: { weekday: number; slotTime: string }[];
+  // The weekly programme: a weekday's topic for the AI announcement (none = the general text)
+  topics: { weekday: number; topic: string }[];
 };
+
+export const TOPIC_MAX = 60;
 
 export const GROUP_EARLIEST = '06:00';
 // The 22:00 cron marks the whole day, so the last group must be over by then
@@ -21,6 +25,12 @@ export const LEGACY_DEFAULT: TrainerSchedule = {
   bookingOpensAt: DEFAULT_OPENS_AT,
   autoCreate: true,
   times: [1, 3, 5].flatMap((weekday) => ['19:00', '20:00'].map((slotTime) => ({ weekday, slotTime }))),
+  // The gym's programme from before each trainer had their own
+  topics: [
+    { weekday: 1, topic: 'ноги' },
+    { weekday: 3, topic: 'кругове тренування' },
+    { weekday: 5, topic: 'руки' },
+  ],
 };
 
 const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
@@ -50,6 +60,12 @@ export function scheduleError(s: TrainerSchedule): string | null {
     if (error) return error;
   }
   if (s.times.some((t) => t.slotTime <= s.bookingOpensAt)) return API_ERRORS.OPENS_AFTER_TRAINING;
+  for (let i = 0; i < s.topics.length; i++) {
+    const { weekday, topic } = s.topics[i];
+    if (!Number.isInteger(weekday) || weekday < 1 || weekday > 7) return 'Unknown weekday';
+    if (s.topics.slice(0, i).some((t) => t.weekday === weekday)) return 'One topic per weekday';
+    if (!topic.trim() || topic.trim().length > TOPIC_MAX) return 'Topic must be 1 to 60 characters';
+  }
   return null;
 }
 

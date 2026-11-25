@@ -8,7 +8,7 @@ import { TrainerScheduleController } from './trainer-schedule.controller';
 import { loadTrainerSchedule } from './trainer-schedule.store';
 import { LEGACY_DEFAULT, type TrainerSchedule } from './rules';
 import { AdminGuard } from '../common/guards/admin.guard';
-import { trainerSchedules, trainerScheduleTimes } from '../database/schema';
+import { trainerSchedules, trainerScheduleTimes, trainerScheduleTopics } from '../database/schema';
 
 // Each awaited read takes the next result; inserts / deletes recorded with their table
 function makeDb(results: unknown[][]) {
@@ -50,16 +50,18 @@ const SCHEDULE: TrainerSchedule = {
     { weekday: 2, slotTime: '18:00' },
     { weekday: 4, slotTime: '18:00' },
   ],
+  topics: [{ weekday: 2, topic: 'спина' }],
 };
 
 describe('loadTrainerSchedule', () => {
-  it('a saved schedule comes back as saved, times in week order', async () => {
+  it('a saved schedule comes back as saved, times and topics in week order', async () => {
     const { db } = makeDb([
       [{ bookingOpensAt: '12:00', autoCreate: true }],
       [
         { weekday: 4, slotTime: '18:00' },
         { weekday: 2, slotTime: '18:00' },
       ],
+      SCHEDULE.topics,
     ]);
     expect(await loadTrainerSchedule(db, 't2')).toEqual(SCHEDULE);
   });
@@ -71,7 +73,12 @@ describe('loadTrainerSchedule', () => {
 
   it('another trainer without a saved schedule has none, nothing created ahead', async () => {
     const { db } = makeDb([[], [{ id: 't1' }]]);
-    expect(await loadTrainerSchedule(db, 't2')).toEqual({ bookingOpensAt: '14:00', autoCreate: false, times: [] });
+    expect(await loadTrainerSchedule(db, 't2')).toEqual({
+      bookingOpensAt: '14:00',
+      autoCreate: false,
+      times: [],
+      topics: [],
+    });
   });
 });
 
@@ -93,8 +100,8 @@ describe('TrainerScheduleService.save', () => {
     expect(schedule.ensureGroupSlots).not.toHaveBeenCalled();
   });
 
-  it('saves the settings and replaces the times in one transaction, then returns them', async () => {
-    const { db, writes } = makeDb([[{ bookingOpensAt: '12:00', autoCreate: true }], SCHEDULE.times]);
+  it('saves the settings and replaces the times and topics in one transaction, then returns them', async () => {
+    const { db, writes } = makeDb([[{ bookingOpensAt: '12:00', autoCreate: true }], SCHEDULE.times, SCHEDULE.topics]);
     const svc = new TrainerScheduleService({ db } as any, schedule as any);
     expect(await svc.save('t2', SCHEDULE)).toEqual({
       ...SCHEDULE,
@@ -118,11 +125,30 @@ describe('TrainerScheduleService.save', () => {
           { trainerId: 't2', weekday: 4, slotTime: '18:00' },
         ],
       },
+      { op: 'delete', table: trainerScheduleTopics },
+      { op: 'insert', table: trainerScheduleTopics, values: [{ trainerId: 't2', weekday: 2, topic: 'спина' }] },
     ]);
   });
 
+  it('topics are trimmed; an empty one is no topic for that weekday', async () => {
+    const { db, writes } = makeDb([[{ bookingOpensAt: '12:00', autoCreate: true }], SCHEDULE.times, []]);
+    const svc = new TrainerScheduleService({ db } as any, schedule as any);
+    await svc.save('t2', {
+      ...SCHEDULE,
+      topics: [
+        { weekday: 2, topic: '  спина ' },
+        { weekday: 4, topic: ' ' },
+      ],
+    });
+    expect(writes.at(-1)).toEqual({
+      op: 'insert',
+      table: trainerScheduleTopics,
+      values: [{ trainerId: 't2', weekday: 2, topic: 'спина' }],
+    });
+  });
+
   it('adding the trainings failing after the save still reports the schedule as saved', async () => {
-    const { db } = makeDb([[{ bookingOpensAt: '12:00', autoCreate: true }], SCHEDULE.times]);
+    const { db } = makeDb([[{ bookingOpensAt: '12:00', autoCreate: true }], SCHEDULE.times, SCHEDULE.topics]);
     const failing = { ensureGroupSlots: jest.fn().mockRejectedValue(new Error('db down')) };
     const svc = new TrainerScheduleService({ db } as any, failing as any);
     await expect(svc.save('t2', SCHEDULE)).resolves.toEqual(SCHEDULE);
@@ -139,9 +165,15 @@ describe('SaveScheduleDto', () => {
       bookingOpensAt: '14:00',
       autoCreate: true,
       times: [{ weekday: 9, slotTime: '7pm' }],
+      topics: [],
     });
     const errors = await validate(bad);
     expect(errors.map((e) => e.property)).toEqual(['times']);
     expect(await validate(plainToInstance(SaveScheduleDto, { ...SCHEDULE }))).toEqual([]);
+  });
+
+  it('checks every topic row: a weekday out of 1–7 is rejected', async () => {
+    const bad = plainToInstance(SaveScheduleDto, { ...SCHEDULE, topics: [{ weekday: 0, topic: 'ноги' }] });
+    expect((await validate(bad)).map((e) => e.property)).toEqual(['topics']);
   });
 });

@@ -6,10 +6,3 @@ export class AnnouncementTextDto {
   @MaxLength(500)
   text: string;
 }
-
-// Overrides the weekly programme topic for the day
-export class AnnouncementTopicDto {
-  @IsString()
-  @MaxLength(100)
-  topic: string;
-}

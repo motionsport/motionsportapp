@@ -93,7 +93,7 @@ export class ScheduleService {
     const bookingWindowOpen = now >= openAt && now < closeAt;
 
     const slots = await this.groupSlotViews(trainerId!, targetDay, memberId, now);
-    const published = await this.publishedAnnouncement(targetDay.id);
+    const published = await this.publishedAnnouncement(targetDay.id, trainerId!);
     const announcement = bookingWindowOpen ? published : null;
 
     return {
@@ -218,14 +218,15 @@ export class ScheduleService {
     }));
   }
 
-  private async publishedAnnouncement(dayId: string) {
+  // The member's trainer's announcement of the day
+  private async publishedAnnouncement(dayId: string, trainerId: string) {
     const [ann] = await this.database.db
       .select({
         text: announcements.text,
         publishedAt: announcements.publishedAt,
       })
       .from(announcements)
-      .where(eq(announcements.trainingDayId, dayId))
+      .where(and(eq(announcements.trainingDayId, dayId), eq(announcements.trainerId, trainerId)))
       .limit(1);
     return ann?.publishedAt && ann.text ? ann.text : null;
   }

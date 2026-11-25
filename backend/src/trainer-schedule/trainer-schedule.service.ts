@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ScheduleService } from '../schedule/schedule.service';
-import { trainerSchedules, trainerScheduleTimes } from '../database/schema';
+import { trainerSchedules, trainerScheduleTimes, trainerScheduleTopics } from '../database/schema';
 import { scheduleError, type TrainerSchedule } from './rules';
 import { ruleError } from '../common/api-error';
 import { loadTrainerSchedule } from './trainer-schedule.store';
@@ -20,8 +20,12 @@ export class TrainerScheduleService {
     return loadTrainerSchedule(this.database.db, trainerId);
   }
 
-  // Replaces the week's times as a whole
-  async save(trainerId: string, schedule: TrainerSchedule) {
+  // Replaces the week's times and topics as a whole; an empty topic = none for that weekday
+  async save(trainerId: string, input: TrainerSchedule) {
+    const schedule = {
+      ...input,
+      topics: input.topics.map((t) => ({ ...t, topic: t.topic.trim() })).filter((t) => t.topic),
+    };
     const error = scheduleError(schedule);
     if (error) throw new BadRequestException(ruleError(error));
 
@@ -40,6 +44,12 @@ export class TrainerScheduleService {
         await tx
           .insert(trainerScheduleTimes)
           .values(schedule.times.map((t) => ({ trainerId, weekday: t.weekday, slotTime: t.slotTime })));
+      }
+      await tx.delete(trainerScheduleTopics).where(eq(trainerScheduleTopics.trainerId, trainerId));
+      if (schedule.topics.length > 0) {
+        await tx
+          .insert(trainerScheduleTopics)
+          .values(schedule.topics.map((t) => ({ trainerId, weekday: t.weekday, topic: t.topic })));
       }
     });
     const saved = await loadTrainerSchedule(this.database.db, trainerId);

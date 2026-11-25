@@ -211,8 +211,8 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
     };
     const announcements = {
       autoGenerate: autoGenerate.mockImplementation(
-        (d: string) => (
-          order.push(`ann:${d}`),
+        (d: string, trainerId: string) => (
+          order.push(`ann:${d}:${trainerId}`),
           generationFails ? Promise.reject(new Error('gemini down')) : Promise.resolve()
         ),
       ),
@@ -234,14 +234,22 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
     ]);
   });
 
-  it('the announcement is generated once, before the first push', async () => {
+  it("each trainer's own announcement, before that trainer's push", async () => {
     await runAt(16);
-    expect(order).toEqual(['ann:2026-10-23', 'booking-open:2026-10-23:t1', 'booking-open:2026-10-23:t2']);
+    expect(order).toEqual([
+      'ann:2026-10-23:t1',
+      'booking-open:2026-10-23:t1',
+      'ann:2026-10-23:t2',
+      'booking-open:2026-10-23:t2',
+    ]);
   });
 
-  it('the announcement is ready one run (15 min) before the opening, with no push yet', async () => {
+  it("the announcement is ready one run (15 min) before the trainer's opening, with no push yet", async () => {
     expect(await runAt(9, 45)).toEqual([]);
-    expect(order).toEqual(['ann:2026-10-23']);
+    expect(order).toEqual(['ann:2026-10-23:t1']);
+    order.length = 0;
+    await runAt(15, 45);
+    expect(order).toEqual(['ann:2026-10-23:t1', 'booking-open:2026-10-23:t1', 'ann:2026-10-23:t2']);
   });
 
   it('no announcement earlier than that', async () => {

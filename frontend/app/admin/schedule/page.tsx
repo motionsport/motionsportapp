@@ -91,6 +91,14 @@ export default function GroupSchedulePage() {
     setDraft("");
   };
 
+  // The weekday's topic for the AI announcement; empty = none (the general text)
+  const topicOf = (weekday: number) => schedule?.topics.find((t) => t.weekday === weekday)?.topic ?? "";
+  const setTopic = (weekday: number, topic: string) => {
+    if (!schedule) return;
+    const others = schedule.topics.filter((t) => t.weekday !== weekday);
+    change({ ...schedule, topics: topic ? [...others, { weekday, topic }] : others });
+  };
+
   const removeTime = (weekday: number, slotTime: string) => {
     if (!schedule) return;
     change({
@@ -106,7 +114,9 @@ export default function GroupSchedulePage() {
     setSaving(true);
     setError("");
     try {
-      const { added, skipped, ...next } = await api.saveMySchedule(schedule);
+      // A topic only where there are trainings: a weekday emptied of times drops its topic too
+      const topics = schedule.topics.filter((t) => timesOf(t.weekday).length > 0);
+      const { added, skipped, ...next } = await api.saveMySchedule({ ...schedule, topics });
       setSchedule(next);
       setSaved(savedText(next.autoCreate, added, skipped));
     } catch (err) {
@@ -123,7 +133,7 @@ export default function GroupSchedulePage() {
       </h1>
       <p className="text-muted text-sm mb-6">
         Шаблон на кожен тиждень: за ним тренування самі з&apos;являються в календарі на 3 тижні вперед. Разове
-        тренування додавайте в календарі.
+        тренування додавайте в календарі. Тема дня потрапляє в анонс, який бачать ваші клієнти.
       </p>
 
       {loadError && (
@@ -138,58 +148,71 @@ export default function GroupSchedulePage() {
             {WEEKDAYS.map(({ n, short }) => {
               const times = timesOf(n);
               return (
-                <div key={n} className="flex items-center space-x-3 py-3 border-b border-line">
-                  <span className={`w-7 shrink-0 font-semibold ${times.length ? "text-heading" : "text-subtle"}`}>
-                    {short}
-                  </span>
-                  <div className="flex flex-wrap items-center flex-1 -m-1 min-w-0">
-                    {times.length === 0 && adding !== n && <span className="m-1 text-subtle text-sm">вихідний</span>}
-                    {times.map((t) => (
-                      <button
-                        type="button"
-                        key={t}
-                        onClick={() => removeTime(n, t)}
-                        aria-label={`Прибрати ${short} ${t}`}
-                        className="m-1 text-sm text-heading bg-surface border border-line rounded-full px-3 py-1 hover:border-danger transition-colors"
-                      >
-                        {t} <span className="text-subtle ml-1">✕</span>
-                      </button>
-                    ))}
-                    {adding === n && (
-                      <span className="m-1 flex items-center space-x-2">
-                        <input
-                          autoFocus
-                          type="time"
-                          aria-label={`Новий час, ${short}`}
-                          value={draft}
-                          onChange={(e) => setDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") addTime(n);
-                            if (e.key === "Escape") setAdding(null);
-                          }}
-                          className={`${TIME_FIELD} w-36`}
-                        />
+                <div key={n} className="py-3 border-b border-line">
+                  <div className="flex items-center space-x-3">
+                    <span className={`w-7 shrink-0 font-semibold ${times.length ? "text-heading" : "text-subtle"}`}>
+                      {short}
+                    </span>
+                    <div className="flex flex-wrap items-center flex-1 -m-1 min-w-0">
+                      {times.length === 0 && adding !== n && <span className="m-1 text-subtle text-sm">вихідний</span>}
+                      {times.map((t) => (
                         <button
                           type="button"
-                          onClick={() => addTime(n)}
-                          className="btn-primary px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                          key={t}
+                          onClick={() => removeTime(n, t)}
+                          aria-label={`Прибрати ${short} ${t}`}
+                          className="m-1 text-sm text-heading bg-surface border border-line rounded-full px-3 py-1 hover:border-danger transition-colors"
                         >
-                          Додати
+                          {t} <span className="text-subtle ml-1">✕</span>
                         </button>
-                      </span>
+                      ))}
+                      {adding === n && (
+                        <span className="m-1 flex items-center space-x-2">
+                          <input
+                            autoFocus
+                            type="time"
+                            aria-label={`Новий час, ${short}`}
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") addTime(n);
+                              if (e.key === "Escape") setAdding(null);
+                            }}
+                            className={`${TIME_FIELD} w-36`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addTime(n)}
+                            className="btn-primary px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            Додати
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {adding !== n && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdding(n);
+                          setDraft("");
+                        }}
+                        className="shrink-0 text-accent text-sm border border-dashed border-line rounded-full px-3 py-1 hover:border-accent transition-colors"
+                      >
+                        + час
+                      </button>
                     )}
                   </div>
-                  {adding !== n && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdding(n);
-                        setDraft("");
-                      }}
-                      className="shrink-0 text-accent text-sm border border-dashed border-line rounded-full px-3 py-1 hover:border-accent transition-colors"
-                    >
-                      + час
-                    </button>
+                  {times.length > 0 && (
+                    <input
+                      type="text"
+                      value={topicOf(n)}
+                      onChange={(e) => setTopic(n, e.target.value)}
+                      maxLength={60}
+                      aria-label={`Тема, ${short}`}
+                      placeholder="Тема для анонсу, напр. ноги"
+                      className="input-field w-full border rounded-lg px-3 py-2 text-base focus:outline-none mt-2 ml-10 max-w-[calc(100%-2.5rem)]"
+                    />
                   )}
                 </div>
               );

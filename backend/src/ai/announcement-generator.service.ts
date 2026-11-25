@@ -6,23 +6,14 @@ import { KY_ZONE } from '../schedule/training-types';
 const FALLBACK_TEXT = 'Записуйтесь на тренування! Чекаємо вас сьогодні.';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 // Bump when the instructions change (ai_generations.prompt_version)
-export const PROMPT_VERSION = 'v4';
+export const PROMPT_VERSION = 'v5';
 // Gemini usually answers in about a second; the booking-open push waits for it, so not longer than this
 const GEMINI_TIMEOUT_MS = 10_000;
 
-// The gym's weekly programme by weekday (1 = понеділок). Picked in code, not by the model: a day outside it
-// (вт, чт) once got «завтра пʼятниця, ручки». Change it here and bump PROMPT_VERSION
-export const WEEKLY_TOPICS: Record<number, string> = {
-  1: 'ноги',
-  3: 'кругове тренування',
-  5: 'руки',
-};
-
-// The trainer's topic for the day, else the programme's; none = the fallback text, no AI
-export function dayTopic(topic: string | null | undefined, localDate?: string): string | null {
-  if (topic?.trim()) return topic.trim();
-  if (!localDate) return null;
-  return WEEKLY_TOPICS[DateTime.fromISO(localDate, { zone: KY_ZONE }).weekday] ?? null;
+// The topic of the day: the trainer's weekly programme («Розклад групових», trainerTopicOn); none = the fallback
+// text, no AI. Picked in code, not by the model: a day outside the programme once got «завтра пʼятниця, ручки»
+export function dayTopic(topic: string | null | undefined): string | null {
+  return topic?.trim() || null;
 }
 
 const SYSTEM_INSTRUCTION = `Ти тренер жіночого фітнес-залу. Пишеш короткі мотиваційні оголошення українською мовою, щоб запросити записатися на групове тренування.
@@ -65,9 +56,9 @@ export class AnnouncementGeneratorService {
     return this.genAI;
   }
 
-  // The topic: the trainer's for the day, else the weekday's (dayTopic); none = the fallback text
+  // `topic` = the trainer's topic for that weekday (dayTopic); none = the fallback text
   async generate(examples: string[], topic?: string | null, localDate?: string): Promise<GenerateResult> {
-    const theme = dayTopic(topic, localDate);
+    const theme = dayTopic(topic);
     if (!theme) {
       return { text: FALLBACK_TEXT, model: GEMINI_MODEL, source: 'fallback', fallbackReason: 'no topic for this day' };
     }
