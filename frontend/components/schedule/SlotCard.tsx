@@ -86,27 +86,30 @@ export function SlotCard({
     onRefresh();
   };
 
+  // The alert waits for a seat within the norm (fewer than 8)
+  const alertToggle = slot.isMyVacancyAlert ? (
+    <button
+      type="button"
+      onClick={unsubscribeVacancy}
+      className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
+    >
+      🔔 Сповіщення увімкнено
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={subscribeVacancy}
+      className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
+    >
+      🔕 Сповістити про вільне місце
+    </button>
+  );
+
   // Also for a member booked at another time: a freed seat shows them «Перейти на …» here
   const noSeats = (
     <div className="flex flex-col space-y-2">
       <p className="text-muted text-sm font-medium">{isFull ? "Місць немає" : "Немає двох місць: для вас і гостя"}</p>
-      {slot.isMyVacancyAlert ? (
-        <button
-          type="button"
-          onClick={unsubscribeVacancy}
-          className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
-        >
-          🔔 Сповіщення увімкнено
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={subscribeVacancy}
-          className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
-        >
-          🔕 Сповістити про вільне місце
-        </button>
-      )}
+      {alertToggle}
     </div>
   );
 
@@ -227,15 +230,8 @@ export function SlotCard({
               >
                 Перейти на {slot.slotTime}
               </button>
-              {slot.isMyVacancyAlert && (
-                <button
-                  type="button"
-                  onClick={unsubscribeVacancy}
-                  className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
-                >
-                  🔔 Сповіщення увімкнено
-                </button>
-              )}
+              {/* 8 or more here: may wait until it drops below the norm instead of moving now */}
+              {(slot.isMyVacancyAlert || overNorm(slot)) && alertToggle}
             </div>
           ) : (
             noSeats
