@@ -11,19 +11,7 @@ import { LoginAdminDto } from './dto/login-admin.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { TeamGuard } from '../common/guards/team.guard';
-
-const COOKIE_NAME = 'session';
-const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
-
-function setSessionCookie(res: Response, token: string) {
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: COOKIE_MAX_AGE,
-    path: '/',
-  });
-}
+import { clearSessionCookies, setSessionCookies } from './session-cookies';
 
 @Controller('auth')
 export class AuthController {
@@ -32,7 +20,7 @@ export class AuthController {
   @Post('member/register')
   async registerMember(@Body() dto: RegisterMemberDto, @Res({ passthrough: true }) res: Response) {
     const { memberCode, recoveryCode, sessionToken } = await this.authService.registerMember(dto);
-    setSessionCookie(res, sessionToken);
+    setSessionCookies(res, sessionToken, 'member');
     return { memberCode, recoveryCode };
   }
 
@@ -40,7 +28,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async loginMember(@Body() dto: LoginMemberDto, @Res({ passthrough: true }) res: Response) {
     const { memberCode, displayName, sessionToken } = await this.authService.loginMember(dto);
-    setSessionCookie(res, sessionToken);
+    setSessionCookies(res, sessionToken, 'member');
     return { memberCode, displayName };
   }
 
@@ -48,7 +36,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async recoverMember(@Body() dto: RecoverMemberDto, @Res({ passthrough: true }) res: Response) {
     const { memberCode, recoveryCode, sessionToken } = await this.authService.recoverMember(dto);
-    setSessionCookie(res, sessionToken);
+    setSessionCookies(res, sessionToken, 'member');
     return { memberCode, recoveryCode };
   }
 
@@ -56,7 +44,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async loginAdmin(@Body() dto: LoginAdminDto, @Res({ passthrough: true }) res: Response) {
     const { sessionToken, ...who } = await this.authService.loginAdmin(dto);
-    setSessionCookie(res, sessionToken);
+    setSessionCookies(res, sessionToken, who.role);
     return who;
   }
 
@@ -68,7 +56,7 @@ export class AuthController {
   @Post('admin/register')
   async registerAdmin(@Body() dto: RegisterAdminDto, @Res({ passthrough: true }) res: Response) {
     const { username, sessionToken } = await this.authService.registerAdmin(dto);
-    setSessionCookie(res, sessionToken);
+    setSessionCookies(res, sessionToken, 'admin');
     return { username };
   }
 
@@ -85,7 +73,7 @@ export class AuthController {
   @UseGuards(SessionGuard)
   async logout(@CurrentUser() user: SessionUser, @Res({ passthrough: true }) res: Response) {
     await this.authService.revokeSession(user.sessionId);
-    res.clearCookie(COOKIE_NAME, { path: '/' });
+    clearSessionCookies(res);
     return { ok: true };
   }
 

@@ -45,25 +45,7 @@ describe("toAdminLogin", () => {
     expect(router.push).toHaveBeenCalledWith("/admin/login");
   });
 
-  it.each([
-    ["owner", "/owner"],
-    ["admin", "/admin"],
-    ["member", "/"],
-  ])("sends 403 (another role's page) home: %s → %s", async (type, home) => {
-    answer(200, { type, id: "x" });
-    const router = { push: vi.fn() };
-    expect(toAdminLogin(new ApiError("x", 403, {}), router)).toBe(true);
-    await vi.waitFor(() => expect(router.push).toHaveBeenCalledWith(home));
-  });
-
-  it("403 and the session is gone meanwhile: the team login", async () => {
-    answer(401, {});
-    const router = { push: vi.fn() };
-    expect(toAdminLogin(new ApiError("x", 403, {}), router)).toBe(true);
-    await vi.waitFor(() => expect(router.push).toHaveBeenCalledWith("/admin/login"));
-  });
-
-  it.each([400, 404, 409, 500])("leaves %i to the page", (status) => {
+  it.each([400, 403, 404, 409, 500])("leaves %i to the page", (status) => {
     const router = { push: vi.fn() };
     expect(toAdminLogin(new ApiError("x", status, {}), router)).toBe(false);
     expect(router.push).not.toHaveBeenCalled();

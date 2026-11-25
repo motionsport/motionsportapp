@@ -6,7 +6,6 @@ import { api, statusOf, type Role } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
 import { homeFor } from "@/lib/loginRedirect";
-import { rememberSignIn } from "@/lib/authFlag";
 
 interface FieldConfig {
   label: string;
@@ -117,7 +116,6 @@ export function LoginForm({ variant }: { variant: "member" | "admin" }) {
     setLoading(true);
     try {
       const role = await config.submit(login, secret);
-      rememberSignIn(role);
       router.push(homeFor(role));
     } catch (err: unknown) {
       const status = statusOf(err);

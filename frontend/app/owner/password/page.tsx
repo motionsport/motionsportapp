@@ -9,7 +9,7 @@ export default function OwnerPasswordPage() {
       <h1 className="font-geologica font-semibold text-title sm:text-display text-heading uppercase mb-6">
         Мій пароль
       </h1>
-      <PasswordSection role="owner" />
+      <PasswordSection />
     </PageLayout>
   );
 }

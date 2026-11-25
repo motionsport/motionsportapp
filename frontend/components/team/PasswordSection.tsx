@@ -1,27 +1,15 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, statusOf } from "@/lib/api";
 import { toAdminLogin } from "@/lib/adminAuth";
-import { elsewhereFor, type TeamRole } from "@/lib/loginRedirect";
 
 const FIELD = "input-field w-full border rounded-lg px-4 py-3 text-sm focus:outline-none";
 const MIN_PASSWORD = 10;
 
-// «Мій пароль» of a trainer or the owner (`role` = whose page); their other sessions are revoked.
-// The page loads no data, so the session is checked on open: signed out → the team login, another role → its home
-export function PasswordSection({ role }: { role: TeamRole }) {
+// «Мій пароль» of a trainer or the owner; their other sessions are revoked. Who may open it is the layout's job
+export function PasswordSection() {
   const router = useRouter();
-
-  useEffect(() => {
-    api
-      .me()
-      .then((me) => {
-        const elsewhere = elsewhereFor(me.type, role);
-        if (elsewhere) router.replace(elsewhere);
-      })
-      .catch((err: unknown) => toAdminLogin(err, router));
-  }, [role, router]);
 
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");

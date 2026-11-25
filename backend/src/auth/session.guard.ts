@@ -1,9 +1,11 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import type { Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { members, admins, owners } from '../database/schema';
 import { AuthService } from './auth.service';
 import { isRole, type Role, type SessionUser, type UserOf } from './roles';
+import { clearRoleCookie, ROLE_COOKIE, SESSION_COOKIE } from './session-cookies';
 
 export type { SessionUser } from './roles';
 
@@ -33,24 +35,29 @@ export class SessionGuard implements CanActivate {
     private readonly database: DatabaseService,
   ) {}
 
+  // A dead session also drops the role cookie (frontend proxy.ts), so the proxy sends that browser to the login
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<{ cookies?: Record<string, string>; user?: SessionUser }>();
-    const rawToken = req.cookies?.['session'];
-    if (!rawToken) throw new UnauthorizedException();
+    const res = context.switchToHttp().getResponse<Response>();
+    const user = await this.findUser(req.cookies?.[SESSION_COOKIE]);
+    if (!user) {
+      if (req.cookies?.[ROLE_COOKIE]) clearRoleCookie(res);
+      throw new UnauthorizedException();
+    }
+    req.user = user;
+    return true;
+  }
 
+  private async findUser(rawToken: string | undefined): Promise<SessionUser | null> {
+    if (!rawToken) return null;
     const session = await this.authService.validateSessionToken(rawToken);
-    if (!session) throw new UnauthorizedException();
-
+    if (!session) return null;
     const role = session.principalType;
-    if (!isRole(role)) throw new UnauthorizedException();
-    const user = await (LOADERS[role] as (db: Db, id: string, sessionId: string) => Promise<SessionUser | null>)(
+    if (!isRole(role)) return null;
+    return (LOADERS[role] as (db: Db, id: string, sessionId: string) => Promise<SessionUser | null>)(
       this.database.db,
       session.principalId,
       session.id,
     );
-    if (!user) throw new UnauthorizedException();
-    req.user = user;
-
-    return true;
   }
 }

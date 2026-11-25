@@ -1,17 +1,13 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { fetchPriceList, fetchRole } from "@/lib/serverPrices";
-import { homeFor } from "@/lib/loginRedirect";
+import { fetchPriceList } from "@/lib/serverPrices";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { PriceList } from "@/components/prices/PriceList";
 
-// Rendered per request, so always current. Visitors go to /login; a trainer or the owner to their own home
+// Rendered per request, so always current. Who may open it is proxy.ts's job; a dead session → /login
 export default async function PricesPage() {
-  const session = (await cookies()).get("session")?.value;
-  const role = await fetchRole(session);
-  if (role === "admin" || role === "owner") redirect(homeFor(role));
-  const items = await fetchPriceList(session);
+  const items = await fetchPriceList((await cookies()).get("session")?.value);
   if (items === "signed-out" || items === "forbidden") redirect("/login");
 
   const back = (

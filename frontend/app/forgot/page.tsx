@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { api, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
-import { rememberSignIn } from "@/lib/authFlag";
 
 export default function ForgotPage() {
   const router = useRouter();
@@ -42,7 +41,6 @@ export default function ForgotPage() {
     setLoading(true);
     try {
       const data = await api.forgotPin(memberCode.trim().toUpperCase(), recoveryCode.trim(), newPin);
-      rememberSignIn("member");
       setResult(data);
     } catch (err: unknown) {
       const status = statusOf(err);

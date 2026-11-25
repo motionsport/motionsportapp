@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
-import { rememberSignIn } from "@/lib/authFlag";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -45,7 +44,6 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await api.register(displayName.trim(), pin);
-      rememberSignIn("member"); // the backend signed them in: «/» must show the schedule, not the landing
       setResult(data);
     } catch (err: unknown) {
       setError(errorText(err, "Помилка реєстрації."));
