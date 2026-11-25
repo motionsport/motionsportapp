@@ -37,19 +37,21 @@ export function SlotCard({
   onMutate,
   onRefresh,
 }: SlotCardProps) {
-  const [modal, setModal] = useState<{ action: "cancel" } | { action: "switch"; targetSlot: SlotView } | null>(null);
+  // cancel = this card's booking; switch = move the booking at another time here
+  const [modal, setModal] = useState<{ action: "cancel" | "switch" } | null>(null);
   // The slot a group pass is being bought for (this one, or the time suggested by the over-norm warning)
   const [buying, setBuying] = useState<SlotView | null>(null);
   const [overNormOpen, setOverNormOpen] = useState(false);
   // null = guest name field closed
   const [guestName, setGuestName] = useState<string | null>(null);
 
-  const otherSlot = allSlots.find((s) => s.id !== slot.id && s.status === "ACTIVE" && !s.started && !s.lateCancelled);
+  // The member's group booking at another time that day: this card offers to move here
+  const mySlot = allSlots.find((s) => s.isMyBooking && s.id !== slot.id);
   // The guest moves along and needs a seat too
-  const seatsNeeded = slot.myGuest ? 2 : 1;
-  const canSwitch = !!otherSlot && otherSlot.bookedCount + seatsNeeded <= otherSlot.capacity;
-  // Moving there takes it past its norm: the reason modal warns
-  const switchCrowded = otherSlot && overNorm(otherSlot, seatsNeeded) ? crowdedText(otherSlot) : null;
+  const seatsNeeded = mySlot?.myGuest ? 2 : 1;
+  const switchFits = slot.bookedCount + seatsNeeded <= slot.capacity;
+  // Moving here takes it past its norm: the reason modal warns
+  const switchCrowded = overNorm(slot, seatsNeeded) ? crowdedText(slot) : null;
 
   const isFull = slot.bookedCount >= slot.capacity;
   const hasAnyBooking = allSlots.some((s) => s.isMyBooking);
@@ -83,6 +85,30 @@ export function SlotCard({
     await onMutate(() => api.unsubscribeVacancy(slot.id));
     onRefresh();
   };
+
+  // Also for a member booked at another time: a freed seat shows them «Перейти на …» here
+  const noSeats = (
+    <div className="flex flex-col space-y-2">
+      <p className="text-muted text-sm font-medium">{isFull ? "Місць немає" : "Немає двох місць: для вас і гостя"}</p>
+      {slot.isMyVacancyAlert ? (
+        <button
+          type="button"
+          onClick={unsubscribeVacancy}
+          className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
+        >
+          🔔 Сповіщення увімкнено
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={subscribeVacancy}
+          className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
+        >
+          🔕 Сповістити про вільне місце
+        </button>
+      )}
+    </div>
+  );
 
   const cardClass = slot.isMyBooking
     ? "bg-teal/5 border-teal"
@@ -180,15 +206,6 @@ export function SlotCard({
                 </button>
               )
             )}
-            {otherSlot && canSwitch && (
-              <button
-                type="button"
-                onClick={() => setModal({ action: "switch", targetSlot: otherSlot })}
-                className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
-              >
-                Перейти на {otherSlot.slotTime}
-              </button>
-            )}
             <button
               type="button"
               onClick={() => setModal({ action: "cancel" })}
@@ -199,8 +216,30 @@ export function SlotCard({
           </div>
         ) : slot.lateCancelled ? (
           <p className="text-muted text-sm">Ви скасували це тренування пізно, записатися знову не можна</p>
-        ) : hasAnyBooking && !isFull ? (
-          <p className="text-muted text-sm">Ви вже записані на інший час</p>
+        ) : mySlot ? (
+          // Booked at another time: move here (until that one starts), or wait for a seat
+          mySlot.started ? null : switchFits ? (
+            <div className="flex flex-col space-y-2">
+              <button
+                type="button"
+                onClick={() => setModal({ action: "switch" })}
+                className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
+              >
+                Перейти на {slot.slotTime}
+              </button>
+              {slot.isMyVacancyAlert && (
+                <button
+                  type="button"
+                  onClick={unsubscribeVacancy}
+                  className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
+                >
+                  🔔 Сповіщення увімкнено
+                </button>
+              )}
+            </div>
+          ) : (
+            noSeats
+          )
         ) : !isFull ? (
           <div className="flex flex-col space-y-2">
             <button
@@ -222,28 +261,7 @@ export function SlotCard({
             )}
           </div>
         ) : (
-          // Also offered to a member booked on the other time: a freed seat shows them "Перейти на …"
-          <div className="flex flex-col space-y-2">
-            <p className="text-muted text-sm font-medium">Місць немає</p>
-            {bookingWindowOpen &&
-              (slot.isMyVacancyAlert ? (
-                <button
-                  type="button"
-                  onClick={unsubscribeVacancy}
-                  className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
-                >
-                  🔔 Сповіщення увімкнено
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={subscribeVacancy}
-                  className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
-                >
-                  🔕 Сповістити про вільне місце
-                </button>
-              ))}
-          </div>
+          noSeats
         )}
       </div>
 
@@ -269,16 +287,16 @@ export function SlotCard({
       {modal && (
         <CancellationReasonModal
           action={modal.action}
-          switchTime={modal.action === "switch" ? modal.targetSlot.slotTime : undefined}
+          switchTime={modal.action === "switch" ? slot.slotTime : undefined}
           crowded={modal.action === "switch" ? switchCrowded : null}
-          slotId={slot.id}
+          slotId={modal.action === "cancel" ? slot.id : undefined}
           onDismiss={() => setModal(null)}
           onConfirm={async (reason) => {
             setModal(null);
             if (modal.action === "cancel") {
               await onMutate(() => api.cancelBooking(slot.id, reason));
             } else {
-              await onMutate(() => api.switchSlot(modal.targetSlot.id, reason));
+              await onMutate(() => api.switchSlot(slot.id, reason));
               onRefresh();
             }
           }}
