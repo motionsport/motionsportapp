@@ -15,6 +15,7 @@ const SECTIONS: { prefix: string; role: Role; open?: string[] }[] = [
   { prefix: "/owner", role: "owner" },
   { prefix: "/purchases", role: "member" },
   { prefix: "/prices", role: "member" },
+  { prefix: "/hours", role: "member" },
 ];
 
 const inside = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);

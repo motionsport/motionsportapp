@@ -107,9 +107,14 @@ export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
 
           {!pending && !frozen && <BuyBlock data={data} titleClass={sectionTitle} onBuy={setBuying} />}
 
-          <Link href="/prices" className="self-center text-muted text-sm hover:text-body transition-colors pt-3">
-            Усі ціни
-          </Link>
+          <div className="self-center flex space-x-6 pt-3">
+            <Link href="/prices" className="text-muted text-sm hover:text-body transition-colors">
+              Усі ціни
+            </Link>
+            <Link href="/hours" className="text-muted text-sm hover:text-body transition-colors">
+              Графік роботи
+            </Link>
+          </div>
         </div>
       )}
     </PageLayout>
