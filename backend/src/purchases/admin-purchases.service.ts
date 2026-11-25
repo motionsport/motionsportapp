@@ -22,7 +22,7 @@ import { memberFrozenOn } from '../freezes/freeze.store';
 import { requireVisibleMember, visibleTo } from '../schedule/default-trainer';
 import { purchaseViews } from './purchase-views';
 import { apiError } from '../common/api-error';
-import { discountUahFor, REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
+import { REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
 import { loadDiscount, useDiscountAtReception } from '../review-discounts/discount.store';
 import { MANUAL_METHODS, transferCode } from '../payment/payment-methods';
 
@@ -218,7 +218,10 @@ export class AdminPurchasesService {
       await lockMember(tx, memberId);
       await this.rejectFrozen(tx, memberId);
       if (await this.entitlements.usableCard(memberId, tx)) throw new ConflictException(apiError('CLUB_CARD_EXISTS'));
-      const card = await this.entitlements.addManualCard(tx, memberId, trainerId, priceItemId, activate);
+      const card = await this.entitlements.addManualCard(tx, memberId, trainerId, priceItemId, {
+        activateNow: activate,
+        applyDiscount,
+      });
       if (applyDiscount) {
         // A refusal throws and rolls the card back
         const now = this.clock.now();
@@ -227,7 +230,7 @@ export class AdminPurchasesService {
           memberId,
           trainerId,
           card.id,
-          discountUahFor(card.amountUah),
+          card.discountUah,
           now.toISODate()!,
           now.toJSDate(),
         );

@@ -9,6 +9,7 @@ import {
   attendance,
   bookingGuests,
   bookings,
+  clubCards,
   priceItems,
   purchaseItems,
   purchases,
@@ -183,8 +184,28 @@ export class StatsService {
       .orderBy(asc(admins.createdAt));
     return {
       ...buildGymStats(trainers, await this.revenueRows(), await this.presentByMonth()),
+      // The gym's money, no trainer's: only in «Весь зал», as «з них з рецепції»
+      reception: { revenue: summarizeRevenue(await this.receptionRows()) },
       reviewDiscounts: summarizeDiscounts(await this.discountRows()),
     };
+  }
+
+  // Club cards added at the reception with their price (paid_uah), by the Kyiv month added; the review discount
+  // used on one is its discount
+  private async receptionRows(): Promise<RevenueRow[]> {
+    const month = sql<string>`to_char(${clubCards.createdAt} at time zone 'Europe/Kyiv', 'YYYY-MM')`;
+    const rows = await this.database.db
+      .select({
+        month,
+        amount: sql<number>`sum(${clubCards.paidUah})::int`,
+        discount: sql<number>`coalesce(sum(${reviewDiscounts.discountUah}), 0)::int`,
+        discounted: sql<number>`(count(*) filter (where ${reviewDiscounts.discountUah} > 0))::int`,
+      })
+      .from(clubCards)
+      .leftJoin(reviewDiscounts, eq(reviewDiscounts.clubCardId, clubCards.id))
+      .where(isNotNull(clubCards.paidUah))
+      .groupBy(month);
+    return rows.map((r) => ({ ...r, section: 'club_card', trainingType: null }));
   }
 
   // Review discounts, counted per event and Kyiv month (see summarizeDiscounts)

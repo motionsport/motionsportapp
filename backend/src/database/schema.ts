@@ -478,9 +478,16 @@ export const clubCards = pgTable(
     // Code always sets it; the default only backfilled old rows
     activateBy: date('activate_by').notNull().default(ACTIVATE_BY_DEFAULT),
     addedBy: uuid('added_by').references(() => admins.id),
+    // A card added at the reception: what was paid there (price list minus the review discount, if any). The gym's
+    // money, counted only in «Весь зал». Null = bought in the app (its money is in purchase_items) or added before
+    // 2026-11-25, when the reception price wasn't kept
+    paidUah: integer('paid_uah'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('club_cards_member_id_idx').on(table.memberId)],
+  (table) => [
+    index('club_cards_member_id_idx').on(table.memberId),
+    check('club_cards_paid_uah_check', sql`paid_uah is null or paid_uah >= 0`),
+  ],
 );
 
 // One review discount per member, ever. Held by a PENDING purchase, used by a PAID one (purchase_id)

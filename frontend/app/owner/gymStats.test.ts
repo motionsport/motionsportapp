@@ -28,6 +28,7 @@ const stats: GymStats = {
     },
   ],
   unassigned: { revenue: rev(500) },
+  reception: { revenue: { allTime: { ...rev(0).allTime }, months: [] } },
   reviewDiscounts: {
     allTime: { given: 12, bar: 3, reception: 1, receptionUah: 70, purchases: 5, purchasesUah: 350 },
     months: [{ month: "2026-11", given: 4, bar: 1, reception: 0, receptionUah: 0, purchases: 2, purchasesUah: 140 }],
@@ -35,6 +36,23 @@ const stats: GymStats = {
 };
 
 describe("gymCards (the owner's cards)", () => {
+  it("reception club cards: only in «Весь зал», as part of «Абонементи», with their discount", () => {
+    const withReception: GymStats = { ...stats, reception: { revenue: rev(1330, "2026-11", 70, 1) } };
+    const [gym, admin] = gymCards(withReception, "2026-11");
+    expect(gym.reception).toBe(1330);
+    expect(gym.revenue.clubCards).toBe(1000 + 300 + 500 + 1330);
+    expect(gym.revenue.total).toBe(1800 + 1330);
+    expect(gym.revenue.discount).toBe(96 + 70);
+    expect(admin.reception).toBe(0);
+    expect(admin.revenue.total).toBe(1000);
+    expect(gymCards(withReception, "2026-10")[0].reception).toBe(0);
+  });
+
+  it("a month with only reception cards is in the month stepper", () => {
+    const withReception: GymStats = { ...stats, reception: { revenue: rev(1330, "2026-08") } };
+    expect(gymMonthsWithData(withReception)).toContain("2026-08");
+  });
+
   it("«Весь зал» first with everything summed, then trainers in order, «Без тренера» last", () => {
     const cards = gymCards(stats, "2026-11");
     expect(cards.map((c) => c.title)).toEqual(["Весь зал", "admin", "olena", "Без тренера"]);

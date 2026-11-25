@@ -51,7 +51,7 @@ function makeDb(results: unknown[][], updateResult: () => unknown[] = () => [{ i
 function makeService(db: any) {
   const entitlements = {
     activate: jest.fn().mockResolvedValue(undefined),
-    addManualCard: jest.fn().mockResolvedValue({ id: 'card-new', amountUah: 1400 }),
+    addManualCard: jest.fn().mockResolvedValue({ id: 'card-new', discountUah: 0 }),
     activateCard: jest.fn(),
     usableCard: jest.fn().mockResolvedValue(null),
   };
@@ -128,7 +128,10 @@ describe('Trainer — client purchases', () => {
     const { db } = makeDb([[{ id: 'm1' }]]);
     const { svc, entitlements } = makeService(db);
     await svc.addCard('trainer-1', 'm1', 'price-card', false);
-    expect(entitlements.addManualCard).toHaveBeenCalledWith(db, 'm1', 'trainer-1', 'price-card', false);
+    expect(entitlements.addManualCard).toHaveBeenCalledWith(db, 'm1', 'trainer-1', 'price-card', {
+      activateNow: false,
+      applyDiscount: false,
+    });
   });
 
   it('409 when the client already has a club card (active or waiting), nothing added', async () => {
@@ -150,7 +153,10 @@ describe('Trainer — client purchases', () => {
     expect(mockLockMember.mock.invocationCallOrder[0]).toBeLessThan(
       entitlements.usableCard.mock.invocationCallOrder[0],
     );
-    expect(entitlements.addManualCard).toHaveBeenCalledWith(tx, 'm1', 'trainer-1', 'price-card', false);
+    expect(entitlements.addManualCard).toHaveBeenCalledWith(tx, 'm1', 'trainer-1', 'price-card', {
+      activateNow: false,
+      applyDiscount: false,
+    });
   });
 
   it('a frozen client: 409, no card added', async () => {
@@ -167,6 +173,7 @@ describe('Trainer — client purchases', () => {
     const tx = { ...db };
     db.transaction = jest.fn((fn: (t: unknown) => unknown) => fn(tx));
     const { svc, entitlements } = makeService(db);
+    entitlements.addManualCard.mockResolvedValueOnce({ id: 'card-new', discountUah: 70 });
     await svc.addCard('trainer-1', 'm1', 'price-card', false, true);
     expect(mockUseDiscount).toHaveBeenCalledWith(tx, 'm1', 'trainer-1', 'card-new', 70, '2026-10-23', NOW.toJSDate());
     expect(entitlements.addManualCard.mock.invocationCallOrder[0]).toBeLessThan(
@@ -192,7 +199,10 @@ describe('Trainer — client purchases', () => {
     const { db } = makeDb([[{ id: 'm1' }]]);
     const { svc, entitlements } = makeService(db);
     await svc.addCard('trainer-1', 'm1', 'price-card', true);
-    expect(entitlements.addManualCard).toHaveBeenCalledWith(db, 'm1', 'trainer-1', 'price-card', true);
+    expect(entitlements.addManualCard).toHaveBeenCalledWith(db, 'm1', 'trainer-1', 'price-card', {
+      activateNow: true,
+      applyDiscount: false,
+    });
   });
 
   it('activates a waiting card of a visible client', async () => {

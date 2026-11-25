@@ -21,6 +21,7 @@ import { tryBookGroup } from '../booking/group-booking';
 import { activateByFor, cardState, endsInDays, passState, PassState, passUsableOn, validUntilFor } from './validity';
 import { loadFreezes } from '../freezes/freeze.store';
 import { daysBetween, frozenOn, plusDays } from '../freezes/rules';
+import { discountUahFor } from '../review-discounts/rules';
 
 type Db = DatabaseService['db'];
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -460,8 +461,15 @@ export class EntitlementsService {
     throw new ConflictException('Card cannot be activated');
   }
 
-  // Card bought at the reception, added by the trainer
-  async addManualCard(db: Q, memberId: string, trainerId: string, priceItemId: string, activateNow: boolean) {
+  // Card bought at the reception, added by the trainer, with what was paid there (the price list minus the
+  // review discount when one is applied). Returns the discount for the caller to mark the review discount used
+  async addManualCard(
+    db: Q,
+    memberId: string,
+    trainerId: string,
+    priceItemId: string,
+    { activateNow, applyDiscount }: { activateNow: boolean; applyDiscount: boolean },
+  ) {
     const [item] = await db
       .select({
         section: priceItems.section,
@@ -478,6 +486,7 @@ export class EntitlementsService {
 
     const today = this.today();
     const months = item.durationMonths ?? 0;
+    const discountUah = applyDiscount ? discountUahFor(item.amountUah) : 0;
     const [card] = await db
       .insert(clubCards)
       .values({
@@ -489,8 +498,9 @@ export class EntitlementsService {
         durationMonths: months,
         activateBy: activateByFor(today),
         addedBy: trainerId,
+        paidUah: item.amountUah - discountUah,
       })
       .returning({ id: clubCards.id });
-    return { id: card.id, amountUah: item.amountUah };
+    return { id: card.id, discountUah };
   }
 }

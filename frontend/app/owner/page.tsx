@@ -23,7 +23,7 @@ function Card({ card }: { card: GymCard }) {
         </span>
         <span className="font-geologica text-heading tabular-nums text-sm">{formatUah(card.revenue.total)}</span>
       </div>
-      <RevenueRows revenue={card.revenue} />
+      <RevenueRows revenue={card.revenue} fromReception={card.reception} />
       <DiscountRows revenue={card.revenue} withTotal />
       {card.present !== null && (
         <div className="flex justify-between space-x-3 mt-3 pt-3 border-t border-line">
@@ -52,9 +52,9 @@ export default function OwnerStatsPage() {
         Статистика залу
       </h1>
       <p className="text-subtle text-xs mb-6">
-        Лише покупки через застосунок (готівка, переказ, онлайн), за датою оплати; абонементи з рецепції сюди не
-        входять. І скільки людей прийшло (✓, гості теж) на тренування кожного тренера. Сьогоднішній день зʼявиться
-        завтра.
+        Покупки через застосунок (готівка, переказ, онлайн) за датою оплати. Абонементи з рецепції це гроші залу: лише у
+        «Весь зал», за датою додавання. І скільки людей прийшло (✓, гості теж) на тренування кожного тренера.
+        Сьогоднішній день зʼявиться завтра.
       </p>
 
       {loadError && (

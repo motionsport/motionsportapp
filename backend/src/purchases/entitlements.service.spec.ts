@@ -467,16 +467,21 @@ describe('Entitlements — what the member has', () => {
 describe('Entitlements — manual club card', () => {
   it('only a club card item can be added by hand', async () => {
     const { db } = makeDb([[{ section: 'assigned', title: 'Персональне', optionLabel: '1 тренування' }]]);
-    await expect(makeService(db).addManualCard(db, 'm1', 't1', 'price-1', false)).rejects.toThrow(BadRequestException);
+    await expect(
+      makeService(db).addManualCard(db, 'm1', 't1', 'price-1', { activateNow: false, applyDiscount: false }),
+    ).rejects.toThrow(BadRequestException);
   });
 
-  it('added by hand, it waits for activation, signed by the trainer', async () => {
+  it('added by hand, it waits for activation, signed by the trainer, with its reception price', async () => {
     const { db, inserts } = makeDb([
       [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1, amountUah: 1400 }],
       [{ id: 'card-1' }],
     ]);
-    const added = await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', false);
-    expect(added).toEqual({ id: 'card-1', amountUah: 1400 });
+    const added = await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', {
+      activateNow: false,
+      applyDiscount: false,
+    });
+    expect(added).toEqual({ id: 'card-1', discountUah: 0 });
     expect(inserts[0]).toEqual({
       table: clubCards,
       values: {
@@ -488,8 +493,22 @@ describe('Entitlements — manual club card', () => {
         durationMonths: 1,
         activateBy: '2027-01-23',
         addedBy: 't1',
+        paidUah: 1400,
       },
     });
+  });
+
+  it('with the review discount: paid the price minus 5% (rounded), the discount returned', async () => {
+    const { db, inserts } = makeDb([
+      [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1, amountUah: 1250 }],
+      [{ id: 'card-1' }],
+    ]);
+    const added = await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', {
+      activateNow: false,
+      applyDiscount: true,
+    });
+    expect(added).toEqual({ id: 'card-1', discountUah: 63 });
+    expect(inserts[0].values).toMatchObject({ paidUah: 1187 });
   });
 
   it('«Додати й активувати з сьогодні» gives it dates from today', async () => {
@@ -497,7 +516,7 @@ describe('Entitlements — manual club card', () => {
       [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1, amountUah: 1400 }],
       [{ id: 'card-1' }],
     ]);
-    await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', true);
+    await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', { activateNow: true, applyDiscount: false });
     expect(inserts[0].values).toMatchObject({ validFrom: '2026-10-23', validUntil: '2026-11-23' });
   });
 });

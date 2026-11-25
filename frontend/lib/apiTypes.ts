@@ -274,6 +274,8 @@ export interface GymStats {
     present: { allTime: number; months: { month: string; present: number }[] }; // people ✓, guests too
   }[];
   unassigned: { revenue: RevenueByMonth };
+  // Club cards added at the reception (the gym's money, no trainer's), by the month added: only in «Весь зал»
+  reception: { revenue: RevenueByMonth };
   // Given by given_at, used by the day used; a purchase counts once paid
   reviewDiscounts: { allTime: DiscountSummary; months: ({ month: string } & DiscountSummary)[] };
 }

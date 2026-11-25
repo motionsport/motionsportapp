@@ -3,7 +3,15 @@ import { formatUah } from "@/lib/prices";
 
 export type GymPeriod = "all" | string; // "all" or "YYYY-MM"
 
-export type GymCard = { key: string; title: string; disabled: boolean; revenue: Revenue; present: number | null };
+// reception = club cards added at the reception, counted in «Весь зал» only (0 elsewhere)
+export type GymCard = {
+  key: string;
+  title: string;
+  disabled: boolean;
+  revenue: Revenue;
+  present: number | null;
+  reception: number;
+};
 
 const zero = (): Revenue => ({ clubCards: 0, personal: 0, split: 0, group: 0, total: 0, discount: 0, discounted: 0 });
 
@@ -39,19 +47,22 @@ export function gymCards(stats: GymStats, period: GymPeriod): GymCard[] {
     disabled: t.disabledAt !== null,
     revenue: revenueIn(t.revenue, period),
     present: presentIn(t.present, period),
+    reception: 0,
   }));
   const unassigned = revenueIn(stats.unassigned.revenue, period);
   const rest: GymCard[] =
     unassigned.total > 0
-      ? [{ key: "unassigned", title: "Без тренера", disabled: false, revenue: unassigned, present: null }]
+      ? [{ key: "unassigned", title: "Без тренера", disabled: false, revenue: unassigned, present: null, reception: 0 }]
       : [];
   const all = [...trainers, ...rest];
+  const reception = revenueIn(stats.reception.revenue, period);
   const gym: GymCard = {
     key: "gym",
     title: "Весь зал",
     disabled: false,
-    revenue: all.reduce((sum, c) => add(sum, c.revenue), zero()),
+    revenue: all.reduce((sum, c) => add(sum, c.revenue), reception),
     present: trainers.reduce((sum, c) => sum + (c.present ?? 0), 0),
+    reception: reception.clubCards,
   };
   return [gym, ...all];
 }
@@ -61,6 +72,7 @@ export function gymMonthsWithData(stats: GymStats): string[] {
   const rows = [
     ...stats.trainers.flatMap((t) => [...t.revenue.months, ...t.present.months]),
     ...stats.unassigned.revenue.months,
+    ...stats.reception.revenue.months,
     ...stats.reviewDiscounts.months,
   ];
   return rows.map((r) => r.month);
