@@ -30,8 +30,10 @@ const noRevenue = (month: string): MonthRevenue => ({
 });
 
 // From the first paid month (at least the last 12) to the current Kyiv month, zero-filled
-function monthsUpToNow(months: MonthRevenue[]) {
-  return monthKeysUpToNow(months.map((m) => m.month)).map((k) => months.find((x) => x.month === k) ?? noRevenue(k));
+function monthsUpToNow(months: MonthRevenue[], alsoMonths: string[] = []) {
+  return monthKeysUpToNow([...months.map((m) => m.month), ...alsoMonths]).map(
+    (k) => months.find((x) => x.month === k) ?? noRevenue(k),
+  );
 }
 
 const WEEKDAYS = ["", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
@@ -60,8 +62,17 @@ const BarsIcon = () => (
 );
 
 // One period card, or a 12-month bar chart; the picked month carries over between them
-function RevenueBlock({ revenue }: { revenue: TrainerStats["revenue"] }) {
-  const months = monthsUpToNow(revenue.months);
+function RevenueBlock({
+  revenue,
+  reception,
+}: {
+  revenue: TrainerStats["revenue"];
+  reception: TrainerStats["reception"];
+}) {
+  const months = monthsUpToNow(
+    revenue.months,
+    reception.months.map((m) => m.month),
+  );
   const [chart, setChart] = useState(false);
   const [allTime, setAllTime] = useState(false);
   const [selected, setSelected] = useState(months.length - 1);
@@ -69,6 +80,11 @@ function RevenueBlock({ revenue }: { revenue: TrainerStats["revenue"] }) {
   const shown = chart ? months.slice(-CHART_MONTHS) : [];
   const offset = months.length - shown.length;
   const max = Math.max(1, ...shown.map((m) => m.total));
+  // Club cards this trainer added at the reception in the shown period
+  const fromReception =
+    allTime && !chart
+      ? reception.allTime.clubCards
+      : (reception.months.find((m) => m.month === month.month)?.clubCards ?? 0);
 
   return (
     <div className="flex flex-col space-y-3">
@@ -139,6 +155,15 @@ function RevenueBlock({ revenue }: { revenue: TrainerStats["revenue"] }) {
         </div>
         <RevenueRows revenue={allTime && !chart ? revenue.allTime : month} />
         <DiscountRows revenue={allTime && !chart ? revenue.allTime : month} withTotal={chart} />
+        {fromReception > 0 && (
+          <div className="mt-3 pt-3 border-t border-line">
+            <div className="flex justify-between space-x-3">
+              <span className="text-subtle">Абонементи з рецепції</span>
+              <span className="tabular-nums text-body">{formatUah(fromReception)}</span>
+            </div>
+            <p className="text-subtle text-xs mt-1">Гроші залу, у «Разом отримано» не входять</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -167,10 +192,11 @@ export default function StatsPage() {
           <section>
             <h2 className={sectionTitle}>Прибуток</h2>
             <p className="text-subtle text-xs mb-3">
-              Лише покупки ваших клієнтів через застосунок, за датою оплати; абонементи з рецепції сюди не входять.
+              Покупки ваших клієнтів через застосунок, за датою оплати. Абонементи з рецепції, які ви додали, окремо: це
+              гроші залу.
             </p>
 
-            <RevenueBlock revenue={stats.revenue} />
+            <RevenueBlock revenue={stats.revenue} reception={stats.reception} />
           </section>
 
           <section>

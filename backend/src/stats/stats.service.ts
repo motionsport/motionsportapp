@@ -172,6 +172,8 @@ export class StatsService {
   async forTrainer(trainerId: string) {
     return {
       revenue: summarizeRevenue(await this.revenueRows(eq(payee, trainerId))),
+      // Cards this trainer added at the reception: shown apart, the gym's money, not in their total
+      reception: summarizeRevenue(await this.receptionRows(eq(clubCards.addedBy, trainerId))),
       ...(await this.load(trainerId)),
     };
   }
@@ -191,8 +193,8 @@ export class StatsService {
   }
 
   // Club cards added at the reception with their price (paid_uah), by the Kyiv month added; the review discount
-  // used on one is its discount
-  private async receptionRows(): Promise<RevenueRow[]> {
+  // used on one is its discount. `only`: one trainer's (added_by)
+  private async receptionRows(only?: SQL): Promise<RevenueRow[]> {
     const month = sql<string>`to_char(${clubCards.createdAt} at time zone 'Europe/Kyiv', 'YYYY-MM')`;
     const rows = await this.database.db
       .select({
@@ -203,7 +205,7 @@ export class StatsService {
       })
       .from(clubCards)
       .leftJoin(reviewDiscounts, eq(reviewDiscounts.clubCardId, clubCards.id))
-      .where(isNotNull(clubCards.paidUah))
+      .where(and(only, isNotNull(clubCards.paidUah)))
       .groupBy(month);
     return rows.map((r) => ({ ...r, section: 'club_card', trainingType: null }));
   }

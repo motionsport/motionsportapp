@@ -291,6 +291,8 @@ export interface DiscountSummary {
 
 export interface TrainerStats {
   revenue: RevenueByMonth;
+  // Club cards this trainer added at the reception, by the month added: the gym's money, shown apart
+  reception: RevenueByMonth;
   busiestDays: { localDate: string; present: number }[];
   weekdays: { weekday: number; days: number; avgPresent: number }[]; // weekday 1 = Mon … 7 = Sun
 }
