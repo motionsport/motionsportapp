@@ -164,9 +164,8 @@ export class PurchasesService {
       return { purchaseId, checkout: await this.payments.checkoutPurchase(purchaseId, memberId) };
     }
     // Cash or transfer: the trainer confirms when the money is there. Without a trainer every trainer sees the request
-    // on «Клієнти» and whoever got the money confirms it (it goes to their stats); the push goes only to the first
-    // trainer for a transfer (someone has to check the bank), for cash to nobody (the trainer who took it confirms)
-    const notify = trainerId ?? (dto.method === 'TRANSFER' ? await getDefaultTrainerId(this.database.db) : null);
+    // on «Клієнти» and whoever got the money confirms it (it goes to their stats); the push goes to the first trainer
+    const notify = trainerId ?? (await getDefaultTrainerId(this.database.db));
     if (notify) {
       await this.notifications.enqueueAndProcess('CASH_REQUESTED', `cash-requested:${purchaseId}`, {
         trainerId: notify,

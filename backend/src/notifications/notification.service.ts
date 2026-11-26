@@ -157,7 +157,7 @@ export class NotificationService {
   }
 
   // No trainer (a club card bought by a member without one): every trainer, the first to confirm takes it
-  // To one trainer, chosen by PurchasesService.create (the member's, or the first for a transfer without one)
+  // To one trainer, chosen by PurchasesService.create (the member's, or the first trainer without one)
   private async sendCashRequested(payload: Record<string, unknown>) {
     const trainerId = payload.trainerId as string | null;
     if (!trainerId) return;

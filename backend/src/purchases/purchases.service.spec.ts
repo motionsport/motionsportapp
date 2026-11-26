@@ -361,26 +361,40 @@ describe('Purchases — create', () => {
     ).rejects.toThrow(ConflictException);
   });
 
-  it('cash for a trainer service without a trainer: allowed, no push (the trainer who takes it confirms)', async () => {
-    const { db, inserts } = makeDb([[CARD, PERSONAL], [{ trainerId: null, displayName: 'Катя' }], []]);
+  it('cash for a trainer service without a trainer: allowed, the first trainer is told', async () => {
+    const { db, inserts } = makeDb([
+      [CARD, PERSONAL],
+      [{ trainerId: null, displayName: 'Катя' }],
+      [],
+      [{ id: 'trainer-first' }],
+    ]);
     const { svc, notifications } = makeService(db);
     await expect(svc.create('m1', { priceItemIds: ['price-card', 'price-p8'], method: 'CASH' })).resolves.toEqual({
       purchaseId: 'purchase-1',
       transfer: null,
     });
     expect(inserts[0]).toMatchObject({ table: purchases, values: { trainerId: null, method: 'CASH' } });
-    expect(notifications.enqueueAndProcess).not.toHaveBeenCalled();
+    expect(notifications.enqueueAndProcess).toHaveBeenCalledWith('CASH_REQUESTED', 'cash-requested:purchase-1', {
+      trainerId: 'trainer-first',
+      displayName: 'Катя',
+      totalUah: 5000,
+      method: 'CASH',
+    });
   });
 
-  it('cash for a club card alone without a trainer: allowed, no push', async () => {
-    const { db, inserts } = makeDb([[CARD], [{ trainerId: null, displayName: 'Катя' }], []]);
+  it('cash for a club card alone without a trainer: allowed, the first trainer is told', async () => {
+    const { db, inserts } = makeDb([[CARD], [{ trainerId: null, displayName: 'Катя' }], [], [{ id: 'trainer-first' }]]);
     const { svc, notifications } = makeService(db);
     await expect(svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH' })).resolves.toEqual({
       purchaseId: 'purchase-1',
       transfer: null,
     });
     expect(inserts[0]).toMatchObject({ table: purchases, values: { trainerId: null, method: 'CASH' } });
-    expect(notifications.enqueueAndProcess).not.toHaveBeenCalled();
+    expect(notifications.enqueueAndProcess).toHaveBeenCalledWith(
+      'CASH_REQUESTED',
+      'cash-requested:purchase-1',
+      expect.objectContaining({ trainerId: 'trainer-first', method: 'CASH' }),
+    );
   });
 
   it('copies the price list amounts into the purchase and starts a LiqPay checkout', async () => {
