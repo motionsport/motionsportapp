@@ -150,6 +150,7 @@ export interface PurchaseLine {
   optionLabel: string | null;
   amountUah: number; // what is paid, the review discount already taken off
   discountUah?: number; // the review discount on this line (0 = none)
+  gift?: boolean; // «Спеціальна пропозиція»: the free single gym visit (0 ₴)
 }
 
 export interface Purchase {
@@ -192,6 +193,9 @@ export interface MyPurchases {
   methods: { liqpay: boolean; cash: boolean; transfer: boolean }; // switched on; cash also needs canPayCash
   reviewDiscount: DiscountView | null;
   reviewDiscountPercent: number;
+  // «Спеціальна пропозиція» for a new client (never had a club card or package): the single trainer services it is
+  // for; null = not offered
+  specialOffer: { serviceIds: string[] } | null;
 }
 
 // Review discount (5% for a Google review), one per member. held = a PENDING purchase has it
@@ -249,6 +253,7 @@ export interface Revenue {
   total: number; // money actually received, the review discounts already taken off
   discount: number; // what the review discounts knocked off
   discounted: number; // purchase lines with a review discount
+  gifts: number; // «Спеціальна пропозиція»: single gym visits given free
 }
 
 export type RevenueByMonth = { allTime: Revenue; months: (Revenue & { month: string })[] }; // months: "2026-10", newest first

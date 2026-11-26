@@ -10,10 +10,33 @@ import { buyableServiceTypes } from "./buyable";
 import { DiscountToggle } from "@/components/discount/DiscountToggle";
 import { discountPreview, showDiscountToggle } from "@/lib/reviewDiscount";
 
-type Step = "service" | "club" | "group" | "checkout" | "sent" | "transfer";
+type Step = "service" | "offer" | "club" | "group" | "checkout" | "sent" | "transfer";
 
-// service: a trainer service, plus a club card if the member has none
-export type PurchaseMode = "service" | "card" | "group";
+// service: a trainer service, plus a club card if the member has none; offer: «Спеціальна пропозиція», one
+// single trainer service with a free gym visit (a new client)
+export type PurchaseMode = "service" | "card" | "group" | "offer";
+
+const GIFT_LINE = "Разове відвідування залу · подарунок";
+
+function GiftIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5" />
+    </svg>
+  );
+}
 
 const SERVICE_GROUPS: { type: AssignedType; title: string }[] = [
   { type: "personal", title: TYPE_LABEL.personal },
@@ -52,7 +75,7 @@ export function PurchaseFlow({
   onClose: () => void;
   onCashSent: () => void;
 }) {
-  const first: Step = mode === "card" ? "club" : mode === "group" ? "group" : "service";
+  const first: Step = mode === "card" ? "club" : mode === "group" ? "group" : mode === "offer" ? "offer" : "service";
   const [step, setStep] = useState<Step>(first);
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [clubId, setClubId] = useState<string | null>(null);
@@ -61,6 +84,9 @@ export function PurchaseFlow({
   const [error, setError] = useState("");
   const [transfer, setTransfer] = useState<Details | null>(null);
   const [discountOn, setDiscountOn] = useState(false);
+  // Buying through «Спеціальна пропозиція»: the server adds the free gym visit, no club card step
+  const [offer, setOffer] = useState(mode === "offer");
+  const offerIds = data.specialOffer?.serviceIds ?? [];
 
   const needsCard = !data.card;
   const service = data.catalog.services.find((s) => s.id === serviceId);
@@ -100,8 +126,7 @@ export function PurchaseFlow({
       const { checkout, transfer } = await api.createPurchase(
         lines.map((l) => l.id),
         method,
-        undefined,
-        applied && method !== "LIQPAY",
+        { applyDiscount: applied && method !== "LIQPAY", specialOffer: offer || undefined },
       );
       if (method === "CASH") {
         setStep("sent");
@@ -178,10 +203,16 @@ export function PurchaseFlow({
   if (step === "checkout") {
     return (
       <div>
-        {back(mode === "group" ? "group" : mode === "card" || needsCard ? "club" : "service")}
+        {back(offer ? "offer" : mode === "group" ? "group" : mode === "card" || needsCard ? "club" : "service")}
         <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-1">Оплата</h1>
         <p className="text-muted text-xs mb-4">Перевірте, що купуєте</p>
         <div className="rounded-xl border border-line bg-surface px-4 py-2 mb-4">
+          {offer && (
+            <div className="flex justify-between space-x-3 py-2 border-b border-line text-accent">
+              <span>{GIFT_LINE}</span>
+              <span className="font-geologica tabular-nums">{formatUah(0)}</span>
+            </div>
+          )}
           {lines.map((l) => (
             <div key={l.id} className="flex justify-between space-x-3 py-2 border-b border-line">
               <span className="text-body">{lineName(l)}</span>
@@ -263,6 +294,64 @@ export function PurchaseFlow({
             {error}
           </p>
         )}
+      </div>
+    );
+  }
+
+  if (step === "offer") {
+    const offerServices = data.catalog.services.filter((s) => offerIds.includes(s.id));
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            if (mode === "offer") return onClose();
+            setOffer(false);
+            setStep("service");
+          }}
+          className="text-subtle text-sm hover:text-body transition-colors mb-4"
+        >
+          ← Назад
+        </button>
+        <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-1">Спеціальна пропозиція</h1>
+        <p className="text-muted text-xs mb-4">Разове відвідування залу в подарунок, лише для першої покупки</p>
+        <div className="flex flex-col space-y-2">
+          {offerServices.map((s) => (
+            <Option
+              key={s.id}
+              item={{ ...s, optionLabel: lineName(s) }}
+              selected={s.id === serviceId}
+              onSelect={() => setServiceId(s.id)}
+            />
+          ))}
+        </div>
+        {service && offerIds.includes(service.id) && (
+          <div className="rounded-xl border border-line bg-surface px-4 py-2 mt-4">
+            <div className="flex justify-between space-x-3 py-2 border-b border-line">
+              <span className="text-body">{lineName(service)}</span>
+              <span className="font-geologica text-heading tabular-nums">{formatUah(service.amountUah)}</span>
+            </div>
+            <div className="flex justify-between space-x-3 py-2 border-b border-line text-accent">
+              <span>{GIFT_LINE}</span>
+              <span className="font-geologica tabular-nums">{formatUah(0)}</span>
+            </div>
+            <div className="flex justify-between space-x-3 py-2">
+              <span className="text-muted">Разом</span>
+              <span className="font-geologica text-heading text-lg tabular-nums">{formatUah(service.amountUah)}</span>
+            </div>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setClubId(null);
+            setStep("checkout");
+          }}
+          disabled={!service || !offerIds.includes(service.id)}
+          className="btn-primary w-full py-4 rounded-lg font-medium text-sm transition-colors disabled:opacity-40 mt-5"
+        >
+          Далі
+        </button>
       </div>
     );
   }
@@ -358,7 +447,32 @@ export function PurchaseFlow({
             {data.catalog.services
               .filter((s) => s.trainingType === g.type)
               .map((s) => (
-                <Option key={s.id} item={s} selected={s.id === serviceId} onSelect={() => setServiceId(s.id)} />
+                <div key={s.id} className="flex flex-col space-y-2">
+                  <Option item={s} selected={s.id === serviceId} onSelect={() => setServiceId(s.id)} />
+                  {/* A new client picked one training here: the same through the offer gives the gym visit free */}
+                  {s.id === serviceId && offerIds.includes(s.id) && (
+                    <div className="rounded-xl border border-teal/40 bg-teal/5 px-4 py-3">
+                      <span className="flex items-center space-x-2 text-accent font-semibold text-sm">
+                        <GiftIcon />
+                        <span>Новим клієнтам зал у подарунок</span>
+                      </span>
+                      <p className="text-subtle text-xs mt-1">
+                        Візьміть одне тренування через спеціальну пропозицію: разове відвідування залу безкоштовно,
+                        абонемент купувати не треба.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOffer(true);
+                          setStep("offer");
+                        }}
+                        className="btn-secondary w-full py-2.5 rounded-lg border text-sm transition-colors mt-3"
+                      >
+                        Взяти спецпропозицію
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
           </div>
         </section>

@@ -5,7 +5,8 @@ import { errorText } from "@/lib/apiErrors";
 import { ddmm } from "@/lib/dates";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { formatUah, lineName } from "@/lib/prices";
-import { discountNote, discountPreview } from "@/lib/reviewDiscount";
+import { discountPreview } from "@/lib/reviewDiscount";
+import { lineNote } from "@/lib/purchaseLines";
 import { METHOD_LABEL } from "@/lib/paymentMethods";
 import { DiscountToggle } from "@/components/discount/DiscountToggle";
 import { ReviewDiscountBlock } from "./ReviewDiscountBlock";
@@ -281,7 +282,7 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
           <div key={p.id} className="py-1.5 border-b border-line last:border-0">
             <div className="flex justify-between space-x-3">
               <span className="text-heading">
-                {p.lines.map((l) => [lineName(l), discountNote(l)].filter(Boolean).join(", ")).join(" + ")}
+                {p.lines.map((l) => [lineName(l), lineNote(l)].filter(Boolean).join(", ")).join(" + ")}
               </span>
               <span className="tabular-nums text-heading font-semibold whitespace-nowrap">{formatUah(p.totalUah)}</span>
             </div>

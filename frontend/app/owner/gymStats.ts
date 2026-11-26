@@ -13,14 +13,23 @@ export type GymCard = {
   reception: number;
 };
 
-const zero = (): Revenue => ({ clubCards: 0, personal: 0, split: 0, group: 0, total: 0, discount: 0, discounted: 0 });
+const zero = (): Revenue => ({
+  clubCards: 0,
+  personal: 0,
+  split: 0,
+  group: 0,
+  total: 0,
+  discount: 0,
+  discounted: 0,
+  gifts: 0,
+});
 
 function revenueIn(r: RevenueByMonth, period: GymPeriod): Revenue {
   if (period === "all") return r.allTime;
   const m = r.months.find((x) => x.month === period);
   if (!m) return zero();
-  const { clubCards, personal, split, group, total, discount, discounted } = m;
-  return { clubCards, personal, split, group, total, discount, discounted };
+  const { clubCards, personal, split, group, total, discount, discounted, gifts } = m;
+  return { clubCards, personal, split, group, total, discount, discounted, gifts };
 }
 
 function presentIn(p: GymStats["trainers"][number]["present"], period: GymPeriod) {
@@ -36,6 +45,7 @@ function add(a: Revenue, b: Revenue): Revenue {
     total: a.total + b.total,
     discount: a.discount + b.discount,
     discounted: a.discounted + b.discounted,
+    gifts: a.gifts + b.gifts,
   };
 }
 

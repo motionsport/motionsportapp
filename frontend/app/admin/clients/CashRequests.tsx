@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { api, CashRequest } from "@/lib/api";
 import { formatUah, lineName } from "@/lib/prices";
-import { discountNote } from "@/lib/reviewDiscount";
+import { lineNote } from "@/lib/purchaseLines";
 
 // Cash or a transfer to the gym's account. Confirming marks the purchase paid; rejecting drops it
 export function CashRequests({ requests, onDecided }: { requests: CashRequest[]; onDecided: () => void }) {
@@ -37,7 +37,7 @@ export function CashRequests({ requests, onDecided }: { requests: CashRequest[];
             {r.lines.map((l) => (
               <div key={lineName(l)} className="text-subtle text-xs mt-1">
                 {l.section === "club_card" ? `Абонемент · ${lineName(l)}` : lineName(l)}
-                {discountNote(l) && <span className="text-accent">, {discountNote(l)}</span>}
+                {lineNote(l) && <span className="text-accent">, {lineNote(l)}</span>}
               </div>
             ))}
             <button

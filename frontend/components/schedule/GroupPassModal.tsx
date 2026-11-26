@@ -58,12 +58,10 @@ export function GroupPassModal({
     setBusy(true);
     setError("");
     try {
-      const { checkout, transfer } = await api.createPurchase(
-        [item.id],
-        method,
+      const { checkout, transfer } = await api.createPurchase([item.id], method, {
         slotId,
-        applied && method !== "LIQPAY",
-      );
+        applyDiscount: applied && method !== "LIQPAY",
+      });
       if (method !== "LIQPAY") {
         setTransfer(transfer ?? null);
         setStep("booked");

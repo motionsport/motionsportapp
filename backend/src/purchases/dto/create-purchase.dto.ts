@@ -21,4 +21,9 @@ export class CreatePurchaseDto {
   @IsOptional()
   @IsBoolean()
   applyDiscount?: boolean;
+
+  // «Спеціальна пропозиція»: one single trainer service in priceItemIds; the gift gym visit is added by the server
+  @IsOptional()
+  @IsBoolean()
+  specialOffer?: boolean;
 }

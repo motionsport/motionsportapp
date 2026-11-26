@@ -220,17 +220,17 @@ export const api = {
 
   // slotId: group pass bought while booking; cash and transfer book at once, LiqPay once paid
   // applyDiscount: the review discount, cash or transfer only
-  createPurchase: (priceItemIds: string[], method: PurchaseMethod, slotId?: string, applyDiscount?: boolean) =>
+  // specialOffer: «Спеціальна пропозиція», one single trainer service; the server adds the free gym visit
+  createPurchase: (
+    priceItemIds: string[],
+    method: PurchaseMethod,
+    opts: { slotId?: string; applyDiscount?: boolean; specialOffer?: boolean } = {},
+  ) =>
     post<{
       purchaseId: string;
       checkout?: LiqPayCheckout | { status: "PAID" };
       transfer?: TransferDetails | null;
-    }>("/purchases", {
-      priceItemIds,
-      method,
-      slotId,
-      applyDiscount,
-    }),
+    }>("/purchases", { priceItemIds, method, ...opts }),
 
   cancelPurchase: (purchaseId: string) => post(`/purchases/${purchaseId}/cancel`),
 

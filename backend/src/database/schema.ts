@@ -455,6 +455,9 @@ export const purchaseItems = pgTable('purchase_items', {
   optionLabel: text('option_label'),
   amountUah: integer('amount_uah').notNull(),
   discountUah: integer('discount_uah').notNull().default(0),
+  // «Спеціальна пропозиція»: the free single gym visit given with a new client's first single trainer service
+  // (amount 0, purchases/special-offer.ts); it starts with that training's first mark
+  gift: boolean('gift').notNull().default(false),
 });
 
 const ACTIVATE_BY_DEFAULT = sql`(CURRENT_DATE + INTERVAL '3 months')::date`;

@@ -22,6 +22,7 @@ import { activateByFor, cardState, endsInDays, passState, PassState, passUsableO
 import { loadFreezes } from '../freezes/freeze.store';
 import { daysBetween, frozenOn, plusDays } from '../freezes/rules';
 import { discountUahFor } from '../review-discounts/rules';
+import { startGiftCard, unstartGiftCard } from './special-offer';
 
 type Db = DatabaseService['db'];
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -334,6 +335,8 @@ export class EntitlementsService {
         .update(packages)
         .set({ activatedOn: booking.localDate, validUntil })
         .where(and(eq(packages.id, from.id), isNull(packages.activatedOn)));
+      // «Спеціальна пропозиція»: the gift gym visit is that training's day
+      await startGiftCard(tx, from.purchaseId, booking.localDate);
     }
   }
 
@@ -379,10 +382,15 @@ export class EntitlementsService {
 
     // Locked, so a mark at the same moment either spends after this or is already counted below
     const [pack] = await tx
-      .select({ activatedOn: packages.activatedOn, activateBy: packages.activateBy })
+      .select({
+        activatedOn: packages.activatedOn,
+        activateBy: packages.activateBy,
+        purchaseId: purchaseItems.purchaseId,
+      })
       .from(packages)
+      .innerJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
       .where(eq(packages.id, spent.packageId))
-      .for('update');
+      .for('update', { of: packages });
     if (!pack || pack.activatedOn !== spent.localDate || pack.activateBy < this.today()) return;
     const [otherSpend] = await tx
       .select({ bookingId: packageSpends.bookingId })
@@ -397,6 +405,7 @@ export class EntitlementsService {
       .limit(1);
     if (movedByFreeze) return;
     await tx.update(packages).set({ activatedOn: null, validUntil: null }).where(eq(packages.id, spent.packageId));
+    await unstartGiftCard(tx, pack.purchaseId, spent.localDate);
   }
 
   // The package bought for this booking, else the oldest usable one with trainings left; null if none.

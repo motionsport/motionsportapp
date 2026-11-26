@@ -23,6 +23,7 @@ import {
 import { nbuBankLinks } from '../payment/nbu-qr';
 import { discountable, discountUahFor, REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
 import { holdDiscountForPurchase, loadDiscount } from '../review-discounts/discount.store';
+import { isNewClient, offerItems, specialOfferFor } from './special-offer';
 
 // Same errors as BookingService.book
 function bookingError(reason: Extract<GroupBookingResult, { ok: false }>['reason']) {
@@ -117,6 +118,7 @@ export class PurchasesService {
       packages: await this.entitlements.packagesOf(memberId),
       reviewDiscountPercent: REVIEW_DISCOUNT_PERCENT,
       reviewDiscount: await loadDiscount(this.database.db, memberId, this.clock.now().toISODate()!),
+      specialOffer: await specialOfferFor(this.database.db, memberId),
       pending: pendingView && { ...pendingView, transfer: transferDetails(pendingView) },
       // Cash for anything; without a trainer only for a club card alone (see insertPurchase)
       canPayCash: !!member?.trainerId,
@@ -138,15 +140,21 @@ export class PurchasesService {
       throw new BadRequestException(apiError('DISCOUNT_NOT_APPLICABLE'));
     }
     const items = await this.priceItemsOf(dto.priceItemIds);
-    await this.checkCanBuy(memberId, dto, items);
-
-    const ordered = [...sectionOf(items, 'club_card'), ...sectionOf(items, 'assigned'), ...sectionOf(items, 'group')];
+    // «Спеціальна пропозиція» adds its free gym visit line
+    const gift = dto.specialOffer ? await this.offerGift(memberId, dto, items) : [];
+    if (!dto.specialOffer) await this.checkCanBuy(memberId, dto, items);
+    const ordered = [
+      ...gift,
+      ...sectionOf(items, 'club_card'),
+      ...sectionOf(items, 'assigned'),
+      ...sectionOf(items, 'group'),
+    ];
     // amountUah = what is paid (price minus discount); the discount is taken off the first club card / group pass
     const discounted = dto.applyDiscount ? ordered.findIndex((l) => discountable(l.section)) : -1;
     if (dto.applyDiscount && discounted < 0) throw new BadRequestException(apiError('DISCOUNT_NOT_APPLICABLE'));
     const lines: PurchaseLine[] = ordered.map((l, i) => {
       const discountUah = i === discounted ? discountUahFor(l.amountUah) : 0;
-      return { ...l, amountUah: l.amountUah - discountUah, discountUah };
+      return { ...l, amountUah: l.amountUah - discountUah, discountUah, gift: l.gift ?? false };
     });
     const totalUah = lines.reduce((sum, l) => sum + l.amountUah, 0);
     const { purchaseId, trainerId, displayName } = await this.insertPurchase(memberId, dto, lines, totalUah);
@@ -175,11 +183,38 @@ export class PurchasesService {
         optionLabel: priceItems.optionLabel,
         amountUah: priceItems.amountUah,
         trainingType: priceItems.trainingType,
+        trainingCount: priceItems.trainingCount,
       })
       .from(priceItems)
       .where(inArray(priceItems.id, ids));
     if (items.length !== ids.length) throw new NotFoundException('Price not found');
     return items;
+  }
+
+  // «Спеціальна пропозиція»: one single personal or split training for a new client, nothing else (no discount:
+  // it is for club cards and group passes, and the card here is free). Returns the free single gym visit line
+  private async offerGift(
+    memberId: string,
+    dto: CreatePurchaseDto,
+    items: PriceLine[],
+  ): Promise<(PriceLine & { gift: true })[]> {
+    const { gift, services } = await offerItems(this.database.db);
+    const single = items.length === 1 && services.some((s) => s.id === items[0].id);
+    if (!gift || !single || dto.slotId) throw new BadRequestException('Not a valid set of items');
+    if (dto.applyDiscount) throw new BadRequestException(apiError('DISCOUNT_NOT_APPLICABLE'));
+    if (!(await isNewClient(this.database.db, memberId))) throw new ConflictException(apiError('SPECIAL_OFFER_USED'));
+    return [
+      {
+        id: gift.id,
+        section: gift.section,
+        title: gift.title,
+        optionLabel: gift.optionLabel,
+        amountUah: 0,
+        trainingType: null,
+        trainingCount: null,
+        gift: true,
+      },
+    ];
   }
 
   private async checkCanBuy(memberId: string, dto: CreatePurchaseDto, items: PriceLine[]) {
@@ -237,6 +272,10 @@ export class PurchasesService {
       if (dto.method === 'CASH' && !member.trainerId && lines.some((l) => l.section !== 'club_card')) {
         throw new BadRequestException(apiError('NO_TRAINER_FOR_CASH'));
       }
+      // Again under the member lock: a card added at the reception meanwhile makes the client not new
+      if (dto.specialOffer && !(await isNewClient(tx, memberId))) {
+        throw new ConflictException(apiError('SPECIAL_OFFER_USED'));
+      }
 
       const [created] = await tx
         .insert(purchases)
@@ -257,6 +296,7 @@ export class PurchasesService {
           optionLabel: l.optionLabel,
           amountUah: l.amountUah,
           discountUah: l.discountUah,
+          gift: l.gift,
         })),
       );
       // Same transaction: a discount already held or used fails the whole purchase
@@ -308,9 +348,11 @@ type PriceLine = {
   optionLabel: string | null;
   amountUah: number;
   trainingType: string | null;
+  trainingCount: number | null;
+  gift?: boolean;
 };
 
-type PurchaseLine = PriceLine & { discountUah: number };
+type PurchaseLine = PriceLine & { discountUah: number; gift: boolean };
 
 // What a member needs to send a transfer; null for other methods or when transfers are switched off
 function transferDetails(p: { id: string; method: string; totalUah: number }) {

@@ -35,6 +35,7 @@ export const ERROR_TEXT: Record<string, string> = {
   DISCOUNT_HELD: "Знижку застосовано до покупки, що чекає оплати",
   DISCOUNT_EXPIRED: "Знижка згоріла",
   DISCOUNT_NOT_APPLICABLE: "Знижка тут не діє",
+  SPECIAL_OFFER_USED: "Спеціальна пропозиція діє лише для першої покупки",
   // Trainer: calendar, schedule, marks, refunds
   TIME_TAKEN: "На цей час уже є тренування",
   GROUP_HOURS: "Групові можна ставити з 06:00 до 21:00",

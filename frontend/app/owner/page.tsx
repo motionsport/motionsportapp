@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { OwnerMenu } from "@/components/owner/OwnerMenu";
 import { RevenueRows } from "@/components/stats/RevenueRows";
 import { DiscountRows } from "@/components/stats/DiscountRows";
+import { GiftRow } from "@/components/stats/GiftRow";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 import { formatUah } from "@/lib/prices";
 import { useAdminData } from "@/lib/useAdminData";
@@ -25,6 +26,7 @@ function Card({ card }: { card: GymCard }) {
       </div>
       <RevenueRows revenue={card.revenue} fromReception={card.reception} />
       <DiscountRows revenue={card.revenue} withTotal />
+      <GiftRow revenue={card.revenue} />
       {card.present !== null && (
         <div className="flex justify-between space-x-3 mt-3 pt-3 border-t border-line">
           <span className="text-subtle">Прийшло ✓</span>

@@ -33,6 +33,12 @@ const GroupIcon = () => (
     <path d="M14 15c3 0 8 1 8 5" />
   </svg>
 );
+const GiftIcon = () => (
+  <svg {...iconProps} width={18} height={18}>
+    <rect x="3" y="8" width="18" height="4" rx="1" />
+    <path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5" />
+  </svg>
+);
 const CardIcon = () => (
   <svg {...iconProps}>
     <rect x="3" y="6" width="18" height="12" rx="2" />
@@ -83,6 +89,9 @@ export function BuyBlock({
   const services = data.catalog.services.filter(
     (s) => s.trainingType && serviceTypes.some((t) => t === s.trainingType),
   );
+  // «Спеціальна пропозиція» (new client): first and bright, so «З тренером» steps back to a plain tile
+  const offerServices = data.specialOffer ? services.filter((s) => data.specialOffer!.serviceIds.includes(s.id)) : [];
+  const offer = offerServices.length > 0;
   const canBuyGroup = !hasUnused(["group"]);
   const canBuyCard = !data.card;
   if (!canBuyService && !canBuyGroup && !canBuyCard) return null;
@@ -90,7 +99,32 @@ export function BuyBlock({
   return (
     <>
       <h2 className={`${titleClass} pt-3`}>Купити</h2>
-      {canBuyService && (
+      {offer && (
+        <div className="rounded-xl bg-teal text-on-teal p-4">
+          <span className="flex items-center space-x-2 font-geologica font-bold text-xs uppercase tracking-wide">
+            <GiftIcon />
+            <span>Спеціальна пропозиція</span>
+          </span>
+          <span className="block mt-2">Персональне або спліт-тренування + разове відвідування залу в подарунок</span>
+          <span className="block text-xs mt-1">{fromPrice(offerServices)}</span>
+          <button
+            type="button"
+            onClick={() => onBuy("offer")}
+            className="w-full mt-3 py-3 rounded-lg bg-background text-accent font-semibold text-sm hover:text-teal-light transition-colors"
+          >
+            Отримати подарунок →
+          </button>
+        </div>
+      )}
+      {canBuyService && offer && (
+        <BuyTile
+          icon={<PersonIcon />}
+          title="З тренером"
+          price={`${serviceTypes.length === 2 ? "Персональні та спліт" : TYPE_LABEL_PLURAL[serviceTypes[0]]} · ${fromPrice(services)}`}
+          onClick={() => onBuy("service")}
+        />
+      )}
+      {canBuyService && !offer && (
         <button
           type="button"
           onClick={() => onBuy("service")}

@@ -35,6 +35,8 @@ export const API_ERRORS = {
   DISCOUNT_HELD: 'Discount is held by a purchase waiting for payment',
   DISCOUNT_EXPIRED: 'Discount has expired',
   DISCOUNT_NOT_APPLICABLE: 'Discount does not apply here',
+  // «Спеціальна пропозиція»: only a client who never had a club card or package
+  SPECIAL_OFFER_USED: 'Special offer is for the first purchase only',
   // Trainer: calendar, weekly schedule, marks, refunds
   TIME_TAKEN: 'Time is already taken',
   GROUP_HOURS: 'Group trainings are from 06:00 to 21:00',

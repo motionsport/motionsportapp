@@ -91,10 +91,26 @@ describe('stats — revenue by month', () => {
       total: 1900,
       discount: 0,
       discounted: 0,
+      gifts: 0,
     });
     expect(r.months.map((m) => [m.month, m.total])).toEqual([
       ['2026-11', 300],
       ['2026-10', 1600],
+    ]);
+  });
+});
+
+describe('stats — special offer gifts in revenue', () => {
+  it('counts the free gym visits per month and all time; they add no money', () => {
+    const r = summarizeRevenue([
+      { month: '2026-11', section: 'club_card', trainingType: null, amount: 0, discount: 0, gifts: 2 },
+      { month: '2026-11', section: 'assigned', trainingType: 'personal', amount: 800, discount: 0 },
+      { month: '2026-10', section: 'club_card', trainingType: null, amount: 1400, discount: 0, gifts: 1 },
+    ]);
+    expect(r.allTime).toMatchObject({ gifts: 3, clubCards: 1400, total: 2200 });
+    expect(r.months.map((m) => [m.month, m.gifts])).toEqual([
+      ['2026-11', 2],
+      ['2026-10', 1],
     ]);
   });
 });

@@ -128,6 +128,82 @@ function makeService(db: any, opts: { card?: unknown; packages?: unknown[] } = {
   return { svc, entitlements, payments, notifications };
 }
 
+describe('Purchases — «Спеціальна пропозиція»', () => {
+  const GIFT = {
+    id: 'price-single',
+    code: 'club_single',
+    section: 'club_card',
+    title: 'Разове відвідування',
+    optionLabel: null,
+    trainingCount: null,
+  };
+  const P1 = {
+    id: 'price-p1',
+    section: 'assigned',
+    title: 'Персональне',
+    optionLabel: '1 тренування',
+    amountUah: 400,
+    trainingType: 'personal',
+    trainingCount: 1,
+  };
+  const OFFER_ROWS = [GIFT, { ...P1, code: 'personal_1' }, { ...PERSONAL, code: 'personal_8', trainingCount: 8 }];
+  const offer = (over: Partial<CreatePurchaseDto> = {}) =>
+    ({ priceItemIds: ['price-p1'], method: 'CASH', specialOffer: true, ...over }) as CreatePurchaseDto;
+
+  it('a new client: the single training plus the gift gym visit for 0 ₴, no club card needed', async () => {
+    // price items, offer items, new client (no card, no package), member lock, no pending, still new under the lock
+    const { db, inserts } = makeDb([[P1], OFFER_ROWS, [], [], MEMBER, [], [], []]);
+    const { svc, notifications } = makeService(db);
+    await expect(svc.create('m1', offer())).resolves.toEqual({ purchaseId: 'purchase-1', transfer: null });
+    expect(inserts[0]).toMatchObject({ table: purchases, values: { totalUah: 400 } });
+    expect(inserts[1]).toEqual({
+      table: purchaseItems,
+      values: [
+        expect.objectContaining({
+          priceItemId: 'price-single',
+          title: 'Разове відвідування',
+          amountUah: 0,
+          gift: true,
+        }),
+        expect.objectContaining({ priceItemId: 'price-p1', amountUah: 400, discountUah: 0, gift: false }),
+      ],
+    });
+    expect(notifications.enqueueAndProcess).toHaveBeenCalledWith(
+      'CASH_REQUESTED',
+      'cash-requested:purchase-1',
+      expect.objectContaining({ totalUah: 400 }),
+    );
+  });
+
+  it('409 once the client had a club card or a package: the offer works once', async () => {
+    const { db, inserts } = makeDb([[P1], OFFER_ROWS, [{ id: 'card' }]]);
+    await expect(makeService(db).svc.create('m1', offer())).rejects.toThrow(
+      'Special offer is for the first purchase only',
+    );
+    expect(inserts).toEqual([]);
+  });
+
+  it('409 when a card was added at the reception meanwhile (checked again under the member lock)', async () => {
+    const { db, inserts } = makeDb([[P1], OFFER_ROWS, [], [], MEMBER, [], [{ id: 'card' }]]);
+    await expect(makeService(db).svc.create('m1', offer())).rejects.toThrow(ConflictException);
+    expect(inserts).toEqual([]);
+  });
+
+  it('400 for a package: the offer is for one training only', async () => {
+    const { db } = makeDb([[{ ...PERSONAL, trainingCount: 8 }], OFFER_ROWS]);
+    await expect(makeService(db).svc.create('m1', offer({ priceItemIds: ['price-p8'] }))).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('400 with the review discount', async () => {
+    const { db } = makeDb([[P1], OFFER_ROWS]);
+    await expect(makeService(db).svc.create('m1', offer({ applyDiscount: true }))).rejects.toThrow(
+      'Discount does not apply here',
+    );
+  });
+});
+
 describe('Purchases — create', () => {
   it('404 for an unknown price item', async () => {
     const { db } = makeDb([[PERSONAL]]);
@@ -337,6 +413,7 @@ describe('Purchases — create', () => {
           optionLabel: '1 місяць',
           amountUah: 1400,
           discountUah: 0,
+          gift: false,
         },
         {
           purchaseId: 'purchase-1',
@@ -345,6 +422,7 @@ describe('Purchases — create', () => {
           optionLabel: '8 тренувань',
           amountUah: 3600,
           discountUah: 0,
+          gift: false,
         },
       ],
     });

@@ -3,9 +3,9 @@ import type { GymStats } from "@/lib/api";
 import { formatUah } from "@/lib/prices";
 import { discountSummaryIn, discountSummaryText, gymCards, gymMonthsWithData } from "./gymStats";
 
-const rev = (total: number, month = "2026-11", discount = 0, discounted = 0) => ({
-  allTime: { clubCards: total, personal: 0, split: 0, group: 0, total, discount, discounted },
-  months: [{ month, clubCards: total, personal: 0, split: 0, group: 0, total, discount, discounted }],
+const rev = (total: number, month = "2026-11", discount = 0, discounted = 0, gifts = 0) => ({
+  allTime: { clubCards: total, personal: 0, split: 0, group: 0, total, discount, discounted, gifts },
+  months: [{ month, clubCards: total, personal: 0, split: 0, group: 0, total, discount, discounted, gifts }],
 });
 
 const none = { given: 0, bar: 0, reception: 0, receptionUah: 0, purchases: 0, purchasesUah: 0 };
@@ -16,14 +16,14 @@ const stats: GymStats = {
       id: "t1",
       username: "admin",
       disabledAt: null,
-      revenue: rev(1000, "2026-11", 70, 1),
+      revenue: rev(1000, "2026-11", 70, 1, 2),
       present: { allTime: 9, months: [{ month: "2026-11", present: 9 }] },
     },
     {
       id: "t2",
       username: "olena",
       disabledAt: "2026-11-01T10:00:00.000Z",
-      revenue: rev(300, "2026-11", 26, 2),
+      revenue: rev(300, "2026-11", 26, 2, 1),
       present: { allTime: 2, months: [{ month: "2026-11", present: 2 }] },
     },
   ],
@@ -66,6 +66,12 @@ describe("gymCards (the owner's cards)", () => {
     const gym = gymCards(stats, "2026-11")[0].revenue;
     expect(gym.discount).toBe(96);
     expect(gym.discounted).toBe(3);
+  });
+
+  it("«Весь зал» sums the gym visits given by the special offer", () => {
+    const [gym, admin] = gymCards(stats, "2026-11");
+    expect(gym.revenue.gifts).toBe(3);
+    expect(admin.revenue.gifts).toBe(2);
   });
 
   it("all time uses the all-time numbers", () => {

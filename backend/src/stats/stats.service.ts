@@ -30,6 +30,8 @@ export type Revenue = {
   total: number;
   discount: number;
   discounted: number;
+  // «Спеціальна пропозиція»: single gym visits given free (purchase_items.gift), not money
+  gifts: number;
 };
 type RevenueColumn = 'clubCards' | 'personal' | 'split' | 'group';
 
@@ -41,6 +43,7 @@ const emptyRevenue = (): Revenue => ({
   total: 0,
   discount: 0,
   discounted: 0,
+  gifts: 0,
 });
 
 // Revenue column: price list section, split by type for trainer services
@@ -57,6 +60,7 @@ type RevenueRow = {
   amount: number;
   discount: number;
   discounted?: number;
+  gifts?: number;
 };
 export type RevenueSummary = { allTime: Revenue; months: ({ month: string } & Revenue)[] };
 
@@ -74,6 +78,7 @@ export function summarizeRevenue(rows: RevenueRow[]): RevenueSummary {
       t.total += r.amount;
       t.discount += r.discount;
       t.discounted += discounted;
+      t.gifts += r.gifts ?? 0;
     }
     byMonth.set(r.month, m);
   }
@@ -262,6 +267,7 @@ export class StatsService {
         amount: sql<number>`sum(${purchaseItems.amountUah})::int`,
         discount: sql<number>`coalesce(sum(${purchaseItems.discountUah}), 0)::int`,
         discounted: sql<number>`(count(*) filter (where ${purchaseItems.discountUah} > 0))::int`,
+        gifts: sql<number>`(count(*) filter (where ${purchaseItems.gift}))::int`,
       })
       .from(purchaseItems)
       .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
