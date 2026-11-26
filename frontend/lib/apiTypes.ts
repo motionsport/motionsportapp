@@ -401,6 +401,17 @@ export interface BookingReminder {
   firstStart: string; // gone once it starts
 }
 
+// The next day's morning group trainings: they open with this day's evening (the day before), shown as «Завтра зранку»
+export interface NextMorning {
+  localDate: string;
+  bookingWindowOpen: boolean;
+  bookingOpenAt: string;
+  bookingCloseAt: string;
+  slots: SlotView[];
+  groupPassLeft: number;
+  frozen: boolean;
+}
+
 // localDate null: no group training ahead (assigned ones may still be listed)
 export interface ScheduleNext {
   localDate: string | null;
@@ -415,6 +426,7 @@ export interface ScheduleNext {
   endingPackages: EndingPackage[]; // «Пакет скоро закінчиться»; none while frozen
   // «Сьогодні тренування» banner: today, not booked, a group package left (moments, ISO)
   bookingReminder: BookingReminder | null;
+  nextMorning?: NextMorning | null;
   serverTime: string;
   announcement?: string | null;
 }

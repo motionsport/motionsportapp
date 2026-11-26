@@ -25,6 +25,7 @@ import { frozenOn, plusDays } from '../freezes/rules';
 import { lateCancelledSlotIds } from '../booking/group-booking';
 import { packageEnding, passUsableOn } from '../purchases/validity';
 import { reminderWindow } from './booking-reminder';
+import { trainingDayOn } from './training-day.store';
 
 // An assigned slot stays visible until it ends; cancelling closes at the start
 const ASSIGNED_SHOWN_FOR_MINUTES = 60;
@@ -81,6 +82,7 @@ export class ScheduleService {
         frozenUntil,
         endingPackages: await this.endingPackages(memberId, frozenUntil),
         bookingReminder: null,
+        nextMorning: null,
         serverTime: now.toUTC().toISO(),
         announcement: null,
       };
@@ -113,8 +115,40 @@ export class ScheduleService {
         memberId && !frozenUntil
           ? await this.bookingReminder(memberId, targetDay.localDate, slots, opensAt, now)
           : null,
+      nextMorning: await this.nextMorning(trainerId!, targetDay.localDate, opensAt, memberId, now),
       serverTime: now.toUTC().toISO(),
       announcement,
+    };
+  }
+
+  // The next day's morning group trainings (at or before the opening time): they open with this day's evening
+  // (slotOpensAt), so the home page shows them as a second block «Завтра». None, or all cancelled / started: null
+  private async nextMorning(
+    trainerId: string,
+    localDate: string,
+    opensAt: string,
+    memberId: string | undefined,
+    now: DateTime,
+  ) {
+    const date = plusDays(localDate, 1);
+    const day = await trainingDayOn(this.database.db, date);
+    if (!day || day.status !== 'SCHEDULED') return null;
+    const slots = (await this.groupSlotViews(trainerId, day, opensAt, memberId, now)).filter(
+      (s) => s.slotTime <= opensAt,
+    );
+    const pending = slots.filter((s) => s.status === 'ACTIVE' && !s.started).map((s) => s.slotTime);
+    if (pending.length === 0) return null;
+    const openAt = slotOpensAt(date, pending[0], opensAt);
+    const closeAt = slotStartsAt(date, pending.at(-1)!);
+    const frozen = memberId ? (await loadFreezes(this.database.db, [memberId])).some((f) => frozenOn(f, date)) : false;
+    return {
+      localDate: date,
+      bookingWindowOpen: now >= openAt && now < closeAt,
+      bookingOpenAt: openAt.toUTC().toISO(),
+      bookingCloseAt: closeAt.toUTC().toISO(),
+      slots,
+      groupPassLeft: memberId ? await this.entitlements.groupPassLeft(memberId, date) : 0,
+      frozen,
     };
   }
 

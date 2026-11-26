@@ -342,6 +342,51 @@ describe('ScheduleService — booking window flag', () => {
     expect(result?.slots.map((s) => s.bookingOpen)).toEqual([false, false]);
   });
 
+  // Opening 10:00: today's 19:00 / 20:00 and tomorrow's 9:00 open together, so tomorrow's morning comes as a block
+  it("tomorrow's morning trainings come as nextMorning, its evening ones don't", async () => {
+    const tomorrow = { id: 'day-2', localDate: '2026-10-21', status: 'SCHEDULED' };
+    const { db } = makeDb([
+      TRAINER,
+      [trainingDay],
+      HAS_GROUP,
+      slots,
+      [], // no announcement
+      [tomorrow], // the day after
+      [
+        { id: 't-am', slotTime: '09:00', status: 'ACTIVE', capacity: 15, bookedCount: 2 },
+        { id: 't-pm', slotTime: '19:00', status: 'ACTIVE', capacity: 15, bookedCount: 0 },
+      ],
+    ]);
+    const service = makeService(db, kyivAt(12));
+    mockLoadSchedule.mockResolvedValue({ bookingOpensAt: '10:00', autoCreate: true, times: [] });
+    const result = await service.getNext();
+    expect(result?.localDate).toBe(TODAY);
+    expect(result?.nextMorning).toMatchObject({
+      localDate: '2026-10-21',
+      bookingWindowOpen: true,
+      bookingOpenAt: '2026-10-20T07:00:00.000Z', // today 10:00 Kyiv
+      groupPassLeft: 0,
+      frozen: false,
+    });
+    expect(result?.nextMorning?.slots.map((s) => [s.slotTime, s.bookingOpen])).toEqual([['09:00', true]]);
+  });
+
+  it('no morning training the next day: no nextMorning', async () => {
+    const tomorrow = { id: 'day-2', localDate: '2026-10-21', status: 'SCHEDULED' };
+    const { db } = makeDb([
+      TRAINER,
+      [trainingDay],
+      HAS_GROUP,
+      slots,
+      [],
+      [tomorrow],
+      [{ id: 't-pm', slotTime: '19:00', status: 'ACTIVE', capacity: 15, bookedCount: 0 }],
+    ]);
+    const service = makeService(db, kyivAt(12));
+    mockLoadSchedule.mockResolvedValue({ bookingOpensAt: '10:00', autoCreate: true, times: [] });
+    expect((await service.getNext())?.nextMorning).toBeNull();
+  });
+
   // 20:00 cancelled: once 19:00 starts, the next day is shown
   it('a cancelled last group training does not keep the day "next"', async () => {
     const tomorrow = { id: 'day-2', localDate: '2026-10-21', status: 'SCHEDULED' };

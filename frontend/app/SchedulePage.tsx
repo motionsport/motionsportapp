@@ -4,8 +4,6 @@ import { reloadTo } from "@/lib/loginRedirect";
 import Link from "next/link";
 import { api, DiscountView, ScheduleNext, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
-import { SlotCard } from "@/components/schedule/SlotCard";
-import { opensBadge } from "@/lib/bookingOpens";
 import { AssignedSlotCard } from "@/components/schedule/AssignedSlotCard";
 import { resyncExistingSubscription } from "@/lib/pushUtils";
 import { nextPollDelay } from "@/lib/schedulePoll";
@@ -13,6 +11,7 @@ import { errorText } from "@/lib/apiErrors";
 import { ddmm, longDay } from "@/lib/dates";
 import BookingReminderBanner from "./BookingReminderBanner";
 import EndingPackagesBanner from "./EndingPackagesBanner";
+import GroupDayBlock from "./GroupDayBlock";
 import ReviewPromoStrip from "./ReviewPromoStrip";
 import { ReviewDiscountCard } from "@/components/discount/ReviewDiscountCard";
 
@@ -177,11 +176,6 @@ export default function SchedulePage({ signedIn }: { signedIn: boolean }) {
     );
   }
 
-  const now = schedule ? new Date(schedule.serverTime) : null;
-  const openAt = schedule?.bookingOpenAt ? new Date(schedule.bookingOpenAt) : null;
-  const closeAt = schedule?.bookingCloseAt ? new Date(schedule.bookingCloseAt) : null;
-  const beforeWindow = now && openAt ? now < openAt : false;
-  const afterWindow = now && closeAt ? now >= closeAt : false;
   const frozenThatDay = !!schedule?.frozenUntil && !!schedule.localDate && schedule.localDate <= schedule.frozenUntil;
 
   return (
@@ -227,40 +221,36 @@ export default function SchedulePage({ signedIn }: { signedIn: boolean }) {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-line p-3 flex flex-col space-y-3">
-                <div className="flex items-center">
-                  {beforeWindow && schedule.bookingOpenAt ? (
-                    <span className="text-xs text-muted bg-surface border border-line rounded-full px-3 py-1">
-                      {opensBadge(schedule.bookingOpenAt, schedule.localDate)}
-                    </span>
-                  ) : afterWindow ? (
-                    <span className="text-xs text-muted bg-surface border border-line rounded-full px-3 py-1">
-                      Запис закрито
-                    </span>
-                  ) : (
-                    <span className="text-sm font-semibold uppercase tracking-wide text-teal bg-teal/10 border border-teal/30 rounded-full px-4 py-1.5 flex items-center space-x-1.5">
-                      <span className="relative flex w-3 h-3 shrink-0 items-center justify-center mr-1.5">
-                        <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-teal opacity-75"></span>
-                        <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-teal"></span>
-                      </span>
-                      Запис відкрито
-                    </span>
-                  )}
-                </div>
-                {schedule.slots.map((slot) => (
-                  <SlotCard
-                    key={slot.id}
-                    slot={slot}
-                    allSlots={schedule.slots}
-                    groupPassLeft={schedule.groupPassLeft ?? 0}
-                    localDate={schedule.localDate!}
-                    afterWindow={afterWindow}
-                    frozen={frozenThatDay}
+              <GroupDayBlock
+                localDate={schedule.localDate}
+                serverTime={schedule.serverTime}
+                bookingOpenAt={schedule.bookingOpenAt}
+                bookingCloseAt={schedule.bookingCloseAt}
+                slots={schedule.slots}
+                groupPassLeft={schedule.groupPassLeft ?? 0}
+                frozen={frozenThatDay}
+                onMutate={handleMutate}
+                onRefresh={refreshAll}
+              />
+
+              {/* Tomorrow's morning trainings open with today's evening (a day before), so they show here too */}
+              {schedule.nextMorning && (
+                <>
+                  <h2 className="font-geologica font-semibold text-heading uppercase mt-8 mb-1">Завтра зранку</h2>
+                  <p className="text-muted text-sm mb-4 capitalize">{longDay(schedule.nextMorning.localDate)}</p>
+                  <GroupDayBlock
+                    localDate={schedule.nextMorning.localDate}
+                    serverTime={schedule.serverTime}
+                    bookingOpenAt={schedule.nextMorning.bookingOpenAt}
+                    bookingCloseAt={schedule.nextMorning.bookingCloseAt}
+                    slots={schedule.nextMorning.slots}
+                    groupPassLeft={schedule.nextMorning.groupPassLeft}
+                    frozen={schedule.nextMorning.frozen}
                     onMutate={handleMutate}
                     onRefresh={refreshAll}
                   />
-                ))}
-              </div>
+                </>
+              )}
             </>
           )}
 
