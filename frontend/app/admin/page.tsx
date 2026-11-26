@@ -1,5 +1,5 @@
 "use client";
-import { opensBadge } from "@/lib/bookingOpens";
+import { opensText } from "@/lib/bookingOpens";
 import { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import { api, AdminSchedule, Announcement, AnnouncementExample } from "@/lib/api";
@@ -141,7 +141,7 @@ export default function AdminPage() {
         ) : afterWindow ? (
           <Badge>Запис закрито</Badge>
         ) : (
-          <Badge>{opensBadge(schedule.bookingOpenAt, schedule.localDate, schedule.serverTime)}</Badge>
+          <Badge>{opensText(schedule.bookingOpenAt, schedule.serverTime)}</Badge>
         )}
       </div>
 

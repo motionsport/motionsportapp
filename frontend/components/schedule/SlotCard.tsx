@@ -18,7 +18,6 @@ interface SlotCardProps {
   slot: SlotView;
   allSlots: SlotView[];
   groupPassLeft: number;
-  localDate: string;
   serverTime: string; // «сьогодні» / «завтра» in the opening text are counted from the server's today
   afterWindow: boolean;
   frozen: boolean; // frozen on this day: no booking
@@ -30,7 +29,6 @@ export function SlotCard({
   slot,
   allSlots,
   groupPassLeft,
-  localDate,
   serverTime,
   afterWindow,
   frozen,
@@ -145,9 +143,7 @@ export function SlotCard({
           <p className="text-muted text-sm">Запис закрито</p>
         ) : !slot.bookingOpen ? (
           <p className="text-muted text-sm">
-            {slot.bookingOpenAt
-              ? `Запис відкриється ${opensText(slot.bookingOpenAt, localDate, serverTime)}`
-              : "Запис ще не відкрився"}
+            {slot.bookingOpenAt ? opensText(slot.bookingOpenAt, serverTime) : "Запис ще не відкрився"}
           </p>
         ) : slot.isMyBooking ? (
           <div className="flex flex-col space-y-2">

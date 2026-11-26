@@ -7,24 +7,36 @@ const nextDay = (date: string) => {
   return d.toISOString().slice(0, 10);
 };
 
-// A morning training opens before its training day (the backend's slotOpensAt). Said from today, not from the
-// training day: «сьогодні о 16:00», «завтра о 16:00», «28.11 о 16:00»; an opening on the training day: null
-function dayBefore(openAtIso: string, localDate: string, nowIso: string): string | null {
+// «сьогодні о 16:00», «завтра о 16:00», «29.11 о 16:00»: the day counted from today (the server's), since a morning
+// training opens the day before and the evening on its day
+function dayAt(openAtIso: string, nowIso: string): string {
   const openDate = kyivToday(new Date(openAtIso));
-  if (openDate >= localDate) return null;
   const today = kyivToday(new Date(nowIso));
   const day = openDate === today ? "сьогодні" : openDate === nextDay(today) ? "завтра" : ddmm(openDate);
   return `${day} о ${kyivTime(openAtIso)}`;
 }
 
-// A slot card: «Запис відкриється о 16:00» on the training day, else «… сьогодні о 16:00» / «завтра о 16:00»
-export function opensText(openAtIso: string, localDate: string, nowIso: string): string {
-  return dayBefore(openAtIso, localDate, nowIso) ?? `о ${kyivTime(openAtIso)}`;
+// A slot card and the trainer's panel: «Запис відкриється сьогодні о 16:00»
+export function opensText(openAtIso: string, nowIso: string): string {
+  return `Запис відкриється ${dayAt(openAtIso, nowIso)}`;
 }
 
-// The day's badge before booking opens: «До 16:00» on the training day, else «Запис сьогодні о 16:00» /
-// «Запис завтра о 16:00» (Saturday, Monday's 9:00: Sunday)
-export function opensBadge(openAtIso: string, localDate: string, nowIso: string): string {
-  const before = dayBefore(openAtIso, localDate, nowIso);
-  return before ? `Запис ${before}` : `До ${kyivTime(openAtIso)}`;
+type BadgeSlot = { status: string; started?: boolean; bookingOpenAt?: string };
+
+// The day's badge names what opens next: «Запис на ранкове групове відкриється сьогодні о 16:00» (a morning one
+// opens the day before its day), «Запис на вечірні групові …» (on its day); one or several of that kind not started
+export function opensBadge(dayOpenAtIso: string, localDate: string, slots: BadgeSlot[], nowIso: string): string {
+  const morning = (iso: string) => kyivToday(new Date(iso)) < localDate;
+  const isMorning = morning(dayOpenAtIso);
+  const count = slots.filter(
+    (s) => s.status === "ACTIVE" && !s.started && s.bookingOpenAt && morning(s.bookingOpenAt) === isMorning,
+  ).length;
+  const what = isMorning
+    ? count > 1
+      ? "ранкові групові"
+      : "ранкове групове"
+    : count > 1
+      ? "вечірні групові"
+      : "вечірнє групове";
+  return `Запис на ${what} відкриється ${dayAt(dayOpenAtIso, nowIso)}`;
 }
