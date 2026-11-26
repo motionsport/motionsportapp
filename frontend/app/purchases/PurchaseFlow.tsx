@@ -8,7 +8,6 @@ import { formatUah, groupByTitle, lineName } from "@/lib/prices";
 import { TransferDetails } from "@/components/purchases/TransferDetails";
 import { buyableServiceTypes } from "./buyable";
 import { recommendedCard } from "./recommend";
-import { Badge } from "@/components/ui/Badge";
 import { DiscountToggle } from "@/components/discount/DiscountToggle";
 import { discountPreview, showDiscountToggle } from "@/lib/reviewDiscount";
 import { DISCOUNT_NAME, permanentPreview } from "@/lib/permanentDiscount";
@@ -67,12 +66,12 @@ function Option({
       }`}
     >
       <span className="text-heading">
-        {item.optionLabel ?? item.title}
         {recommended && (
-          <Badge tone="ok" className="ml-2">
-            Рекомендовано
-          </Badge>
+          <span className="text-accent mr-1.5" aria-label="Рекомендовано">
+            ★
+          </span>
         )}
+        {item.optionLabel ?? item.title}
       </span>
       <span className="font-geologica text-heading tabular-nums whitespace-nowrap">{formatUah(item.amountUah)}</span>
     </button>
@@ -410,11 +409,16 @@ export function PurchaseFlow({
         ) : (
           <>
             <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">
-              Спершу абонемент (клубна карта)
+              Абонемент у зал (клубна карта)
             </h1>
             <p className="rounded-xl border border-line bg-background px-4 py-3 text-sm text-body mb-2">
               У вас немає діючого абонемента. Він потрібен, щоб займатись у залі, і купується окремо від тренувань.
             </p>
+            {data.catalog.clubCards.some((c) => recommendedCard(c, service)) && (
+              <p className="text-subtle text-xs mt-3">
+                <span className="text-accent">★</span> рекомендовано під ваші тренування
+              </p>
+            )}
           </>
         )}
         {groupByTitle(data.catalog.clubCards).map((g) => (
