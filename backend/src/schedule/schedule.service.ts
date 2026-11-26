@@ -33,6 +33,7 @@ import { frozenOn, plusDays } from '../freezes/rules';
 import { lateCancelledSlotIds } from '../booking/group-booking';
 import { packageEnding, passUsableOn } from '../purchases/validity';
 import { reminderWindow } from './booking-reminder';
+import { morningAnnouncement } from './morning-announcement';
 import { trainingDayOn } from './training-day.store';
 
 // An assigned slot stays visible until it ends; cancelling closes at the start
@@ -105,7 +106,16 @@ export class ScheduleService {
     const closeAt = slotStartsAt(targetDay.localDate, targetDay.lastTime);
     const bookingWindowOpen = now >= openAt && now < closeAt;
     const published = await this.publishedAnnouncement(targetDay.id, trainerId!);
-    const announcement = bookingWindowOpen ? published : null;
+    // While its morning trainings are the ones open (since the day before): a fixed text naming the day, since the
+    // trainer's AI one says «сьогодні» and comes at that day's own opening, for the evening
+    const morning = slots
+      .filter((s) => s.status === 'ACTIVE' && !s.started && s.slotTime <= opensAt)
+      .map((s) => s.slotTime);
+    const announcement = !bookingWindowOpen
+      ? null
+      : morning.length > 0
+        ? morningAnnouncement(targetDay.localDate, morning)
+        : published;
 
     return {
       localDate: targetDay.localDate,

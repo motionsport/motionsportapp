@@ -327,6 +327,8 @@ describe('ScheduleService — booking window flag', () => {
     const result = await service.getNext();
     expect(result?.bookingWindowOpen).toBe(true);
     expect(result?.bookingOpenAt).toBe('2026-10-19T07:00:00.000Z'); // Monday 10:00 Kyiv
+    // While the morning one is what's open: the fixed text naming the day (20.10 is a Tuesday)
+    expect(result?.announcement).toBe('Записуйтесь на ранкове тренування! Чекаємо вас у вівторок о 9:00.');
     expect(result?.slots.map((s) => [s.slotTime, s.bookingOpen, s.bookingOpenAt])).toEqual([
       ['09:00', true, '2026-10-19T07:00:00.000Z'],
       ['19:00', false, '2026-10-20T07:00:00.000Z'],
