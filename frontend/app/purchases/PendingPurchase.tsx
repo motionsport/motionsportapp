@@ -63,12 +63,14 @@ export function PendingPurchase({
         {pending.lines.map((l) => (
           <p key={lineName(l)} className="text-muted text-sm">
             {lineName(l)}
-            {lineNote(l) && <span className="text-accent">, {lineNote(l)}</span>}
+            {lineNote(l) && (
+              <>
+                , <span className="text-accent">{lineNote(l)}</span>
+              </>
+            )}
           </p>
         ))}
-        {pending.method === "CASH" && (
-          <p className="text-body text-sm mt-2">Тренер підтвердить, коли отримає готівку.</p>
-        )}
+        {pending.method === "CASH" && <p className="text-body text-sm mt-2">Чекає підтвердження тренера.</p>}
         {pending.method === "TRANSFER" && (
           <>
             <p className="text-body text-sm mt-2 mb-3">Тренер підтвердить, коли гроші прийдуть на рахунок.</p>

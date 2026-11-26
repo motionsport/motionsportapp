@@ -92,7 +92,7 @@ export function GroupPassModal({
               </div>
             </>
           ) : (
-            <p className="text-body text-sm mb-4">Оплатіть тренеру в залі, і він підтвердить оплату.</p>
+            <p className="text-body text-sm mb-4">Віддайте гроші тренеру в залі.</p>
           )}
           <button
             type="button"

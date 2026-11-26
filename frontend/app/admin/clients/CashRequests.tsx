@@ -37,7 +37,11 @@ export function CashRequests({ requests, onDecided }: { requests: CashRequest[];
             {r.lines.map((l) => (
               <div key={lineName(l)} className="text-subtle text-xs mt-1">
                 {l.section === "club_card" ? `Абонемент · ${lineName(l)}` : lineName(l)}
-                {lineNote(l) && <span className="text-accent">, {lineNote(l)}</span>}
+                {lineNote(l) && (
+                  <>
+                    , <span className="text-accent">{lineNote(l)}</span>
+                  </>
+                )}
               </div>
             ))}
             <button

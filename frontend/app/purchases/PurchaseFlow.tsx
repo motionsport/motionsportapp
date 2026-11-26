@@ -154,11 +154,9 @@ export function PurchaseFlow({
   if (step === "sent") {
     return (
       <div>
-        <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">Запит надіслано</h1>
+        <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-3">Оплата готівкою</h1>
         <p className="rounded-xl border border-teal bg-teal/10 px-4 py-3 text-sm text-accent mb-5">
-          {data.hasTrainer
-            ? "Тренер побачить запит «оплата готівкою». Віддайте йому гроші на тренуванні, і він підтвердить оплату."
-            : "Тренери побачать запит «оплата готівкою». Віддайте гроші тренеру в залі, і він підтвердить оплату."}
+          {data.hasTrainer ? "Віддайте гроші своєму тренеру на тренуванні." : "Віддайте гроші тренеру в залі."}
         </p>
         <button
           type="button"
