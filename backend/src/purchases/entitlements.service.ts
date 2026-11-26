@@ -70,6 +70,8 @@ export type PackageView = {
   createdAt: string;
 };
 
+export type GymCard = { purchasedOn: string; activateBy: string; validFrom: string | null; validUntil: string | null };
+
 export type UsableCard = {
   id: string;
   label: string;
@@ -202,6 +204,27 @@ export class EntitlementsService {
     return card
       ? { id: card.id, label: card.label, state: card.state, validUntil: card.validUntil, activateBy: card.activateBy }
       : null;
+  }
+
+  // Members' club cards with their purchase day, for «is there a gym card on that training day» (cardUsableOn)
+  async gymCardsOf(memberIds: string[], db: Q = this.database.db) {
+    const byMember = new Map<string, GymCard[]>();
+    if (memberIds.length === 0) return byMember;
+    const rows = await db
+      .select({
+        memberId: clubCards.memberId,
+        createdAt: clubCards.createdAt,
+        activateBy: clubCards.activateBy,
+        validFrom: clubCards.validFrom,
+        validUntil: clubCards.validUntil,
+      })
+      .from(clubCards)
+      .where(inArray(clubCards.memberId, memberIds));
+    for (const { memberId, createdAt, ...c } of rows) {
+      const card = { ...c, purchasedOn: DateTime.fromJSDate(createdAt, { zone: KY_ZONE }).toISODate()! };
+      byMember.set(memberId, [...(byMember.get(memberId) ?? []), card]);
+    }
+    return byMember;
   }
 
   // Oldest first: spend order

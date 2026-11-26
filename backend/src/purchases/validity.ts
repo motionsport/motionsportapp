@@ -35,6 +35,13 @@ export function cardState(
   return today <= c.validUntil! ? 'active' : 'expired';
 }
 
+// A club card lets the member into the gym on that date: active over it, or waiting (bought by then, not burned:
+// the first ✓ on a personal / split training starts it that day). A used «Разове відвідування» covers its day only
+export const cardUsableOn = (
+  c: { purchasedOn: string; activateBy: string; validFrom: string | null; validUntil: string | null },
+  date: string,
+) => (c.validFrom ? c.validFrom <= date && date <= c.validUntil! : c.purchasedOn <= date && date <= c.activateBy);
+
 export type PassState = 'waiting' | 'active' | 'expired' | 'burned' | 'used';
 
 export function passState(p: PassDates & { left: number }, today: string): PassState {

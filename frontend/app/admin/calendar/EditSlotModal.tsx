@@ -5,6 +5,7 @@ import { api, AdminMember, CalendarSlot, Cancellation } from "@/lib/api";
 import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { kyivToday, longDay } from "@/lib/dates";
 import { Modal } from "@/components/ui/Modal";
+import { Badge } from "@/components/ui/Badge";
 import { CancellationList } from "@/components/admin/CancellationList";
 import { marksLocked } from "@/lib/marksLock";
 import { memberLabel } from "./memberLabel";
@@ -96,7 +97,14 @@ export function EditSlotModal({
             const label = memberLabel(m);
             return (
               <li key={m.id} className="flex items-center justify-between text-sm">
-                <span className="text-body">{m.displayName}</span>
+                <span className="text-body">
+                  {m.displayName}
+                  {m.booked && m.noGymCard && (
+                    <Badge tone="warn" className="ml-2">
+                      немає абонемента
+                    </Badge>
+                  )}
+                </span>
                 <span className={label.className}>{label.text}</span>
               </li>
             );

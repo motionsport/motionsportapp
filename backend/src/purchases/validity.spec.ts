@@ -1,4 +1,5 @@
 import {
+  cardUsableOn,
   activateByFor,
   cardState,
   endsInDays,
@@ -114,5 +115,24 @@ describe('packageEnding (an assigned training card)', () => {
   it('several: the one ending first', () => {
     const later = { ...pack, validUntil: '2026-11-30', endsInDays: 8 };
     expect(packageEnding([later, pack], 'personal', '2026-11-23')).toEqual({ validUntil: '2026-11-23', endsInDays: 1 });
+  });
+});
+
+describe('cardUsableOn (a gym card on a training day)', () => {
+  const waiting = { purchasedOn: '2026-11-20', activateBy: '2027-02-20', validFrom: null, validUntil: null };
+  it('a waiting card counts from its purchase day until it burns: the ✓ that day starts it', () => {
+    expect(cardUsableOn(waiting, '2026-12-01')).toBe(true);
+    expect(cardUsableOn(waiting, '2026-11-19')).toBe(false);
+    expect(cardUsableOn(waiting, '2027-02-21')).toBe(false);
+  });
+  it('an active card covers its dates only', () => {
+    const month = { ...waiting, validFrom: '2026-11-21', validUntil: '2026-12-21' };
+    expect(cardUsableOn(month, '2026-12-21')).toBe(true);
+    expect(cardUsableOn(month, '2026-12-22')).toBe(false);
+  });
+  it('a used «Разове відвідування» covers its own day, not the next training', () => {
+    const single = { ...waiting, validFrom: '2026-11-25', validUntil: '2026-11-25' };
+    expect(cardUsableOn(single, '2026-11-25')).toBe(true);
+    expect(cardUsableOn(single, '2026-11-28')).toBe(false);
   });
 });

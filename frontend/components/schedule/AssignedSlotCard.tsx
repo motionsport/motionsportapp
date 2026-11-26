@@ -4,7 +4,7 @@ import Link from "next/link";
 import { api, AssignedSlotView } from "@/lib/api";
 import { trainingsCount } from "@/lib/plural";
 import { CancellationReasonModal } from "./CancellationReasonModal";
-import { longDay } from "@/lib/dates";
+import { ddmm, longDay } from "@/lib/dates";
 import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { packageEndingWarning } from "@/lib/endingPackages";
 import { WarnNote } from "@/components/ui/WarnNote";
@@ -50,6 +50,22 @@ export function AssignedSlotCard({ slot, onMutate }: AssignedSlotCardProps) {
               <>
                 {!ending?.lastDay && <p className="text-sm text-body">Залишилось {trainingsCount(slot.packageLeft)}</p>}
                 {ending && <WarnNote title={ending.title}>{ending.details}</WarnNote>}
+                {/* The package pays for the training, the gym needs a club card for that day too */}
+                {!slot.hasCard && !slot.started && (
+                  <WarnNote title="На цей день у вас немає абонемента в зал">
+                    {slot.cardEndsOn
+                      ? `Абонемент діє до ${ddmm(slot.cardEndsOn)}. Новий можна купити, коли він закінчиться.`
+                      : null}
+                  </WarnNote>
+                )}
+                {!slot.hasCard && !slot.started && !slot.cardEndsOn && (
+                  <Link
+                    href="/purchases?buy=card"
+                    className="btn-primary w-full py-3 rounded-lg text-sm text-center transition-colors"
+                  >
+                    Купити абонемент
+                  </Link>
+                )}
               </>
             ) : slot.started ? null : (
               // Nothing to pay for once it has started: the trainer settles it in the hall

@@ -79,6 +79,7 @@ function makeService(db: any, now: DateTime, packages: unknown[] = [], groupPass
   const mockPaymentService = { expireStale: jest.fn().mockResolvedValue(undefined) };
   const mockEntitlements = {
     packagesOf: jest.fn().mockResolvedValue(packages),
+    gymCardsOf: jest.fn().mockResolvedValue(new Map()),
     groupPassLeft: jest.fn().mockResolvedValue(groupPassLeft),
     groupPackageLeft: jest.fn().mockResolvedValue(new Map(groupPackageLeft ? [['member-1', groupPackageLeft]] : [])),
   };

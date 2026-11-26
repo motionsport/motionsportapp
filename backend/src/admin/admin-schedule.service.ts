@@ -19,6 +19,7 @@ import { requireOwnSlot } from '../schedule/default-trainer';
 import { slotOpensAt } from '../trainer-schedule/rules';
 import { GROUP_TYPE, KY_ZONE, isAssignedType, shownSlots, slotNorm, slotStartsAt } from '../schedule/training-types';
 import { markOf, memberCancellations, toCancellationView } from './admin-views';
+import { cardUsableOn } from '../purchases/validity';
 
 const HISTORY_PAGE_DAYS = 14;
 
@@ -74,7 +75,7 @@ export class AdminScheduleService {
       bookingCloseAt: closeAt.toUTC().toISO(),
       serverTime: now.toUTC().toISO(),
       // A group one's opening (a morning one: the day before), so the shared badge says «ранкове» / «вечірні»
-      slots: (await this.buildSlotViews(slots)).map((v) =>
+      slots: (await this.buildSlotViews(slots, () => targetDay.localDate)).map((v) =>
         v.trainingType === GROUP_TYPE
           ? {
               ...v,
@@ -115,7 +116,7 @@ export class AdminScheduleService {
             )
             .orderBy(trainingSlots.slotTime)
         : [];
-    const views = await this.buildSlotViews(slots);
+    const views = await this.buildSlotViews(slots, (dayId) => page.find((d) => d.id === dayId)!.localDate);
 
     return {
       days: page.map((d) => ({
@@ -133,7 +134,11 @@ export class AdminScheduleService {
   }
 
   // Today page and history: participants with marks, who moved in, who cancelled or moved away
-  private async buildSlotViews(slots: (typeof trainingSlots.$inferSelect)[]) {
+  // dateOf: the callers already have each slot's day
+  private async buildSlotViews(
+    slots: (typeof trainingSlots.$inferSelect)[],
+    dateOf: (trainingDayId: string) => string,
+  ) {
     const slotIds = slots.map((s) => s.id);
     if (slotIds.length === 0) return [];
 
@@ -171,11 +176,23 @@ export class AdminScheduleService {
           )
       : [];
 
+    // «немає абонемента» next to a member of a personal / split training without a gym card that day
+    const assignedMembers = participantRows
+      .filter((p) => isAssignedType(slots.find((s) => s.id === p.slotId)!.trainingType))
+      .map((p) => p.memberId);
+    const gymCards = await this.entitlements.gymCardsOf([...new Set(assignedMembers)]);
+
     // Cancelled from these slots or moved into them
     const cancellations = await memberCancellations(
       this.database.db,
       or(inArray(bookings.slotId, slotIds), inArray(bookings.switchedToSlotId, slotIds))!,
     );
+
+    const noGymCard = (s: (typeof slots)[number], memberId: string) => {
+      if (!isAssignedType(s.trainingType)) return false;
+      const date = dateOf(s.trainingDayId);
+      return !(gymCards.get(memberId) ?? []).some((c) => cardUsableOn(c, date));
+    };
 
     return slots.map((s) => ({
       id: s.id,
@@ -196,6 +213,7 @@ export class AdminScheduleService {
             switchedFromTime:
               cancellations.find((c) => c.switchedToSlotId === s.id && c.memberId === p.memberId)?.slotTime ?? null,
             guestOf: null as string | null,
+            noGymCard: noGymCard(s, p.memberId),
           };
           // Guest row right after its member; bookingId is the guest id (PATCH /admin/guests/:id/attendance)
           const guest = guestRows.find((g) => g.bookingId === p.bookingId);
@@ -208,6 +226,7 @@ export class AdminScheduleService {
                   attendanceStatus: markOf(guest.attendance),
                   switchedFromTime: null,
                   guestOf: p.displayName,
+                  noGymCard: false,
                 },
               ]
             : [member];
@@ -276,6 +295,7 @@ export class AdminScheduleService {
             .where(and(inArray(bookings.slotId, assignedIds), eq(bookings.status, 'ACTIVE')))
         : [];
     const summaries = await this.entitlements.summaries([...new Set(assigned.map((a) => a.id))]);
+    const gymCards = await this.entitlements.gymCardsOf([...new Set(assigned.map((a) => a.id))]);
 
     return rows.map((r) => ({
       localDate: r.localDate,
@@ -295,6 +315,8 @@ export class AdminScheduleService {
           // Spent counts as paid even if the package is empty now
           spent: booked.some((b) => b.slotId === r.slotId && b.memberId === id && !!b.spentFrom),
           packageLeft: summaries.get(id)?.packagesLeft.find((p) => p.trainingType === r.trainingType)?.left ?? 0,
+          // «немає абонемента»: no club card lets them into the gym that day
+          noGymCard: !(gymCards.get(id) ?? []).some((c) => cardUsableOn(c, r.localDate)),
         })),
     }));
   }

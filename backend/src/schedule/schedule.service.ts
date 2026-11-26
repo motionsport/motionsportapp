@@ -31,7 +31,7 @@ import { groupTimeError, slotOpensAt } from '../trainer-schedule/rules';
 import { loadFreezes } from '../freezes/freeze.store';
 import { frozenOn, plusDays } from '../freezes/rules';
 import { lateCancelledSlotIds } from '../booking/group-booking';
-import { packageEnding, passUsableOn } from '../purchases/validity';
+import { cardUsableOn, packageEnding, passUsableOn } from '../purchases/validity';
 import { reminderWindow } from './booking-reminder';
 import { morningAnnouncement } from './morning-announcement';
 import { trainingDayOn } from './training-day.store';
@@ -409,8 +409,16 @@ export class ScheduleService {
         .filter((p) => p.trainingType === type && passUsableOn(p, date))
         .reduce((sum, p) => sum + Math.max(p.left, 0), 0);
 
+    // «На цей день у вас немає абонемента в зал»: a package pays for the training, the gym needs a club card too
+    const cards = (await this.entitlements.gymCardsOf([memberId])).get(memberId) ?? [];
+    const today = now.toISODate()!;
+    // A card active today that ends before the training: a new one can be bought only once it ends
+    const activeNow = cards.find((c) => c.validFrom && c.validFrom <= today && today <= c.validUntil!);
+
     return visible.map((r) => ({
       ...r,
+      hasCard: cards.some((c) => cardUsableOn(c, r.localDate)),
+      cardEndsOn: activeNow && activeNow.validUntil! < r.localDate ? activeNow.validUntil : null,
       isMyBooking: mine.some((b) => b.slotId === r.id),
       spent: mine.some((b) => b.slotId === r.id && !!b.spentFrom),
       packageLeft: leftFor(r.trainingType, r.localDate),

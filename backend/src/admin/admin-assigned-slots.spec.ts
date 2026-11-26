@@ -85,8 +85,13 @@ function makeService(db: any) {
   return new AdminSlotsService({ db } as any, {} as any, { now: () => now });
 }
 
+// No gym cards unless a test says so (noGymCard is tested apart)
 function makeViews(db: any, entitlements: any = {}) {
-  return new AdminScheduleService({ db } as any, { now: () => now }, entitlements);
+  return new AdminScheduleService(
+    { db } as any,
+    { now: () => now },
+    { gymCardsOf: jest.fn().mockResolvedValue(new Map()), ...entitlements },
+  );
 }
 
 function makeAttendance(db: any, entitlements: any = {}) {
@@ -462,14 +467,32 @@ describe('Calendar — assigned slot members', () => {
       [M1, { clubCard: null, packagesLeft: [{ trainingType: 'split', left: 5 }] }],
       [M2, { clubCard: null, packagesLeft: [{ trainingType: 'personal', left: 2 }] }],
     ]);
-    const entitlements = { summaries: jest.fn().mockResolvedValue(summaries) };
+    const entitlements = {
+      summaries: jest.fn().mockResolvedValue(summaries),
+      // Катя has a month's card over 21.10; the others none
+      gymCardsOf: jest.fn().mockResolvedValue(
+        new Map([
+          [
+            M1,
+            [
+              {
+                purchasedOn: '2026-10-01',
+                activateBy: '2027-01-01',
+                validFrom: '2026-10-01',
+                validUntil: '2026-11-01',
+              },
+            ],
+          ],
+        ]),
+      ),
+    };
     const result = await makeViews(db, entitlements).getCalendar(TRAINER, '2026-10');
     expect(result.find((s) => s.slotId === 'g1')?.members).toEqual([]);
     // M2 already spent (package now empty) still counts as paid; M3 cancelled
     expect(result.find((s) => s.slotId === 'p1')?.members).toEqual([
-      { id: M1, displayName: 'Катя', booked: true, spent: false, packageLeft: 5 },
-      { id: M2, displayName: 'Оля', booked: true, spent: true, packageLeft: 0 },
-      { id: M3, displayName: 'Іра', booked: false, spent: false, packageLeft: 0 },
+      { id: M1, displayName: 'Катя', booked: true, spent: false, packageLeft: 5, noGymCard: false },
+      { id: M2, displayName: 'Оля', booked: true, spent: true, packageLeft: 0, noGymCard: true },
+      { id: M3, displayName: 'Іра', booked: false, spent: false, packageLeft: 0, noGymCard: true },
     ]);
   });
 });
@@ -493,7 +516,10 @@ describe('Calendar — cancelled group trainings', () => {
         row('new', '2026-11-27', 'ACTIVE'),
       ],
     ]);
-    const entitlements = { summaries: jest.fn().mockResolvedValue(new Map()) };
+    const entitlements = {
+      summaries: jest.fn().mockResolvedValue(new Map()),
+      gymCardsOf: jest.fn().mockResolvedValue(new Map()),
+    };
     const result = await makeViews(db, entitlements).getCalendar(TRAINER, '2026-11');
     expect(result.map((s) => [s.slotId, s.status])).toEqual([
       ['old', 'CANCELLED'],

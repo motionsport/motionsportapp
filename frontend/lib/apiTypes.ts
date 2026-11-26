@@ -410,6 +410,8 @@ export interface AssignedSlotView {
   // The package that pays for it ends within 10 days (endsInDays 1 = today), else null
   packageEnding: { validUntil: string; endsInDays: number } | null;
   started: boolean;
+  hasCard: boolean; // a club card lets the member into the gym that day (active over it, or waiting)
+  cardEndsOn: string | null; // the card active today ends before the training (a new one only once it ends)
 }
 
 export interface EndingPackage {
@@ -488,6 +490,7 @@ export interface AdminParticipant {
   attendanceStatus: AttendanceStatus;
   switchedFromTime: string | null; // moved here from that time
   guestOf: string | null; // guest: the member's name; bookingId is then the guest's id
+  noGymCard: boolean; // personal / split: no club card lets them into the gym that day («немає абонемента»)
 }
 
 export interface AdminSlotView {
@@ -532,5 +535,13 @@ export interface CalendarSlot {
   capacity: number;
   norm: number; // counters show bookedCount / norm («9/8»); a group books past it up to capacity
   // Assigned slots only. booked false = cancelled; spent = paid from a package
-  members: { id: string; displayName: string; booked: boolean; spent: boolean; packageLeft: number }[];
+  // noGymCard: no club card lets them into the gym that day («немає абонемента»)
+  members: {
+    id: string;
+    displayName: string;
+    booked: boolean;
+    spent: boolean;
+    packageLeft: number;
+    noGymCard: boolean;
+  }[];
 }

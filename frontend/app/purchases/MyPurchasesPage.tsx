@@ -16,11 +16,11 @@ import { ReviewDiscountCard } from "@/components/discount/ReviewDiscountCard";
 
 const sectionTitle = "font-geologica font-semibold text-heading uppercase text-xs tracking-wide";
 
-export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
+export function MyPurchasesPage({ startType, startCard }: { startType?: AssignedType; startCard?: boolean }) {
   const [data, setData] = useState<MyPurchases | null>(null);
   const [freeze, setFreeze] = useState<MyFreeze | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [buying, setBuying] = useState<PurchaseMode | null>(startType ? "service" : null);
+  const [buying, setBuying] = useState<PurchaseMode | null>(startType ? "service" : startCard ? "card" : null);
 
   const load = useCallback(
     () =>

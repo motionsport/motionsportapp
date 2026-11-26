@@ -52,6 +52,11 @@ export function SlotCard({ slot, onMutate }: SlotCardProps) {
                     {p.displayName}
                     {p.switchedFromTime && <span className="ml-2 text-xs text-warn">з {p.switchedFromTime}</span>}
                     {p.guestOf && <Badge className="ml-2">гість</Badge>}
+                    {p.noGymCard && (
+                      <Badge tone="warn" className="ml-2">
+                        немає абонемента
+                      </Badge>
+                    )}
                   </span>
                   {/* Stays editable after «Підтвердити всіх» to fix mistakes */}
                   <AttendanceButton
