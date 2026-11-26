@@ -1,5 +1,5 @@
 import { getTableConfig } from 'drizzle-orm/pg-core';
-import { bookingOpensAt, groupTimeError, LEGACY_DEFAULT, scheduleError } from './rules';
+import { groupTimeError, LEGACY_DEFAULT, scheduleError, slotOpensAt } from './rules';
 import { trainerSchedules, trainerScheduleTimes } from '../database/schema';
 
 describe('Trainer schedule rules', () => {
@@ -22,21 +22,16 @@ describe('Trainer schedule rules', () => {
     expect(groupTimeError('20:00', ['19:00'])).toBeNull();
   });
 
-  it('booking must open before the first training of the schedule', () => {
+  it('a training at or before the opening time is allowed (it opens the day before)', () => {
     expect(
       scheduleError({
-        bookingOpensAt: '19:00',
+        bookingOpensAt: '10:00',
         autoCreate: true,
         topics: [],
-        times: [{ weekday: 1, slotTime: '19:00' }],
-      }),
-    ).toBe('Booking must open before the first training');
-    expect(
-      scheduleError({
-        bookingOpensAt: '14:00',
-        autoCreate: true,
-        topics: [],
-        times: [{ weekday: 1, slotTime: '19:00' }],
+        times: [
+          { weekday: 3, slotTime: '09:00' },
+          { weekday: 3, slotTime: '19:00' },
+        ],
       }),
     ).toBeNull();
   });
@@ -109,7 +104,14 @@ describe('Trainer schedule rules', () => {
   });
 
   it('booking opens on the training day at the trainer time, in Kyiv', () => {
-    expect(bookingOpensAt('2026-10-26', '14:00').toISO()).toBe('2026-10-26T14:00:00.000+02:00');
+    expect(slotOpensAt('2026-10-26', '19:00', '14:00').toISO()).toBe('2026-10-26T14:00:00.000+02:00');
+  });
+
+  it('a morning training (at or before the opening) opens the calendar day before', () => {
+    // Wednesday 9:00 with opening 10:00 opens on Tuesday 10:00
+    expect(slotOpensAt('2026-11-25', '09:00', '10:00').toISO()).toBe('2026-11-24T10:00:00.000+02:00');
+    expect(slotOpensAt('2026-11-25', '10:00', '10:00').toISO()).toBe('2026-11-24T10:00:00.000+02:00');
+    expect(slotOpensAt('2026-11-25', '10:15', '10:00').toISO()).toBe('2026-11-25T10:00:00.000+02:00');
   });
 });
 

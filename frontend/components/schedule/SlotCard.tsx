@@ -7,7 +7,7 @@ import { GroupPassModal } from "./GroupPassModal";
 import { OverNormModal } from "./OverNormModal";
 import { WarnNote } from "@/components/ui/WarnNote";
 import { crowdedText, lighterHint, lighterSlot, overNorm } from "@/lib/groupLoad";
-import { kyivTime } from "@/lib/kyivTime";
+import { opensText } from "@/lib/bookingOpens";
 
 // Same threshold as the backend's SMALL_GROUP_MAX (the trainer's push) and the admin SlotCard's «мало учасників»
 const SMALL_GROUP_MAX = 2;
@@ -18,9 +18,8 @@ interface SlotCardProps {
   slot: SlotView;
   allSlots: SlotView[];
   groupPassLeft: number;
-  bookingWindowOpen: boolean;
+  localDate: string;
   afterWindow: boolean;
-  bookingOpenAt: string | null;
   frozen: boolean; // frozen on this day: no booking
   onMutate: (fn: () => Promise<unknown>) => void;
   onRefresh: () => void;
@@ -30,9 +29,8 @@ export function SlotCard({
   slot,
   allSlots,
   groupPassLeft,
-  bookingWindowOpen,
+  localDate,
   afterWindow,
-  bookingOpenAt,
   frozen,
   onMutate,
   onRefresh,
@@ -63,9 +61,9 @@ export function SlotCard({
     slot.status === "ACTIVE" &&
     !afterWindow &&
     !slot.started &&
-    bookingWindowOpen;
+    !!slot.bookingOpen;
 
-  const bookable = slot.status === "ACTIVE" && !afterWindow && !slot.started && bookingWindowOpen && !frozen;
+  const bookable = slot.status === "ACTIVE" && !afterWindow && !slot.started && !!slot.bookingOpen && !frozen;
   // «На 20:00 вільніше»: this time is filling up and another has fewer people. Only for choosing
   // a time: a member already booked that day doesn't see it
   const lighter = bookable && !hasAnyBooking ? lighterHint(slot, allSlots) : null;
@@ -143,9 +141,11 @@ export function SlotCard({
           <p className="text-muted text-sm">Заморожено</p>
         ) : afterWindow || slot.started ? (
           <p className="text-muted text-sm">Запис закрито</p>
-        ) : !bookingWindowOpen ? (
+        ) : !slot.bookingOpen ? (
           <p className="text-muted text-sm">
-            {bookingOpenAt ? `Запис відкриється о ${kyivTime(bookingOpenAt)}` : "Запис ще не відкрився"}
+            {slot.bookingOpenAt
+              ? `Запис відкриється ${opensText(slot.bookingOpenAt, localDate)}`
+              : "Запис ще не відкрився"}
           </p>
         ) : slot.isMyBooking ? (
           <div className="flex flex-col space-y-2">
@@ -220,8 +220,11 @@ export function SlotCard({
         ) : slot.lateCancelled ? (
           <p className="text-muted text-sm">Ви скасували це тренування пізно, записатися знову не можна</p>
         ) : mySlot ? (
-          // Booked at another time: move here (until that one starts), or wait for a seat
-          mySlot.started ? null : switchFits ? (
+          // Booked at another time: move here (until that one starts), or wait for a seat. One group a day:
+          // after the morning one, the evening can't be booked
+          mySlot.started ? (
+            <p className="text-muted text-sm">Сьогодні ви вже записані на {mySlot.slotTime}</p>
+          ) : switchFits ? (
             <div className="flex flex-col space-y-2">
               <button
                 type="button"

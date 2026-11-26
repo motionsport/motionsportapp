@@ -303,6 +303,45 @@ describe('ScheduleService — booking window flag', () => {
     ]);
   });
 
+  // Opening 10:00: 9:00 opened the day before (Monday 10:00), 19:00 opens on the day at 10:00
+  const morningDay = () => {
+    const day = [
+      { id: 's-am', slotTime: '09:00', status: 'ACTIVE', capacity: 15, bookedCount: 4 },
+      { id: 's-pm', slotTime: '19:00', status: 'ACTIVE', capacity: 15, bookedCount: 0 },
+    ];
+    return makeDb([
+      TRAINER,
+      [trainingDay],
+      [
+        { dayId: 'day-1', slotTime: '09:00', status: 'ACTIVE' },
+        { dayId: 'day-1', slotTime: '19:00', status: 'ACTIVE' },
+      ],
+      day,
+      [],
+    ]).db;
+  };
+
+  it('a morning training opens the day before: at 8:00 it is open, the evening not yet', async () => {
+    const service = makeService(morningDay(), kyivAt(8));
+    mockLoadSchedule.mockResolvedValue({ bookingOpensAt: '10:00', autoCreate: true, times: [] });
+    const result = await service.getNext();
+    expect(result?.bookingWindowOpen).toBe(true);
+    expect(result?.bookingOpenAt).toBe('2026-10-19T07:00:00.000Z'); // Monday 10:00 Kyiv
+    expect(result?.slots.map((s) => [s.slotTime, s.bookingOpen, s.bookingOpenAt])).toEqual([
+      ['09:00', true, '2026-10-19T07:00:00.000Z'],
+      ['19:00', false, '2026-10-20T07:00:00.000Z'],
+    ]);
+  });
+
+  it('after the morning one started, the day waits for the evening opening (9:30: «до 10:00»)', async () => {
+    const service = makeService(morningDay(), kyivAt(9, 30));
+    mockLoadSchedule.mockResolvedValue({ bookingOpensAt: '10:00', autoCreate: true, times: [] });
+    const result = await service.getNext();
+    expect(result?.bookingWindowOpen).toBe(false);
+    expect(result?.bookingOpenAt).toBe('2026-10-20T07:00:00.000Z'); // 10:00 Kyiv
+    expect(result?.slots.map((s) => s.bookingOpen)).toEqual([false, false]);
+  });
+
   // 20:00 cancelled: once 19:00 starts, the next day is shown
   it('a cancelled last group training does not keep the day "next"', async () => {
     const tomorrow = { id: 'day-2', localDate: '2026-10-21', status: 'SCHEDULED' };

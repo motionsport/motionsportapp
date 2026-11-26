@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { slotStartsAt } from './training-types';
-import { bookingOpensAt } from '../trainer-schedule/rules';
+import { slotOpensAt } from '../trainer-schedule/rules';
 
 // «Сьогодні тренування»: a home banner (no push: «Запис відкрито» is enough) to members with a group package not
 // booked that day, from LEAD minutes before the trainer's first group training. It counts down to an hour before
@@ -16,18 +16,23 @@ export function reminderLeadMinutes(env: Record<string, string | undefined> = pr
 
 export type ReminderWindow = { from: DateTime; softDeadline: DateTime; firstStart: DateTime };
 
-// The first group training after the opening (one added before it can't be booked), like the booking-open push.
-// None, or booking opens after the reminder would start (the member just got «Запис відкрито»): no reminder
+// The first group training of the morning (at or before the opening: booked the day before) until it starts, then
+// the first of the evening (after the opening), as the booking-open push counts. Booking opens after the reminder
+// would start (the member just got «Запис відкрито»): none
 export function reminderWindow(
   localDate: string,
   slotTimes: string[],
   opensAt: string,
+  now: DateTime,
   leadMinutes = reminderLeadMinutes(),
 ): ReminderWindow | null {
-  const first = slotTimes.filter((t) => t > opensAt).sort()[0];
+  const sorted = [...slotTimes].sort();
+  const morning = sorted.find((t) => t <= opensAt);
+  const evening = sorted.find((t) => t > opensAt);
+  const first = morning && now < slotStartsAt(localDate, morning) ? morning : evening;
   if (!first) return null;
   const firstStart = slotStartsAt(localDate, first);
   const from = firstStart.minus({ minutes: leadMinutes });
-  if (bookingOpensAt(localDate, opensAt) > from) return null;
+  if (slotOpensAt(localDate, first, opensAt) > from) return null;
   return { from, softDeadline: firstStart.minus({ minutes: REMINDER_SOFT_MINUTES }), firstStart };
 }

@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import type { DatabaseService } from '../database/database.service';
 import { bookingGuests, bookings, members, trainingDays, trainingSlots, vacancyAlerts } from '../database/schema';
 import { GROUP_NORM, GROUP_TYPE, slotStartsAt } from '../schedule/training-types';
-import { bookingOpensAt } from '../trainer-schedule/rules';
+import { slotOpensAt } from '../trainer-schedule/rules';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { getMemberTrainerId } from '../schedule/default-trainer';
 import { memberFrozenOn } from '../freezes/freeze.store';
@@ -11,9 +11,9 @@ import { memberFrozenOn } from '../freezes/freeze.store';
 type Db = DatabaseService['db'];
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
-// Opens on the training day at the trainer's booking_opens_at, closes at the start (so do cancel and switch)
+// Opens at slotOpensAt (a morning training the day before), closes at the start (so do cancel and switch)
 export function groupBookingWindow(localDate: string, slotTime: string, opensAt: string) {
-  return { openAt: bookingOpensAt(localDate, opensAt), closeAt: slotStartsAt(localDate, slotTime) };
+  return { openAt: slotOpensAt(localDate, slotTime, opensAt), closeAt: slotStartsAt(localDate, slotTime) };
 }
 
 export async function findGroupBooking(db: Db | Tx, memberId: string, trainingDayId: string) {

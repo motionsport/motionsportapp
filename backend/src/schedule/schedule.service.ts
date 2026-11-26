@@ -19,7 +19,7 @@ import { EntitlementsService } from '../purchases/entitlements.service';
 import { GROUP_TYPE, GROUP_CAPACITY, KY_ZONE, ASSIGNED_TYPES, slotStartsAt, slotNorm } from './training-types';
 import { getMemberTrainerId } from './default-trainer';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
-import { bookingOpensAt, groupTimeError } from '../trainer-schedule/rules';
+import { groupTimeError, slotOpensAt } from '../trainer-schedule/rules';
 import { loadFreezes } from '../freezes/freeze.store';
 import { frozenOn, plusDays } from '../freezes/rules';
 import { lateCancelledSlotIds } from '../booking/group-booking';
@@ -86,13 +86,14 @@ export class ScheduleService {
       };
     }
 
-    // Each slot closes at its start, so the day's window ends with the last one
     const { bookingOpensAt: opensAt } = await loadTrainerSchedule(this.database.db, trainerId!);
-    const openAt = bookingOpensAt(targetDay.localDate, opensAt);
+    const slots = await this.groupSlotViews(trainerId!, targetDay, opensAt, memberId, now);
+    // Each slot opens at its own time (a morning one the day before) and closes at its start. The day: from the
+    // opening of its first training not started yet (Wednesday 9:30: the evening's 10:00) to the last start
+    const pending = slots.filter((s) => s.status === 'ACTIVE' && !s.started).map((s) => s.slotTime);
+    const openAt = slotOpensAt(targetDay.localDate, pending[0] ?? targetDay.lastTime, opensAt);
     const closeAt = slotStartsAt(targetDay.localDate, targetDay.lastTime);
     const bookingWindowOpen = now >= openAt && now < closeAt;
-
-    const slots = await this.groupSlotViews(trainerId!, targetDay, memberId, now);
     const published = await this.publishedAnnouncement(targetDay.id, trainerId!);
     const announcement = bookingWindowOpen ? published : null;
 
@@ -141,7 +142,7 @@ export class ScheduleService {
   ) {
     if (localDate !== now.toISODate() || slots.some((s) => s.isMyBooking)) return null;
     const active = slots.filter((s) => s.status === 'ACTIVE').map((s) => s.slotTime);
-    const window = reminderWindow(localDate, active, opensAt);
+    const window = reminderWindow(localDate, active, opensAt, now);
     if (!window || now >= window.firstStart) return null;
     const left = await this.entitlements.groupPackageLeft([memberId], localDate);
     if (!left.get(memberId)) return null;
@@ -177,6 +178,7 @@ export class ScheduleService {
   private async groupSlotViews(
     trainerId: string,
     day: { id: string; localDate: string },
+    opensAt: string,
     memberId: string | undefined,
     now: DateTime,
   ) {
@@ -199,23 +201,30 @@ export class ScheduleService {
         )
       : null;
 
-    return slots.map((s) => ({
-      id: s.id,
-      slotTime: s.slotTime,
-      status: s.status,
-      trainingType: s.trainingType,
-      capacity: s.capacity,
-      // Counters show booked / norm («9/8»); capacity is where booking closes
-      norm: slotNorm(s),
-      bookedCount: s.bookedCount,
-      isMyBooking: s.id === mine?.bookedSlotId,
-      isMyVacancyAlert: !!mine?.alertSlotIds.has(s.id),
-      myGuest: s.id === mine?.bookedSlotId ? mine.guest : null,
-      // Cancelled late with a fee: can't be booked again
-      lateCancelled: !!mine?.lateCancelled.has(s.id),
-      // Booking, cancelling and switching are closed
-      started: now >= slotStartsAt(day.localDate, s.slotTime),
-    }));
+    return slots.map((s) => {
+      const openAt = slotOpensAt(day.localDate, s.slotTime, opensAt);
+      const started = now >= slotStartsAt(day.localDate, s.slotTime);
+      return {
+        id: s.id,
+        slotTime: s.slotTime,
+        status: s.status,
+        trainingType: s.trainingType,
+        capacity: s.capacity,
+        // Counters show booked / norm («9/8»); capacity is where booking closes
+        norm: slotNorm(s),
+        bookedCount: s.bookedCount,
+        isMyBooking: s.id === mine?.bookedSlotId,
+        isMyVacancyAlert: !!mine?.alertSlotIds.has(s.id),
+        myGuest: s.id === mine?.bookedSlotId ? mine.guest : null,
+        // Cancelled late with a fee: can't be booked again
+        lateCancelled: !!mine?.lateCancelled.has(s.id),
+        // Booking opens here (a morning training: the day before)
+        bookingOpenAt: openAt.toUTC().toISO(),
+        bookingOpen: now >= openAt && !started,
+        // Booking, cancelling and switching are closed
+        started,
+      };
+    });
   }
 
   // The member's trainer's announcement of the day

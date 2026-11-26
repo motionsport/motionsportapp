@@ -93,8 +93,8 @@ describe('TrainerScheduleService.save', () => {
   it('a schedule that breaks the rules: 400, nothing written', async () => {
     const { db, writes } = makeDb([]);
     const svc = new TrainerScheduleService({ db } as any, schedule as any);
-    await expect(svc.save('t2', { ...SCHEDULE, bookingOpensAt: '19:00' })).rejects.toThrow(
-      new BadRequestException('Booking must open before the first training'),
+    await expect(svc.save('t2', { ...SCHEDULE, bookingOpensAt: '14:05' })).rejects.toThrow(
+      new BadRequestException('Time must be in 15-minute steps'),
     );
     expect(writes).toEqual([]);
     expect(schedule.ensureGroupSlots).not.toHaveBeenCalled();

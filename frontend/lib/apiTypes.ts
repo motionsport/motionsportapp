@@ -365,6 +365,9 @@ export interface SlotView {
   isMyBooking: boolean;
   isMyVacancyAlert?: boolean;
   started?: boolean; // no booking, cancelling or switching after the start
+  // Member schedule only: booking for this training opens here (a morning one: the day before) and is open now
+  bookingOpenAt?: string;
+  bookingOpen?: boolean;
   myGuest?: { name: string } | null;
   lateCancelled?: boolean; // cancelled late: can't book it again
 }

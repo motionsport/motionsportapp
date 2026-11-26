@@ -223,7 +223,8 @@ export default function GroupSchedulePage() {
             <label htmlFor="opens-at" className="text-heading text-sm">
               Запис відкривається о
               <span className="block text-muted text-xs mt-1">
-                для всіх ваших групових, зокрема доданих у календарі
+                для всіх ваших групових, зокрема доданих у календарі. На тренування раніше за цей час (зранку) запис
+                відкривається напередодні
               </span>
             </label>
             <input

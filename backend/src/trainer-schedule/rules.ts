@@ -59,7 +59,6 @@ export function scheduleError(s: TrainerSchedule): string | null {
     );
     if (error) return error;
   }
-  if (s.times.some((t) => t.slotTime <= s.bookingOpensAt)) return API_ERRORS.OPENS_AFTER_TRAINING;
   for (let i = 0; i < s.topics.length; i++) {
     const { weekday, topic } = s.topics[i];
     if (!Number.isInteger(weekday) || weekday < 1 || weekday > 7) return 'Unknown weekday';
@@ -69,7 +68,9 @@ export function scheduleError(s: TrainerSchedule): string | null {
   return null;
 }
 
-// Kyiv time on the training day
-export function bookingOpensAt(localDate: string, opensAt: string): DateTime {
-  return DateTime.fromISO(`${localDate}T${opensAt}:00`, { zone: KY_ZONE });
+// When booking for a group training opens (Kyiv): at the trainer's opening time on its day, or the day before for a
+// training at or before that time (opening 10:00: a 9:00 training opens at 10:00 the day before)
+export function slotOpensAt(localDate: string, slotTime: string, opensAt: string): DateTime {
+  const onDay = DateTime.fromISO(`${localDate}T${opensAt}:00`, { zone: KY_ZONE });
+  return slotTime <= opensAt ? onDay.minus({ days: 1 }) : onDay;
 }

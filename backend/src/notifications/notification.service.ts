@@ -79,6 +79,8 @@ export class NotificationService {
 
   private async sendOpening(payload: Record<string, unknown>) {
     const localDate = payload.localDate as string;
+    // The days whose trainings opened (a morning one opens the day before); older events: localDate
+    const dates = (payload.dates as string[] | undefined) ?? [localDate];
     const trainerIds = payload.trainerIds as string[] | undefined;
     // Older events have no trainerIds: send to everyone
     const subscriptions = trainerIds
@@ -86,7 +88,7 @@ export class NotificationService {
       : await this.subs.findAll();
     await this.sendToSubs(subscriptions, {
       title: 'Запис відкрито! 🏋️',
-      body: `Записуйтесь на тренування ${this.fmtDate(localDate)}`,
+      body: `Записуйтесь на тренування ${dates.map((d) => this.fmtDate(d)).join(' і ')}`,
       icon: ICON,
       url: '/',
     });

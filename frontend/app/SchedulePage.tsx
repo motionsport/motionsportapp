@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api, DiscountView, ScheduleNext, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { SlotCard } from "@/components/schedule/SlotCard";
-import { kyivTime } from "@/lib/kyivTime";
+import { opensBadge } from "@/lib/bookingOpens";
 import { AssignedSlotCard } from "@/components/schedule/AssignedSlotCard";
 import { resyncExistingSubscription } from "@/lib/pushUtils";
 import { nextPollDelay } from "@/lib/schedulePoll";
@@ -231,7 +231,7 @@ export default function SchedulePage({ signedIn }: { signedIn: boolean }) {
                 <div className="flex items-center">
                   {beforeWindow && schedule.bookingOpenAt ? (
                     <span className="text-xs text-muted bg-surface border border-line rounded-full px-3 py-1">
-                      До {kyivTime(schedule.bookingOpenAt)}
+                      {opensBadge(schedule.bookingOpenAt, schedule.localDate)}
                     </span>
                   ) : afterWindow ? (
                     <span className="text-xs text-muted bg-surface border border-line rounded-full px-3 py-1">
@@ -253,9 +253,8 @@ export default function SchedulePage({ signedIn }: { signedIn: boolean }) {
                     slot={slot}
                     allSlots={schedule.slots}
                     groupPassLeft={schedule.groupPassLeft ?? 0}
-                    bookingWindowOpen={schedule.bookingWindowOpen}
+                    localDate={schedule.localDate!}
                     afterWindow={afterWindow}
-                    bookingOpenAt={schedule.bookingOpenAt}
                     frozen={frozenThatDay}
                     onMutate={handleMutate}
                     onRefresh={refreshAll}

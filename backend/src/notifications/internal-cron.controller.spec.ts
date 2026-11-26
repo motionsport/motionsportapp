@@ -181,19 +181,26 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
   });
 
   // t1 opens at 10:00 (first group 18:00) and is the first trainer; t2 opens at 16:00 (first group 19:00)
-  async function runAt(hour: number, minute = 5, times?: { trainerId: string; slotTime: string }[]) {
+  type T = { trainerId: string; slotTime: string };
+  async function runAt(hour: number, minute = 5, times?: T[] | null, tomorrow?: T[]) {
     process.env.NODE_ENV = 'development';
     delete process.env.CRON_SECRET;
     mockLoadSchedule.mockImplementation((_db: unknown, id: string) =>
       Promise.resolve({ bookingOpensAt: id === 't1' ? '10:00' : '16:00', autoCreate: true, times: [] }),
     );
-    // Reads: today's day, today's active group trainings, the first trainer
+    // Reads: today's day and its active group trainings (null: no day today), tomorrow's, the first trainer
+    const day = (id: string, list?: T[]) => (list ? [[{ id, status: 'SCHEDULED' }], list] : [[]]);
     const reads: unknown[][] = [
-      [{ id: 'day-1', status: 'SCHEDULED' }],
-      times ?? [
-        { trainerId: 't1', slotTime: '18:00' },
-        { trainerId: 't2', slotTime: '19:00' },
-      ],
+      ...day(
+        'day-1',
+        times === null
+          ? undefined
+          : (times ?? [
+              { trainerId: 't1', slotTime: '18:00' },
+              { trainerId: 't2', slotTime: '19:00' },
+            ]),
+      ),
+      ...day('day-2', tomorrow),
       [{ id: 't1' }],
     ];
     function link(): any {
@@ -229,7 +236,7 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
       [
         'BOOKING_OPEN',
         'booking-open:2026-10-23:t1',
-        { localDate: '2026-10-23', trainerIds: ['t1'], includeUnassigned: true },
+        { localDate: '2026-10-23', dates: ['2026-10-23'], trainerIds: ['t1'], includeUnassigned: true },
       ],
     ]);
   });
@@ -279,6 +286,33 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
       { trainerId: 't1', slotTime: '18:00' },
     ]);
     expect(calls.map((c) => c[1])).toEqual(['booking-open:2026-10-23:t1']);
+  });
+
+  // Opening 10:00: tomorrow's 9:00 opens today, also on a day with no trainings
+  it("tomorrow's morning training opens today at the opening time (its announcement comes on its own day)", async () => {
+    const calls = await runAt(10, 5, null, [{ trainerId: 't1', slotTime: '09:00' }]);
+    expect(calls).toEqual([
+      [
+        'BOOKING_OPEN',
+        'booking-open:2026-10-23:t1',
+        { localDate: '2026-10-23', dates: ['2026-10-24'], trainerIds: ['t1'], includeUnassigned: true },
+      ],
+    ]);
+    expect(order).toEqual(['booking-open:2026-10-23:t1']);
+  });
+
+  it('today evening and tomorrow morning open together: one push for both days', async () => {
+    const calls = await runAt(
+      10,
+      5,
+      [{ trainerId: 't1', slotTime: '18:00' }],
+      [{ trainerId: 't1', slotTime: '09:00' }],
+    );
+    expect(calls.map((c) => (c[2] as { dates: string[] }).dates)).toEqual([['2026-10-23', '2026-10-24']]);
+  });
+
+  it("tomorrow's evening training does not open today", async () => {
+    expect(await runAt(10, 5, null, [{ trainerId: 't1', slotTime: '19:00' }])).toEqual([]);
   });
 
   it('before anyone opens: nothing', async () => {

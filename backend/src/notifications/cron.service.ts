@@ -7,7 +7,7 @@ import { ClockService } from '../clock/clock.service';
 import { EntitlementsService, inLockOrder } from '../purchases/entitlements.service';
 import { trainingSlots, bookings, attendance, bookingGuests } from '../database/schema';
 import { GROUP_TYPE, slotOverAt, slotStartsAt } from '../schedule/training-types';
-import { bookingOpensAt } from '../trainer-schedule/rules';
+import { slotOpensAt } from '../trainer-schedule/rules';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { getDefaultTrainerId } from '../schedule/default-trainer';
 import { trainingDayOn } from '../schedule/training-day.store';
@@ -31,33 +31,39 @@ export class CronService {
   async bookingOpen() {
     const now = this.clock.now();
     const today = now.toISODate()!;
+    const tomorrow = now.plus({ days: 1 }).toISODate()!;
 
-    const day = await trainingDayOn(this.database.db, today);
-
-    if (!day || day.status !== 'SCHEDULED') {
-      return { ok: true, skipped: 'no scheduled day today' };
-    }
-    // Per trainer: from their booking opening until their first group training starts. Runs every 15 min
-    // (cron-job.org); the per-trainer-and-day dedupe key keeps it to one push
-    const trainers = await this.groupTrainersToday(day.id);
-    if (trainers.length === 0) {
-      return { ok: true, skipped: 'no group trainings today' };
+    // What opens today at a trainer's opening time: today's group trainings after it, and tomorrow's at or before it
+    // (a morning training opens the day before, slotOpensAt), so the push also comes on a day with no trainings
+    const onToday = await this.groupTrainingsOn(today);
+    const onTomorrow = await this.groupTrainingsOn(tomorrow);
+    if (onToday.length === 0 && onTomorrow.length === 0) {
+      return { ok: true, skipped: 'no group trainings today or tomorrow' };
     }
     const firstTrainerId = await getDefaultTrainerId(this.database.db);
 
+    // Per trainer: from their opening until the first of those trainings starts. Runs every 15 min (cron-job.org);
+    // the per-trainer-and-day dedupe key keeps it to one push
     const sent: string[] = [];
-    for (const trainerId of [...new Set(trainers.map((t) => t.trainerId))]) {
+    for (const trainerId of [...new Set([...onToday, ...onTomorrow].map((t) => t.trainerId))]) {
       const { bookingOpensAt: opensAt } = await loadTrainerSchedule(this.database.db, trainerId);
-      // A training before the opening time can't be booked, so it doesn't count
-      const firstTime = trainers
-        .filter((t) => t.trainerId === trainerId && t.slotTime > opensAt)
-        .map((t) => t.slotTime)
-        .sort()[0];
-      if (!firstTime || now >= slotStartsAt(today, firstTime)) continue;
-      const openAt = bookingOpensAt(today, opensAt);
-      // This trainer's announcement one run before their opening, so it is ready with the push (a published one
-      // is left alone; members see it only from the opening). A failure never stops the push
-      if (now >= openAt.minus({ minutes: ANNOUNCEMENT_LEAD_MINUTES })) {
+      const own = (list: { trainerId: string; slotTime: string }[]) => list.filter((t) => t.trainerId === trainerId);
+      const opening = [
+        ...own(onToday)
+          .filter((t) => t.slotTime > opensAt)
+          .map((t) => ({ date: today, slotTime: t.slotTime })),
+        ...own(onTomorrow)
+          .filter((t) => t.slotTime <= opensAt)
+          .map((t) => ({ date: tomorrow, slotTime: t.slotTime })),
+      ].sort((a, b) => (a.date + a.slotTime).localeCompare(b.date + b.slotTime));
+      const first = opening[0];
+      if (!first || now >= slotStartsAt(first.date, first.slotTime)) continue;
+      const openAt = slotOpensAt(first.date, first.slotTime, opensAt);
+      const dates = [...new Set(opening.map((t) => t.date))];
+      // Today's announcement one run before the opening, so it is ready with the push (a published one is left
+      // alone; members see it only from the opening). Not for tomorrow's morning: it speaks of «сьогодні», so that
+      // day's own opening makes it. A failure never stops the push
+      if (dates.includes(today) && now >= openAt.minus({ minutes: ANNOUNCEMENT_LEAD_MINUTES })) {
         await this.announcementsService
           .autoGenerate(today, trainerId)
           .catch((e: unknown) => this.logger.error(`Announcement ${trainerId}: ${String(e)}`));
@@ -65,6 +71,8 @@ export class CronService {
       if (now < openAt) continue;
       await this.notifications.enqueueAndProcess('BOOKING_OPEN', `booking-open:${today}:${trainerId}`, {
         localDate: today,
+        // The days whose trainings opened (tomorrow: its morning ones)
+        dates,
         trainerIds: [trainerId],
         // Members without a trainer see the first trainer's group trainings
         includeUnassigned: trainerId === firstTrainerId,
@@ -151,13 +159,16 @@ export class CronService {
     return over.length;
   }
 
-  private async groupTrainersToday(dayId: string) {
+  // Active group trainings of a scheduled day (none: no day or a cancelled one)
+  private async groupTrainingsOn(localDate: string) {
+    const day = await trainingDayOn(this.database.db, localDate);
+    if (!day || day.status !== 'SCHEDULED') return [];
     return this.database.db
       .select({ trainerId: trainingSlots.trainerId, slotTime: trainingSlots.slotTime })
       .from(trainingSlots)
       .where(
         and(
-          eq(trainingSlots.trainingDayId, dayId),
+          eq(trainingSlots.trainingDayId, day.id),
           eq(trainingSlots.trainingType, GROUP_TYPE),
           eq(trainingSlots.status, 'ACTIVE'),
         ),

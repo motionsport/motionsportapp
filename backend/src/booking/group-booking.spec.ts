@@ -124,6 +124,16 @@ describe('tryBookGroup — booking inside someone else’s transaction, never th
     expect(mockLoadSchedule).toHaveBeenCalledWith(tx, 'trainer-1');
   });
 
+  it('a morning training (before the opening) opens the day before at the opening time', async () => {
+    mockLoadSchedule.mockResolvedValue({ bookingOpensAt: '10:00', autoCreate: true, times: [] });
+    // Wednesday 9:00: opens on Tuesday 10:00
+    const morning = { ...slot, slotTime: '09:00', localDate: '2026-10-21' };
+    const early = makeTx([MEMBER, [morning], TRAINER, []]);
+    expect(await tryBookGroup(early.tx, at(9), 'member-1', 'slot-1')).toEqual({ ok: false, reason: 'WINDOW' });
+    const open = makeTx([MEMBER, [morning], TRAINER, []]);
+    expect(await tryBookGroup(open.tx, at(10), 'member-1', 'slot-1')).toEqual({ ok: true, bookingId: 'booking-1' });
+  });
+
   it('a cancelled slot or day: CANCELLED / NOT_SCHEDULED', async () => {
     const a = makeTx([MEMBER, [{ ...slot, status: 'CANCELLED' }], TRAINER, []]);
     expect(await tryBookGroup(a.tx, at(15), 'member-1', 'slot-1')).toEqual({ ok: false, reason: 'CANCELLED' });

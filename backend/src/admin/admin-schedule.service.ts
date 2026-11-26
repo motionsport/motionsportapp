@@ -16,7 +16,7 @@ import { ClockService } from '../clock/clock.service';
 import { EntitlementsService } from '../purchases/entitlements.service';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { requireOwnSlot } from '../schedule/default-trainer';
-import { bookingOpensAt } from '../trainer-schedule/rules';
+import { slotOpensAt } from '../trainer-schedule/rules';
 import { GROUP_TYPE, KY_ZONE, isAssignedType, slotNorm, slotStartsAt } from '../schedule/training-types';
 import { markOf, memberCancellations, toCancellationView } from './admin-views';
 
@@ -54,10 +54,13 @@ export class AdminScheduleService {
       .where(and(eq(trainingSlots.trainingDayId, targetDay.id), eq(trainingSlots.trainerId, adminId)))
       .orderBy(trainingSlots.slotTime);
 
-    // Window: trainer's opening time to the last group start (no group training: midnight)
+    // Window: from the opening of the first active group training not started yet (a morning one opened the day
+    // before) to the last group start (no group training: midnight)
     const { bookingOpensAt: opensAt } = await loadTrainerSchedule(this.database.db, adminId);
-    const openAt = bookingOpensAt(targetDay.localDate, opensAt);
-    const lastGroup = slots.filter((s) => s.trainingType === GROUP_TYPE).at(-1);
+    const groups = slots.filter((s) => s.trainingType === GROUP_TYPE);
+    const pending = groups.find((s) => s.status === 'ACTIVE' && now < slotStartsAt(targetDay.localDate, s.slotTime));
+    const openAt = slotOpensAt(targetDay.localDate, pending?.slotTime ?? '23:59', opensAt);
+    const lastGroup = groups.at(-1);
     const closeAt = lastGroup
       ? slotStartsAt(targetDay.localDate, lastGroup.slotTime)
       : DateTime.fromISO(targetDay.localDate, { zone: KY_ZONE }).endOf('day');
