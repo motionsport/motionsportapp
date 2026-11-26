@@ -49,6 +49,8 @@ export default function CalendarPage() {
   const [members, setMembers] = useState<AdminMember[]>([]);
   // e.g. "2026-10,2026-11"
   const [visibleMonths, setVisibleMonths] = useState("");
+  // The date shown in «День» (its hours come from that day's trainings), null in the other views
+  const [visibleDay, setVisibleDay] = useState<string | null>(null);
 
   const [modal, setModal] = useState<OpenModal | null>(null);
 
@@ -91,6 +93,10 @@ export default function CalendarPage() {
 
   const handleDatesSet = useCallback(
     (arg: DatesSetInfo) => {
+      const s = arg.start;
+      setVisibleDay(
+        arg.view.type === "timeGridDay" ? `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}` : null,
+      );
       // A week can span 2 months, the month view 3 (edge days)
       const lastVisible = new Date(arg.end.getTime() - 1); // end is exclusive
       const list: string[] = [];
@@ -139,6 +145,10 @@ export default function CalendarPage() {
   // Evening by default; widen when an assigned training is earlier or later
   const minHour = Math.min(17, ...slots.map((s) => hourOf(s.slotTime)));
   const maxHour = Math.min(24, Math.max(22, ...slots.map((s) => hourOf(s.slotTime) + 2)));
+  // «День» is one column: only that day's hours (evening by default), an hour a row, so it fits a phone screen
+  const dayHours = slots.filter((s) => s.localDate === visibleDay).map((s) => hourOf(s.slotTime));
+  const dayMinHour = Math.min(17, ...dayHours);
+  const dayMaxHour = Math.min(24, Math.max(22, ...dayHours.map((h) => h + 2)));
 
   const openEditModal = (slot: CalendarSlot) => {
     setModal({ mode: "edit", slot });
@@ -243,7 +253,12 @@ export default function CalendarPage() {
             views={{
               // Short title: the default (with years) pushed the view buttons to a new row
               timeGridWeek: { titleFormat: { day: "numeric", month: "short" } },
-              timeGridDay: { titleFormat: { day: "numeric", month: "short" } },
+              timeGridDay: {
+                titleFormat: { day: "numeric", month: "short" },
+                slotDuration: "01:00:00",
+                slotMinTime: `${pad(dayMinHour)}:00:00`,
+                slotMaxTime: `${pad(dayMaxHour)}:00:00`,
+              },
             }}
             eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             fixedWeekCount={false}
