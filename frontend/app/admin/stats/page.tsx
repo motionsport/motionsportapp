@@ -28,6 +28,7 @@ const noRevenue = (month: string): MonthRevenue => ({
   total: 0,
   discount: 0,
   discounted: 0,
+  permanentDiscount: 0,
   gifts: 0,
 });
 

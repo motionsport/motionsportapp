@@ -91,6 +91,7 @@ describe('stats — revenue by month', () => {
       total: 1900,
       discount: 0,
       discounted: 0,
+      permanentDiscount: 0,
       gifts: 0,
     });
     expect(r.months.map((m) => [m.month, m.total])).toEqual([

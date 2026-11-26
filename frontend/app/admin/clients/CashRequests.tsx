@@ -39,7 +39,7 @@ export function CashRequests({ requests, onDecided }: { requests: CashRequest[];
                 {l.section === "club_card" ? `Абонемент · ${lineName(l)}` : lineName(l)}
                 {lineNote(l) && (
                   <>
-                    , <span className="text-accent">{lineNote(l)}</span>
+                    , <span className="text-discount">{lineNote(l)}</span>
                   </>
                 )}
               </div>

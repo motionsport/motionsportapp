@@ -68,6 +68,8 @@ export class PricesService {
         title: priceItems.title,
         optionLabel: priceItems.optionLabel,
         amountUah: priceItems.amountUah,
+        // A club card's months (0 = «Разове відвідування»): the trainer's reception preview of the permanent discount
+        durationMonths: priceItems.durationMonths,
       })
       .from(priceItems)
       .orderBy(asc(priceItems.sortOrder));

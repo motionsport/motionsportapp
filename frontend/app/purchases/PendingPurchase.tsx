@@ -65,7 +65,7 @@ export function PendingPurchase({
             {lineName(l)}
             {lineNote(l) && (
               <>
-                , <span className="text-accent">{lineNote(l)}</span>
+                , <span className="text-discount">{lineNote(l)}</span>
               </>
             )}
           </p>

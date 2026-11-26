@@ -25,20 +25,20 @@ export function DiscountToggle({
       <button
         type="button"
         onClick={() => onChange(true)}
-        className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
+        className="w-full py-3 rounded-lg border border-discount/35 text-discount text-sm hover:bg-discount/10 transition-colors"
       >
         🎁 Застосувати знижку {percent}%
       </button>
     );
   }
   return (
-    <div className="rounded-xl border border-teal/30 bg-teal/5 px-4 py-3">
+    <div className="rounded-xl border border-discount/35 bg-discount/10 px-4 py-3">
       <div className="flex items-center justify-between space-x-3">
-        <span className="text-accent text-base">
+        <span className="text-discount text-base">
           Знижка {percent}% ({code})
         </span>
         {discountUah !== undefined && (
-          <span className="font-geologica text-accent tabular-nums whitespace-nowrap">−{formatUah(discountUah)}</span>
+          <span className="font-geologica text-discount tabular-nums whitespace-nowrap">−{formatUah(discountUah)}</span>
         )}
       </div>
       {payUah !== undefined && (

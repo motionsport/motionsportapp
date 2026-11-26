@@ -9,6 +9,7 @@ import { TransferDetails } from "@/components/purchases/TransferDetails";
 import { buyableServiceTypes } from "./buyable";
 import { DiscountToggle } from "@/components/discount/DiscountToggle";
 import { discountPreview, showDiscountToggle } from "@/lib/reviewDiscount";
+import { DISCOUNT_NAME, permanentPreview } from "@/lib/permanentDiscount";
 
 type Step = "service" | "offer" | "club" | "group" | "checkout" | "sent" | "transfer";
 
@@ -112,6 +113,9 @@ export function PurchaseFlow({
   const applied = canDiscount && discountOn;
   const preview = discountPreview(priced, data.reviewDiscountPercent);
   const online = data.methods.liqpay && !applied;
+  // «Постійна знижка» / «Знижка іменинника» goes on a club card for a period by itself; the backend applies it again
+  const permanentUah = permanentPreview(lines, data.permanentDiscount?.percent);
+  const payUah = total - permanentUah - (applied ? preview.discountUah : 0);
   // Only types with nothing left (the backend refuses the others): split left still lets the member buy personal
   const buyable = buyableServiceTypes(data.packages);
   const groups = SERVICE_GROUPS.filter((g) => buyable.includes(g.type) && (!startType || g.type === startType));
@@ -214,11 +218,17 @@ export function PurchaseFlow({
               <span className="font-geologica text-heading tabular-nums">{formatUah(l.amountUah)}</span>
             </div>
           ))}
+          {permanentUah > 0 && data.permanentDiscount && (
+            <div className="flex justify-between space-x-3 py-2 border-b border-line text-discount">
+              <span>
+                {DISCOUNT_NAME[data.permanentDiscount.kind]} {data.permanentDiscount.percent}%
+              </span>
+              <span className="font-geologica tabular-nums">−{formatUah(permanentUah)}</span>
+            </div>
+          )}
           <div className="flex justify-between space-x-3 py-2">
-            <span className="text-muted">{applied ? "До сплати" : "Разом"}</span>
-            <span className="font-geologica text-heading text-lg tabular-nums">
-              {formatUah(applied ? preview.payUah : total)}
-            </span>
+            <span className="text-muted">{applied || permanentUah > 0 ? "До сплати" : "Разом"}</span>
+            <span className="font-geologica text-heading text-lg tabular-nums">{formatUah(payUah)}</span>
           </div>
         </div>
         {canDiscount && discount && (

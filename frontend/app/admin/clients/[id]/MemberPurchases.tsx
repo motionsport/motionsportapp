@@ -7,6 +7,8 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { formatUah, lineName } from "@/lib/prices";
 import { discountPreview } from "@/lib/reviewDiscount";
 import { lineNote } from "@/lib/purchaseLines";
+import { DISCOUNT_NAME, permanentPreview } from "@/lib/permanentDiscount";
+import { PermanentDiscountBlock } from "./PermanentDiscountBlock";
 import { METHOD_LABEL } from "@/lib/paymentMethods";
 import { DiscountToggle } from "@/components/discount/DiscountToggle";
 import { ReviewDiscountBlock } from "./ReviewDiscountBlock";
@@ -144,6 +146,9 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
   const picked = cardItems?.find((i) => i.id === cardId);
   const canDiscount = data.reviewDiscount?.state === "free";
   const preview = picked ? discountPreview([picked], data.reviewDiscountPercent) : null;
+  // «Постійна знижка» / «Знижка іменинника» goes on a club card for a period by itself
+  const permanentUah = picked ? permanentPreview([picked], data.permanentDiscount?.percent) : 0;
+  const reviewUah = canDiscount && applyDiscount && preview ? preview.discountUah : 0;
 
   return (
     <div className="flex flex-col">
@@ -223,6 +228,22 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
             >
               Скасувати
             </button>
+            {picked && permanentUah > 0 && data.permanentDiscount && (
+              <div className="w-full m-1 rounded-xl border border-discount/35 bg-discount/10 px-4 py-3">
+                <div className="flex items-center justify-between space-x-3 text-discount text-base">
+                  <span>
+                    {DISCOUNT_NAME[data.permanentDiscount.kind]} {data.permanentDiscount.percent}%
+                  </span>
+                  <span className="font-geologica tabular-nums whitespace-nowrap">−{formatUah(permanentUah)}</span>
+                </div>
+                <div className="flex items-center justify-between space-x-3 mt-1">
+                  <span className="text-body text-base">Клієнт платить на рецепції</span>
+                  <span className="font-geologica text-heading text-lg tabular-nums whitespace-nowrap">
+                    {formatUah(picked.amountUah - permanentUah - reviewUah)}
+                  </span>
+                </div>
+              </div>
+            )}
             {canDiscount && data.reviewDiscount && picked && preview && preview.discountUah > 0 && (
               <div className="w-full m-1">
                 <DiscountToggle
@@ -231,7 +252,8 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
                   applied={applyDiscount}
                   onChange={setApplyDiscount}
                   discountUah={preview.discountUah}
-                  payUah={preview.payUah}
+                  // With a permanent discount the box above already says what the client pays
+                  payUah={permanentUah > 0 ? undefined : preview.payUah}
                   payLabel="Клієнт платить на рецепції"
                 />
               </div>
@@ -246,6 +268,17 @@ export function MemberPurchases({ memberId, onChanged }: { memberId: string; onC
           )
         )}
       </section>
+
+      <div className="py-4 border-t border-line">
+        <PermanentDiscountBlock
+          memberId={memberId}
+          kind={data.permanentDiscountKind}
+          birthday={data.birthdayDiscount}
+          percent={data.permanentDiscountPercent}
+          headingClass={sectionTitle}
+          onChanged={load}
+        />
+      </div>
 
       <div className="py-4 border-t border-line">
         <ReviewDiscountBlock

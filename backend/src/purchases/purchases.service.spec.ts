@@ -36,6 +36,25 @@ beforeEach(() => {
   (holdDiscountForPurchase as jest.Mock).mockReset().mockResolvedValue(undefined);
 });
 
+// Permanent / birthday discounts are tested in permanent-discounts; here none unless a test says so
+jest.mock('../permanent-discounts/discount.store', () => ({
+  discountKindNow: jest.fn(),
+  permanentKindOf: jest.fn(),
+  permanentDiscountNow: jest.fn(),
+  loadBirthday: jest.fn(),
+  holdBirthdayForPurchase: jest.fn(),
+  useBirthdayAtReception: jest.fn(),
+}));
+beforeEach(() => {
+  const store = jest.requireMock('../permanent-discounts/discount.store');
+  store.discountKindNow.mockReset().mockResolvedValue(null);
+  store.permanentKindOf.mockReset().mockResolvedValue(null);
+  store.permanentDiscountNow.mockReset().mockResolvedValue(null);
+  store.loadBirthday.mockReset().mockResolvedValue(null);
+  store.holdBirthdayForPurchase.mockReset().mockResolvedValue(undefined);
+  store.useBirthdayAtReception.mockReset().mockResolvedValue(undefined);
+});
+
 // Booking is tested in group-booking.spec; lockMember stays real and reads the next result
 jest.mock('../booking/group-booking', () => ({
   ...jest.requireActual('../booking/group-booking'),
@@ -200,6 +219,69 @@ describe('Purchases — «Спеціальна пропозиція»', () => {
     const { db } = makeDb([[P1], OFFER_ROWS]);
     await expect(makeService(db).svc.create('m1', offer({ applyDiscount: true }))).rejects.toThrow(
       'Discount does not apply here',
+    );
+  });
+});
+
+describe('Purchases — permanent and birthday discounts', () => {
+  const MONTH = { ...CARD, durationMonths: 1 };
+  const SINGLE = {
+    id: 'price-single',
+    section: 'club_card',
+    title: 'Разове відвідування',
+    optionLabel: null,
+    amountUah: 250,
+    durationMonths: 0,
+  };
+  const store = () => jest.requireMock('../permanent-discounts/discount.store');
+
+  it('a mark takes 10% off a club card for a period, stacking with the review discount (15% of the price list)', async () => {
+    store().discountKindNow.mockResolvedValue('ZSU');
+    store().permanentKindOf.mockResolvedValue('ZSU');
+    const { db, inserts } = makeDb([[MONTH], MEMBER, []]);
+    await makeService(db).svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH', applyDiscount: true });
+    expect(inserts[0]).toMatchObject({ table: purchases, values: { totalUah: 1190 } });
+    expect(inserts[1].values).toEqual([
+      expect.objectContaining({
+        amountUah: 1190,
+        discountUah: 70,
+        permanentDiscountUah: 140,
+        permanentDiscountKind: 'ZSU',
+      }),
+    ]);
+  });
+
+  it('not on «Разове відвідування»', async () => {
+    store().discountKindNow.mockResolvedValue('STUDENT');
+    const { db, inserts } = makeDb([[SINGLE], MEMBER, []]);
+    await makeService(db).svc.create('m1', { priceItemIds: ['price-single'], method: 'CASH' });
+    expect(inserts[1].values).toEqual([expect.objectContaining({ amountUah: 250, permanentDiscountUah: 0 })]);
+  });
+
+  it('not on a trainer service bought with the card', async () => {
+    store().discountKindNow.mockResolvedValue('PENSIONER');
+    store().permanentKindOf.mockResolvedValue('PENSIONER');
+    const { db, inserts } = makeDb([[MONTH, PERSONAL], MEMBER, []]);
+    await makeService(db).svc.create('m1', { priceItemIds: ['price-card', 'price-p8'], method: 'CASH' });
+    expect(inserts[1].values).toEqual([
+      expect.objectContaining({ priceItemId: 'price-card', amountUah: 1260, permanentDiscountUah: 140 }),
+      expect.objectContaining({ priceItemId: 'price-p8', amountUah: 3600, permanentDiscountUah: 0 }),
+    ]);
+  });
+
+  it('the birthday discount is held by the purchase', async () => {
+    store().discountKindNow.mockResolvedValue('BIRTHDAY');
+    const { db } = makeDb([[MONTH], MEMBER, []]);
+    await makeService(db).svc.create('m1', { priceItemIds: ['price-card'], method: 'TRANSFER' });
+    expect(store().holdBirthdayForPurchase).toHaveBeenCalledWith(db, 'm1', 'purchase-1', '2026-10-23');
+  });
+
+  it('409 when the mark was taken off meanwhile (checked again under the member lock)', async () => {
+    store().discountKindNow.mockResolvedValue('FAMILY');
+    store().permanentKindOf.mockResolvedValue(null);
+    const { db } = makeDb([[MONTH], MEMBER, []]);
+    await expect(makeService(db).svc.create('m1', { priceItemIds: ['price-card'], method: 'CASH' })).rejects.toThrow(
+      'The discount changed meanwhile',
     );
   });
 });
@@ -425,6 +507,8 @@ describe('Purchases — create', () => {
           optionLabel: '1 місяць',
           amountUah: 1400,
           discountUah: 0,
+          permanentDiscountUah: 0,
+          permanentDiscountKind: null,
           gift: false,
         },
         {
@@ -434,6 +518,8 @@ describe('Purchases — create', () => {
           optionLabel: '8 тренувань',
           amountUah: 3600,
           discountUah: 0,
+          permanentDiscountUah: 0,
+          permanentDiscountKind: null,
           gift: false,
         },
       ],

@@ -497,7 +497,7 @@ describe('Entitlements — manual club card', () => {
       activateNow: false,
       applyDiscount: false,
     });
-    expect(added).toEqual({ id: 'card-1', discountUah: 0 });
+    expect(added).toEqual({ id: 'card-1', discountUah: 0, permanentDiscountKind: null });
     expect(inserts[0]).toEqual({
       table: clubCards,
       values: {
@@ -510,6 +510,8 @@ describe('Entitlements — manual club card', () => {
         activateBy: '2027-01-23',
         addedBy: 't1',
         paidUah: 1400,
+        permanentDiscountUah: null,
+        permanentDiscountKind: null,
       },
     });
   });
@@ -523,8 +525,36 @@ describe('Entitlements — manual club card', () => {
       activateNow: false,
       applyDiscount: true,
     });
-    expect(added).toEqual({ id: 'card-1', discountUah: 63 });
+    expect(added).toEqual({ id: 'card-1', discountUah: 63, permanentDiscountKind: null });
     expect(inserts[0].values).toMatchObject({ paidUah: 1187 });
+  });
+
+  it('a permanent mark: 10% more off the price list, with the review discount 15%', async () => {
+    const { db, inserts } = makeDb([
+      [{ section: 'club_card', title: 'Денний', optionLabel: '1 місяць', durationMonths: 1, amountUah: 1400 }],
+      [{ id: 'card-1' }],
+    ]);
+    const added = await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', {
+      activateNow: false,
+      applyDiscount: true,
+      permanentKind: 'ZSU',
+    });
+    expect(added).toEqual({ id: 'card-1', discountUah: 70, permanentDiscountKind: 'ZSU' });
+    expect(inserts[0].values).toMatchObject({ paidUah: 1190, permanentDiscountUah: 140, permanentDiscountKind: 'ZSU' });
+  });
+
+  it('«Разове відвідування» (0 months): no permanent discount', async () => {
+    const { db, inserts } = makeDb([
+      [{ section: 'club_card', title: 'Разове відвідування', optionLabel: null, durationMonths: 0, amountUah: 250 }],
+      [{ id: 'card-1' }],
+    ]);
+    const added = await makeService(db).addManualCard(db, 'm1', 't1', 'price-1', {
+      activateNow: false,
+      applyDiscount: false,
+      permanentKind: 'BIRTHDAY',
+    });
+    expect(added.permanentDiscountKind).toBeNull();
+    expect(inserts[0].values).toMatchObject({ paidUah: 250, permanentDiscountUah: null });
   });
 
   it('«Додати й активувати з сьогодні» gives it dates from today', async () => {

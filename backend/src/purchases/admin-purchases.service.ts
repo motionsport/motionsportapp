@@ -24,6 +24,14 @@ import { apiError } from '../common/api-error';
 import { REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
 import { loadDiscount, useDiscountAtReception } from '../review-discounts/discount.store';
 import { MANUAL_METHODS, transferCode } from '../payment/payment-methods';
+import { PERMANENT_DISCOUNT_PERCENT } from '../permanent-discounts/rules';
+import {
+  discountKindNow,
+  loadBirthday,
+  permanentDiscountNow,
+  permanentKindOf,
+  useBirthdayAtReception,
+} from '../permanent-discounts/discount.store';
 
 const MEMBER_PURCHASES_LIMIT = 20;
 
@@ -158,6 +166,11 @@ export class AdminPurchasesService {
       purchases: views.map((v) => ({ ...v, decidedBy: history.find((h) => h.id === v.id)?.decidedBy ?? null })),
       reviewDiscountPercent: REVIEW_DISCOUNT_PERCENT,
       reviewDiscount: await loadDiscount(this.database.db, memberId, this.clock.now().toISODate()!),
+      // The mark and this year's birthday discount (the client page's block), and what a reception card gets today
+      permanentDiscountPercent: PERMANENT_DISCOUNT_PERCENT,
+      permanentDiscountKind: await permanentKindOf(this.database.db, memberId),
+      birthdayDiscount: await loadBirthday(this.database.db, memberId, this.clock.now().toISODate()!),
+      permanentDiscount: await permanentDiscountNow(this.database.db, memberId, this.clock.now().toISODate()!),
     };
   }
 
@@ -169,10 +182,15 @@ export class AdminPurchasesService {
       await lockMember(tx, memberId);
       await this.rejectFrozen(tx, memberId);
       if (await this.entitlements.usableCard(memberId, tx)) throw new ConflictException(apiError('CLUB_CARD_EXISTS'));
+      const today = this.clock.now().toISODate()!;
+      // «Постійна знижка» / «Знижка іменинника» go on by themselves, like in the app
+      const permanentKind = await discountKindNow(tx, memberId, today);
       const card = await this.entitlements.addManualCard(tx, memberId, trainerId, priceItemId, {
         activateNow: activate,
         applyDiscount,
+        permanentKind,
       });
+      if (card.permanentDiscountKind === 'BIRTHDAY') await useBirthdayAtReception(tx, memberId, card.id, today);
       if (applyDiscount) {
         // A refusal throws and rolls the card back
         const now = this.clock.now();

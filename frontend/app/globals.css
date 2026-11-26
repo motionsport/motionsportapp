@@ -33,6 +33,8 @@
   --color-subtle: #8a9bc0; /* secondary text that must stay readable (4.5:1 on the background) */
 
   /* Waiting state (a card waiting for activation) */
+  /* Second brand colour «барвінок» (2026-11-26): for now only discounts (review, permanent, birthday) */
+  --color-discount: #8fa3ff;
   --color-warn: #f5c56b;
   --color-warn-bg: #1d170b;
   --color-warn-line: #5a4520;

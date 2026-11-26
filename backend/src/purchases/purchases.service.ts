@@ -25,6 +25,13 @@ import { discountable, discountUahFor, REVIEW_DISCOUNT_PERCENT } from '../review
 import { holdDiscountForPurchase, loadDiscount } from '../review-discounts/discount.store';
 import { isNewClient, offerItems, specialOfferFor } from './special-offer';
 import { getDefaultTrainerId } from '../schedule/default-trainer';
+import { permanentApplies, permanentDiscountUahFor, type DiscountKind } from '../permanent-discounts/rules';
+import {
+  discountKindNow,
+  holdBirthdayForPurchase,
+  permanentDiscountNow,
+  permanentKindOf,
+} from '../permanent-discounts/discount.store';
 
 // Same errors as BookingService.book
 function bookingError(reason: Extract<GroupBookingResult, { ok: false }>['reason']) {
@@ -120,6 +127,8 @@ export class PurchasesService {
       reviewDiscountPercent: REVIEW_DISCOUNT_PERCENT,
       reviewDiscount: await loadDiscount(this.database.db, memberId, this.clock.now().toISODate()!),
       specialOffer: await specialOfferFor(this.database.db, memberId),
+      // «Постійна знижка» / «Знижка іменинника» on a club card for a period, applied by the server itself
+      permanentDiscount: await permanentDiscountNow(this.database.db, memberId, this.clock.now().toISODate()!),
       pending: pendingView && { ...pendingView, transfer: transferDetails(pendingView) },
       // Cash goes to the member's trainer, or without one to any trainer in the gym (the screens say so)
       hasTrainer: !!member?.trainerId,
@@ -150,12 +159,23 @@ export class PurchasesService {
       ...sectionOf(items, 'assigned'),
       ...sectionOf(items, 'group'),
     ];
-    // amountUah = what is paid (price minus discount); the discount is taken off the first club card / group pass
+    // amountUah = what is paid: the price list minus the review discount (first club card / group pass) and the
+    // permanent / birthday one (first club card for a period), both off the price list
     const discounted = dto.applyDiscount ? ordered.findIndex((l) => discountable(l.section)) : -1;
     if (dto.applyDiscount && discounted < 0) throw new BadRequestException(apiError('DISCOUNT_NOT_APPLICABLE'));
+    const kind = await discountKindNow(this.database.db, memberId, this.clock.now().toISODate()!);
+    const permanent = kind ? ordered.findIndex((l) => permanentApplies(l.section, l.durationMonths)) : -1;
     const lines: PurchaseLine[] = ordered.map((l, i) => {
       const discountUah = i === discounted ? discountUahFor(l.amountUah) : 0;
-      return { ...l, amountUah: l.amountUah - discountUah, discountUah, gift: l.gift ?? false };
+      const permanentDiscountUah = i === permanent ? permanentDiscountUahFor(l.amountUah) : 0;
+      return {
+        ...l,
+        amountUah: l.amountUah - discountUah - permanentDiscountUah,
+        discountUah,
+        permanentDiscountUah,
+        permanentDiscountKind: i === permanent ? kind : null,
+        gift: l.gift ?? false,
+      };
     });
     const totalUah = lines.reduce((sum, l) => sum + l.amountUah, 0);
     const { purchaseId, trainerId, displayName } = await this.insertPurchase(memberId, dto, lines, totalUah);
@@ -189,6 +209,7 @@ export class PurchasesService {
         amountUah: priceItems.amountUah,
         trainingType: priceItems.trainingType,
         trainingCount: priceItems.trainingCount,
+        durationMonths: priceItems.durationMonths,
       })
       .from(priceItems)
       .where(inArray(priceItems.id, ids));
@@ -217,6 +238,7 @@ export class PurchasesService {
         amountUah: 0,
         trainingType: null,
         trainingCount: null,
+        durationMonths: 0,
         gift: true,
       },
     ];
@@ -296,12 +318,21 @@ export class PurchasesService {
           optionLabel: l.optionLabel,
           amountUah: l.amountUah,
           discountUah: l.discountUah,
+          permanentDiscountUah: l.permanentDiscountUah,
+          permanentDiscountKind: l.permanentDiscountKind,
           gift: l.gift,
         })),
       );
       // Same transaction: a discount already held or used fails the whole purchase
       if (dto.applyDiscount) {
         await holdDiscountForPurchase(tx, memberId, created.id, this.clock.now().toISODate()!);
+      }
+      // The birthday discount is held like the review one; a mark taken off meanwhile fails the purchase
+      const permanentKind = lines.find((l) => l.permanentDiscountKind)?.permanentDiscountKind;
+      if (permanentKind === 'BIRTHDAY') {
+        await holdBirthdayForPurchase(tx, memberId, created.id, this.clock.now().toISODate()!);
+      } else if (permanentKind && (await permanentKindOf(tx, memberId)) !== permanentKind) {
+        throw new ConflictException(apiError('DISCOUNT_CHANGED'));
       }
       // Cash or transfer group pass: book now, the trainer confirms the money. Can't book: the throw rolls back
       if (dto.method !== 'LIQPAY' && dto.slotId) {
@@ -349,10 +380,16 @@ type PriceLine = {
   amountUah: number;
   trainingType: string | null;
   trainingCount: number | null;
+  durationMonths: number | null;
   gift?: boolean;
 };
 
-type PurchaseLine = PriceLine & { discountUah: number; gift: boolean };
+type PurchaseLine = PriceLine & {
+  discountUah: number;
+  permanentDiscountUah: number;
+  permanentDiscountKind: DiscountKind | null;
+  gift: boolean;
+};
 
 // What a member needs to send a transfer; null for other methods or when transfers are switched off
 function transferDetails(p: { id: string; method: string; totalUah: number }) {

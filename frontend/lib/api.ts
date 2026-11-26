@@ -22,6 +22,8 @@ import type {
   MeResponse,
   MyFreeze,
   MyPurchases,
+  PermanentDiscountState,
+  PermanentKind,
   PaymentStatus,
   PriceChange,
   PriceItem,
@@ -214,6 +216,10 @@ export const api = {
     post(`/admin/members/${memberId}/club-card`, { priceItemId, activate, applyDiscount }),
 
   giveReviewDiscount: (memberId: string) => post(`/admin/members/${memberId}/review-discount`),
+  setPermanentDiscount: (memberId: string, kind: PermanentKind | null) =>
+    put<PermanentDiscountState>(`/admin/members/${memberId}/permanent-discount`, { kind }),
+  giveBirthdayDiscount: (memberId: string) =>
+    post<PermanentDiscountState>(`/admin/members/${memberId}/birthday-discount`),
 
   activateClubCard: (memberId: string, cardId: string) =>
     post(`/admin/members/${memberId}/club-cards/${cardId}/activate`),

@@ -30,6 +30,8 @@ export type Revenue = {
   total: number;
   discount: number;
   discounted: number;
+  // «Постійні знижки» and «Знижка іменинника» taken off (total is already net of them)
+  permanentDiscount: number;
   // «Спеціальна пропозиція»: single gym visits given free (purchase_items.gift), not money
   gifts: number;
 };
@@ -43,6 +45,7 @@ const emptyRevenue = (): Revenue => ({
   total: 0,
   discount: 0,
   discounted: 0,
+  permanentDiscount: 0,
   gifts: 0,
 });
 
@@ -60,6 +63,7 @@ type RevenueRow = {
   amount: number;
   discount: number;
   discounted?: number;
+  permanentDiscount?: number;
   gifts?: number;
 };
 export type RevenueSummary = { allTime: Revenue; months: ({ month: string } & Revenue)[] };
@@ -78,6 +82,7 @@ export function summarizeRevenue(rows: RevenueRow[]): RevenueSummary {
       t.total += r.amount;
       t.discount += r.discount;
       t.discounted += discounted;
+      t.permanentDiscount += r.permanentDiscount ?? 0;
       t.gifts += r.gifts ?? 0;
     }
     byMonth.set(r.month, m);
@@ -207,6 +212,7 @@ export class StatsService {
         amount: sql<number>`sum(${clubCards.paidUah})::int`,
         discount: sql<number>`coalesce(sum(${reviewDiscounts.discountUah}), 0)::int`,
         discounted: sql<number>`(count(*) filter (where ${reviewDiscounts.discountUah} > 0))::int`,
+        permanentDiscount: sql<number>`coalesce(sum(${clubCards.permanentDiscountUah}), 0)::int`,
       })
       .from(clubCards)
       .leftJoin(reviewDiscounts, eq(reviewDiscounts.clubCardId, clubCards.id))
@@ -267,6 +273,7 @@ export class StatsService {
         amount: sql<number>`sum(${purchaseItems.amountUah})::int`,
         discount: sql<number>`coalesce(sum(${purchaseItems.discountUah}), 0)::int`,
         discounted: sql<number>`(count(*) filter (where ${purchaseItems.discountUah} > 0))::int`,
+        permanentDiscount: sql<number>`coalesce(sum(${purchaseItems.permanentDiscountUah}), 0)::int`,
         gifts: sql<number>`(count(*) filter (where ${purchaseItems.gift}))::int`,
       })
       .from(purchaseItems)

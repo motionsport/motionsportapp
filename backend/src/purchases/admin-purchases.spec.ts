@@ -23,6 +23,25 @@ beforeEach(() => mockUseDiscount.mockClear());
 const mockLockMember = lockMember as jest.Mock;
 beforeEach(() => mockLockMember.mockClear());
 
+// Permanent / birthday discounts are tested in permanent-discounts; here none unless a test says so
+jest.mock('../permanent-discounts/discount.store', () => ({
+  discountKindNow: jest.fn(),
+  permanentKindOf: jest.fn(),
+  permanentDiscountNow: jest.fn(),
+  loadBirthday: jest.fn(),
+  holdBirthdayForPurchase: jest.fn(),
+  useBirthdayAtReception: jest.fn(),
+}));
+beforeEach(() => {
+  const store = jest.requireMock('../permanent-discounts/discount.store');
+  store.discountKindNow.mockReset().mockResolvedValue(null);
+  store.permanentKindOf.mockReset().mockResolvedValue(null);
+  store.permanentDiscountNow.mockReset().mockResolvedValue(null);
+  store.loadBirthday.mockReset().mockResolvedValue(null);
+  store.holdBirthdayForPurchase.mockReset().mockResolvedValue(undefined);
+  store.useBirthdayAtReception.mockReset().mockResolvedValue(undefined);
+});
+
 const NOW = DateTime.fromISO('2026-10-23T12:00:00', { zone: KY_ZONE });
 
 // Drizzle chain mock: reads take the next result; `updateResult` returning [] loses the compare-and-set
@@ -131,6 +150,7 @@ describe('Trainer — client purchases', () => {
     expect(entitlements.addManualCard).toHaveBeenCalledWith(db, 'm1', 'trainer-1', 'price-card', {
       activateNow: false,
       applyDiscount: false,
+      permanentKind: null,
     });
   });
 
@@ -156,6 +176,7 @@ describe('Trainer — client purchases', () => {
     expect(entitlements.addManualCard).toHaveBeenCalledWith(tx, 'm1', 'trainer-1', 'price-card', {
       activateNow: false,
       applyDiscount: false,
+      permanentKind: null,
     });
   });
 
@@ -202,6 +223,7 @@ describe('Trainer — client purchases', () => {
     expect(entitlements.addManualCard).toHaveBeenCalledWith(db, 'm1', 'trainer-1', 'price-card', {
       activateNow: true,
       applyDiscount: false,
+      permanentKind: null,
     });
   });
 

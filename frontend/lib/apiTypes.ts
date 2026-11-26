@@ -68,7 +68,8 @@ export interface SkippedTraining {
 }
 
 // Member-facing: no trainer names
-export type PriceListItem = Omit<PriceItem, "updatedBy" | "updatedAt">;
+// durationMonths: from activation, 0 = that day only («Разове відвідування»); null for items without one
+export type PriceListItem = Omit<PriceItem, "updatedBy" | "updatedAt"> & { durationMonths?: number | null };
 
 export interface PriceChange {
   id: string;
@@ -150,6 +151,8 @@ export interface PurchaseLine {
   optionLabel: string | null;
   amountUah: number; // what is paid, the review discount already taken off
   discountUah?: number; // the review discount on this line (0 = none)
+  permanentDiscountUah?: number; // «Постійна знижка» / «Знижка іменинника» on this line (0 = none)
+  permanentDiscountKind?: DiscountKind | null;
   gift?: boolean; // «Спеціальна пропозиція»: the free single gym visit (0 ₴)
 }
 
@@ -176,7 +179,21 @@ export interface MemberPurchases {
   purchases: (Purchase & { decidedBy: string | null })[];
   reviewDiscount: DiscountView | null;
   reviewDiscountPercent: number;
+  permanentDiscountPercent: number;
+  permanentDiscountKind: PermanentKind | null; // the client's mark
+  birthdayDiscount: BirthdayDiscount | null; // this calendar year's
+  permanentDiscount: PermanentDiscountNow | null; // what a reception card gets today
 }
+
+// «Постійна знижка» (backend permanent-discounts/rules.ts): a trainer's mark on the client
+export type PermanentKind = "ZSU" | "STUDENT" | "PENSIONER" | "FAMILY";
+export type DiscountKind = PermanentKind | "BIRTHDAY";
+// «Знижка іменинника»: valid only on givenOn, once a calendar year
+export type BirthdayDiscount = { givenOn: string; state: "free" | "held" | "used" | "expired" };
+// The 10% a club card for a period gets today (the mark, else a free birthday one); the percent comes from the backend
+export type PermanentDiscountNow = { kind: DiscountKind; percent: number };
+// PUT /admin/members/:id/permanent-discount and POST …/birthday-discount answer with this
+export type PermanentDiscountState = { percent: number; kind: PermanentKind | null; birthday: BirthdayDiscount | null };
 
 export interface MyPurchases {
   catalog: { clubCards: CatalogItem[]; services: CatalogItem[]; groupPasses: CatalogItem[] };
@@ -196,6 +213,7 @@ export interface MyPurchases {
   // «Спеціальна пропозиція» for a new client (never had a club card or package): the single trainer services it is
   // for; null = not offered
   specialOffer: { serviceIds: string[] } | null;
+  permanentDiscount: PermanentDiscountNow | null; // goes on a club card for a period by itself
 }
 
 // Review discount (5% for a Google review), one per member. held = a PENDING purchase has it
@@ -250,9 +268,10 @@ export interface Revenue {
   personal: number;
   split: number;
   group: number;
-  total: number; // money actually received, the review discounts already taken off
+  total: number; // money actually received, every discount already taken off
   discount: number; // what the review discounts knocked off
   discounted: number; // purchase lines with a review discount
+  permanentDiscount: number; // what «Постійні знижки» and «Знижка іменинника» knocked off
   gifts: number; // «Спеціальна пропозиція»: single gym visits given free
 }
 

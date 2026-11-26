@@ -48,7 +48,7 @@ export function ReviewDiscountBlock({
           <p className="text-subtle text-xs">
             {discountGivenLine(discount)} · {discount.code}
           </p>
-          <p className={`mt-1 ${discount.state === "free" ? "text-accent" : "text-heading"}`}>
+          <p className={`mt-1 ${discount.state === "free" ? "text-discount" : "text-heading"}`}>
             {discountStatusLine(discount)}
           </p>
         </>
@@ -56,7 +56,7 @@ export function ReviewDiscountBlock({
         <button
           type="button"
           onClick={() => setAsking(true)}
-          className="btn-secondary px-4 py-2.5 rounded-lg border text-xs font-semibold transition-colors"
+          className="px-4 py-2.5 rounded-lg border border-line text-heading text-xs font-semibold hover:border-subtle transition-colors"
         >
           Дати знижку
         </button>

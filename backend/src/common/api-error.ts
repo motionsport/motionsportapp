@@ -34,6 +34,10 @@ export const API_ERRORS = {
   DISCOUNT_HELD: 'Discount is held by a purchase waiting for payment',
   DISCOUNT_EXPIRED: 'Discount has expired',
   DISCOUNT_NOT_APPLICABLE: 'Discount does not apply here',
+  // «Знижка іменинника»: once a calendar year, valid on the day it was given
+  BIRTHDAY_DISCOUNT_GIVEN: 'Birthday discount already given this year',
+  BIRTHDAY_DISCOUNT_NOT_FREE: 'Birthday discount is not available',
+  DISCOUNT_CHANGED: 'The discount changed meanwhile',
   // «Спеціальна пропозиція»: only a client who never had a club card or package
   SPECIAL_OFFER_USED: 'Special offer is for the first purchase only',
   // Trainer: calendar, weekly schedule, marks, refunds

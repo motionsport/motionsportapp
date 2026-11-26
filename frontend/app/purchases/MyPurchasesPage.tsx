@@ -11,6 +11,7 @@ import { ClubCardBlock } from "./ClubCardBlock";
 import { PackageCard, packageTitle } from "./PackageCard";
 import { PendingPurchase } from "./PendingPurchase";
 import { BuyBlock } from "./BuyBlock";
+import { PermanentDiscountCard } from "./PermanentDiscountCard";
 import { ReviewDiscountCard } from "@/components/discount/ReviewDiscountCard";
 
 const sectionTitle = "font-geologica font-semibold text-heading uppercase text-xs tracking-wide";
@@ -95,6 +96,8 @@ export function MyPurchasesPage({ startType }: { startType?: AssignedType }) {
                 {p.state === "expired" ? `згоріли, строк до ${ddmm(p.validUntil)}` : "згоріли (не почато вчасно)"}
               </p>
             ))}
+
+          {data.permanentDiscount && <PermanentDiscountCard discount={data.permanentDiscount} />}
 
           {data.reviewDiscount && (
             <ReviewDiscountCard discount={data.reviewDiscount} percent={data.reviewDiscountPercent} />

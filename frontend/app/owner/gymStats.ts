@@ -21,6 +21,7 @@ const zero = (): Revenue => ({
   total: 0,
   discount: 0,
   discounted: 0,
+  permanentDiscount: 0,
   gifts: 0,
 });
 
@@ -28,8 +29,8 @@ function revenueIn(r: RevenueByMonth, period: GymPeriod): Revenue {
   if (period === "all") return r.allTime;
   const m = r.months.find((x) => x.month === period);
   if (!m) return zero();
-  const { clubCards, personal, split, group, total, discount, discounted, gifts } = m;
-  return { clubCards, personal, split, group, total, discount, discounted, gifts };
+  const { clubCards, personal, split, group, total, discount, discounted, permanentDiscount, gifts } = m;
+  return { clubCards, personal, split, group, total, discount, discounted, permanentDiscount, gifts };
 }
 
 function presentIn(p: GymStats["trainers"][number]["present"], period: GymPeriod) {
@@ -45,6 +46,7 @@ function add(a: Revenue, b: Revenue): Revenue {
     total: a.total + b.total,
     discount: a.discount + b.discount,
     discounted: a.discounted + b.discounted,
+    permanentDiscount: a.permanentDiscount + b.permanentDiscount,
     gifts: a.gifts + b.gifts,
   };
 }

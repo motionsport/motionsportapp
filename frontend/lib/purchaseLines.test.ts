@@ -8,6 +8,11 @@ describe("lineNote", () => {
   it("a discounted line keeps its discount note", () => {
     expect(lineNote({ discountUah: 70 })).toBe("знижка за відгук, −70 ₴");
   });
+  it("a permanent and a review discount on one card", () => {
+    expect(lineNote({ discountUah: 70, permanentDiscountUah: 140, permanentDiscountKind: "ZSU" })).toBe(
+      "знижка ЗСУ, −140 ₴, знижка за відгук, −70 ₴",
+    );
+  });
   it("nothing for a plain line", () => {
     expect(lineNote({ discountUah: 0 })).toBeNull();
   });

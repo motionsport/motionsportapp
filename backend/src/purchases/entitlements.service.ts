@@ -22,6 +22,7 @@ import { activateByFor, cardState, endsInDays, passState, PassState, passUsableO
 import { loadFreezes } from '../freezes/freeze.store';
 import { daysBetween, frozenOn, plusDays } from '../freezes/rules';
 import { discountUahFor } from '../review-discounts/rules';
+import { permanentApplies, permanentDiscountUahFor, type DiscountKind } from '../permanent-discounts/rules';
 
 type Db = DatabaseService['db'];
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -494,7 +495,11 @@ export class EntitlementsService {
     memberId: string,
     trainerId: string,
     priceItemId: string,
-    { activateNow, applyDiscount }: { activateNow: boolean; applyDiscount: boolean },
+    {
+      activateNow,
+      applyDiscount,
+      permanentKind = null,
+    }: { activateNow: boolean; applyDiscount: boolean; permanentKind?: DiscountKind | null },
   ) {
     const [item] = await db
       .select({
@@ -513,6 +518,9 @@ export class EntitlementsService {
     const today = this.today();
     const months = item.durationMonths ?? 0;
     const discountUah = applyDiscount ? discountUahFor(item.amountUah) : 0;
+    // A club card for a period only; off the price list like the review discount
+    const permanentDiscountKind = permanentKind && permanentApplies(item.section, months) ? permanentKind : null;
+    const permanentDiscountUah = permanentDiscountKind ? permanentDiscountUahFor(item.amountUah) : 0;
     const [card] = await db
       .insert(clubCards)
       .values({
@@ -524,9 +532,11 @@ export class EntitlementsService {
         durationMonths: months,
         activateBy: activateByFor(today),
         addedBy: trainerId,
-        paidUah: item.amountUah - discountUah,
+        paidUah: item.amountUah - discountUah - permanentDiscountUah,
+        permanentDiscountUah: permanentDiscountKind ? permanentDiscountUah : null,
+        permanentDiscountKind,
       })
       .returning({ id: clubCards.id });
-    return { id: card.id, discountUah };
+    return { id: card.id, discountUah, permanentDiscountKind };
   }
 }

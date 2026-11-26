@@ -1,4 +1,5 @@
 import { ROLES } from '../auth/roles';
+import { DISCOUNT_KINDS } from '../permanent-discounts/rules';
 import {
   pgTable,
   uuid,
@@ -25,19 +26,27 @@ function oneOf(name: string, column: string, values: readonly string[]) {
   return check(name, sql.raw(`${column} IN (${values.map((v) => `'${v}'`).join(', ')})`));
 }
 
-export const members = pgTable('members', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  memberCode: text('member_code').notNull().unique(),
-  displayName: text('display_name').notNull(),
-  pinHash: text('pin_hash').notNull(),
-  recoveryHash: text('recovery_hash').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  disabledAt: timestamp('disabled_at', { withTimezone: true }),
-  // Trainer-only; never returned by member-facing APIs
-  trainerNote: text('trainer_note'),
-  // null = unassigned, visible to every trainer
-  trainerId: uuid('trainer_id').references((): AnyPgColumn => admins.id),
-});
+export const members = pgTable(
+  'members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    memberCode: text('member_code').notNull().unique(),
+    displayName: text('display_name').notNull(),
+    pinHash: text('pin_hash').notNull(),
+    recoveryHash: text('recovery_hash').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    disabledAt: timestamp('disabled_at', { withTimezone: true }),
+    // Trainer-only; never returned by member-facing APIs
+    trainerNote: text('trainer_note'),
+    // null = unassigned, visible to every trainer
+    trainerId: uuid('trainer_id').references((): AnyPgColumn => admins.id),
+    // «Постійна знижка» (permanent-discounts/rules.ts): set by a trainer who saw the document; null = none
+    permanentDiscount: text('permanent_discount'),
+    permanentDiscountSetBy: uuid('permanent_discount_set_by').references((): AnyPgColumn => admins.id),
+    permanentDiscountSetAt: timestamp('permanent_discount_set_at', { withTimezone: true }),
+  },
+  () => [oneOf('members_permanent_discount_check', 'permanent_discount', ['ZSU', 'STUDENT', 'PENSIONER', 'FAMILY'])],
+);
 
 export const admins = pgTable('admins', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -443,22 +452,30 @@ export const purchases = pgTable(
 );
 
 // Price list values copied at purchase time, so later price changes don't apply
-export const purchaseItems = pgTable('purchase_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  purchaseId: uuid('purchase_id')
-    .notNull()
-    .references(() => purchases.id),
-  priceItemId: uuid('price_item_id')
-    .notNull()
-    .references(() => priceItems.id),
-  title: text('title').notNull(),
-  optionLabel: text('option_label'),
-  amountUah: integer('amount_uah').notNull(),
-  discountUah: integer('discount_uah').notNull().default(0),
-  // «Спеціальна пропозиція»: the free single gym visit given with a new client's first single trainer service
-  // (amount 0, purchases/special-offer.ts); it starts with that training's first mark
-  gift: boolean('gift').notNull().default(false),
-});
+export const purchaseItems = pgTable(
+  'purchase_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    purchaseId: uuid('purchase_id')
+      .notNull()
+      .references(() => purchases.id),
+    priceItemId: uuid('price_item_id')
+      .notNull()
+      .references(() => priceItems.id),
+    title: text('title').notNull(),
+    optionLabel: text('option_label'),
+    amountUah: integer('amount_uah').notNull(),
+    discountUah: integer('discount_uah').notNull().default(0),
+    // «Постійна знижка» or «Знижка іменинника» taken off this line (a club card for a period), apart from the review
+    // discount in discount_uah: amount_uah = price list − discount_uah − permanent_discount_uah
+    permanentDiscountUah: integer('permanent_discount_uah').notNull().default(0),
+    permanentDiscountKind: text('permanent_discount_kind'),
+    // «Спеціальна пропозиція»: the free single gym visit given with a new client's first single trainer service
+    // (amount 0, purchases/special-offer.ts); it starts with that training's first mark
+    gift: boolean('gift').notNull().default(false),
+  },
+  () => [oneOf('purchase_items_permanent_discount_kind_check', 'permanent_discount_kind', DISCOUNT_KINDS)],
+);
 
 const ACTIVATE_BY_DEFAULT = sql`(CURRENT_DATE + INTERVAL '3 months')::date`;
 
@@ -482,12 +499,36 @@ export const clubCards = pgTable(
     // money, counted only in «Весь зал». Null = bought in the app (its money is in purchase_items) or added before
     // 2026-11-25, when the reception price wasn't kept
     paidUah: integer('paid_uah'),
+    // A reception card's «Постійна знижка» / «Знижка іменинника» (already off paid_uah); null = none
+    permanentDiscountUah: integer('permanent_discount_uah'),
+    permanentDiscountKind: text('permanent_discount_kind'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('club_cards_member_id_idx').on(table.memberId),
+    oneOf('club_cards_permanent_discount_kind_check', 'permanent_discount_kind', DISCOUNT_KINDS),
     check('club_cards_paid_uah_check', sql`paid_uah is null or paid_uah >= 0`),
   ],
+);
+
+// «Знижка іменинника»: given by a trainer who saw the document, valid only on given_on, once a calendar year.
+// Held by a PENDING purchase, used by a PAID one (purchase_id) or a reception card (club_card_id)
+export const birthdayDiscounts = pgTable(
+  'birthday_discounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    memberId: uuid('member_id')
+      .notNull()
+      .references(() => members.id),
+    givenOn: date('given_on').notNull(),
+    givenByAdminId: uuid('given_by_admin_id')
+      .notNull()
+      .references(() => admins.id),
+    givenAt: timestamp('given_at', { withTimezone: true }).notNull().defaultNow(),
+    purchaseId: uuid('purchase_id').references(() => purchases.id),
+    clubCardId: uuid('club_card_id').references(() => clubCards.id),
+  },
+  (table) => [index('birthday_discounts_member_id_idx').on(table.memberId)],
 );
 
 // One review discount per member, ever. Held by a PENDING purchase, used by a PAID one (purchase_id)

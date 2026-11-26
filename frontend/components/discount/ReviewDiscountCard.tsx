@@ -39,13 +39,13 @@ export function ReviewDiscountCard({
   if (!usedAtBar && shown.state !== "free" && shown.state !== "held") return null;
 
   return (
-    <div className={`rounded-xl border border-teal/30 bg-teal/5 p-4 ${className}`}>
+    <div className={`rounded-xl border border-discount/35 bg-discount/10 p-4 ${className}`}>
       {usedAtBar ? (
         <>
           <p className="text-heading font-medium">
             Використано в барі{usedAtBar.usedAt ? `, ${kyivTime(usedAtBar.usedAt)}` : ""}
           </p>
-          <p className="font-geologica text-accent text-sm tracking-wide mt-1">{usedAtBar.code}</p>
+          <p className="font-geologica text-discount text-sm tracking-wide mt-1">{usedAtBar.code}</p>
         </>
       ) : (
         <>
@@ -57,13 +57,13 @@ export function ReviewDiscountCard({
           ) : (
             <>
               <p className="text-body text-base mt-1">
-                Промокод: <span className="font-geologica text-accent tracking-wide">{shown.code}</span>
+                Промокод: <span className="font-geologica text-discount tracking-wide">{shown.code}</span>
               </p>
               <p className="text-subtle text-xs mt-1">На абонемент, групові або в барі</p>
               <button
                 type="button"
                 onClick={() => setConfirming(true)}
-                className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors mt-3"
+                className="w-full py-3 rounded-lg border border-line text-heading text-sm hover:border-subtle transition-colors mt-3"
               >
                 Використати в барі
               </button>

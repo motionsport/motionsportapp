@@ -17,6 +17,8 @@ export type PurchaseView = {
     optionLabel: string | null;
     amountUah: number;
     discountUah: number;
+    permanentDiscountUah: number;
+    permanentDiscountKind: string | null;
     gift: boolean;
   }[];
 };
@@ -41,6 +43,8 @@ export async function purchaseViews(db: Q, ids: string[]): Promise<PurchaseView[
       optionLabel: purchaseItems.optionLabel,
       amountUah: purchaseItems.amountUah,
       discountUah: purchaseItems.discountUah,
+      permanentDiscountUah: purchaseItems.permanentDiscountUah,
+      permanentDiscountKind: purchaseItems.permanentDiscountKind,
       gift: purchaseItems.gift,
     })
     .from(purchaseItems)
@@ -60,6 +64,8 @@ export async function purchaseViews(db: Q, ids: string[]): Promise<PurchaseView[
           optionLabel: l.optionLabel,
           amountUah: l.amountUah,
           discountUah: l.discountUah,
+          permanentDiscountUah: l.permanentDiscountUah,
+          permanentDiscountKind: l.permanentDiscountKind,
           gift: l.gift,
         })),
     }));
