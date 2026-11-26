@@ -41,6 +41,8 @@ jobs:
       - run: npm ci
       - run: npx prettier --check .
       - run: npm run lint
+      # next-env.d.ts (image imports, route types) is gitignored: generate it, as the Next.js docs say for CI
+      - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npm test
       - run: npm run build
