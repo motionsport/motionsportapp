@@ -429,6 +429,7 @@ describe('Calendar — assigned slot members', () => {
         localDate: '2026-10-21',
         slotId: 'g1',
         slotTime: '19:00',
+        slotStatus: 'ACTIVE',
         trainingType: 'group',
         bookedCount: 3,
         capacity: 8,
@@ -438,6 +439,7 @@ describe('Calendar — assigned slot members', () => {
         localDate: '2026-10-21',
         slotId: 'p1',
         slotTime: '10:30',
+        slotStatus: 'ACTIVE',
         trainingType: 'split',
         bookedCount: 0,
         capacity: 2,
@@ -468,6 +470,34 @@ describe('Calendar — assigned slot members', () => {
       { id: M1, displayName: 'Катя', booked: true, spent: false, packageLeft: 5 },
       { id: M2, displayName: 'Оля', booked: true, spent: true, packageLeft: 0 },
       { id: M3, displayName: 'Іра', booked: false, spent: false, packageLeft: 0 },
+    ]);
+  });
+});
+
+describe('Calendar — cancelled group trainings', () => {
+  // Members see a cancelled group training («Скасовано»), so the calendar does too; added again: only the new one
+  it('shows a cancelled group training with its status, unless the time was added again', async () => {
+    const row = (slotId: string, localDate: string, slotStatus: string) => ({
+      localDate,
+      slotId,
+      slotTime: '21:00',
+      slotStatus,
+      trainingType: 'group',
+      bookedCount: 0,
+      capacity: 15,
+    });
+    const { db } = makeDb([
+      [
+        row('old', '2026-11-26', 'CANCELLED'),
+        row('gone', '2026-11-27', 'CANCELLED'),
+        row('new', '2026-11-27', 'ACTIVE'),
+      ],
+    ]);
+    const entitlements = { summaries: jest.fn().mockResolvedValue(new Map()) };
+    const result = await makeViews(db, entitlements).getCalendar(TRAINER, '2026-11');
+    expect(result.map((s) => [s.slotId, s.status])).toEqual([
+      ['old', 'CANCELLED'],
+      ['new', 'ACTIVE'],
     ]);
   });
 });

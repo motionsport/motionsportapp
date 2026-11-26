@@ -16,7 +16,15 @@ import {
 import { ClockService } from '../clock/clock.service';
 import { PaymentService } from '../payment/payment.service';
 import { EntitlementsService } from '../purchases/entitlements.service';
-import { GROUP_TYPE, GROUP_CAPACITY, KY_ZONE, ASSIGNED_TYPES, slotStartsAt, slotNorm } from './training-types';
+import {
+  GROUP_TYPE,
+  GROUP_CAPACITY,
+  KY_ZONE,
+  ASSIGNED_TYPES,
+  slotStartsAt,
+  slotNorm,
+  shownSlots,
+} from './training-types';
 import { getMemberTrainerId } from './default-trainer';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { groupTimeError, slotOpensAt } from '../trainer-schedule/rules';
@@ -235,7 +243,7 @@ export class ScheduleService {
         )
       : null;
 
-    return slots.map((s) => {
+    return shownSlots(slots).map((s) => {
       const openAt = slotOpensAt(day.localDate, s.slotTime, opensAt);
       const started = now >= slotStartsAt(day.localDate, s.slotTime);
       return {

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, AdminMember, CalendarSlot, Cancellation } from "@/lib/api";
 import { TYPE_LABEL } from "@/lib/trainingTypes";
-import { longDay } from "@/lib/dates";
+import { kyivToday, longDay } from "@/lib/dates";
 import { Modal } from "@/components/ui/Modal";
 import { CancellationList } from "@/components/admin/CancellationList";
 import { marksLocked } from "@/lib/marksLock";
@@ -18,12 +18,15 @@ export function EditSlotModal({
   members,
   onDone,
   onClose,
+  onAddAt,
 }: {
   slot: CalendarSlot;
   repeatsWeekly: boolean;
   members: AdminMember[];
   onDone: () => Promise<void>;
   onClose: () => void;
+  // A cancelled training covers its hour in the calendar: add a new one at that time from here
+  onAddAt: (date: string, time: string) => void;
 }) {
   const [memberIds, setMemberIds] = useState(() =>
     fieldsFor(
@@ -43,6 +46,8 @@ export function EditSlotModal({
   }, [slot.slotId]);
 
   const assigned = slot.trainingType !== "group";
+  // Shown as members see it; nothing to change, only a new training at that time (not on a past day)
+  const cancelled = slot.status === "CANCELLED";
   // Plus anyone already on the slot, so another trainer's client isn't silently dropped on save
   const pickerMembers: { id: string; displayName: string; memberCode?: string }[] = [
     ...members,
@@ -66,10 +71,14 @@ export function EditSlotModal({
         <p id="calendar-modal-title" className="font-geologica font-semibold text-heading">
           {`${TYPE_LABEL[slot.trainingType]} ${slot.slotTime}`}
         </p>
-        {!assigned && (
-          <p className="text-muted text-xs mt-1">
-            Записано {slot.bookedCount} з {slot.norm}
-          </p>
+        {cancelled ? (
+          <p className="text-danger text-sm mt-1">Скасовано. Клієнти бачать його як «Скасовано»</p>
+        ) : (
+          !assigned && (
+            <p className="text-muted text-xs mt-1">
+              Записано {slot.bookedCount} з {slot.norm}
+            </p>
+          )
         )}
         {repeatsWeekly && (
           <p className="text-muted text-xs mt-1">
@@ -103,7 +112,7 @@ export function EditSlotModal({
         />
       )}
 
-      {assigned && (
+      {assigned && !cancelled && (
         <MemberPickers
           type={slot.trainingType}
           memberIds={memberIds}
@@ -118,26 +127,38 @@ export function EditSlotModal({
         </p>
       )}
 
-      <div className="flex flex-col space-y-2">
-        {assigned && (
+      {cancelled ? (
+        slot.localDate >= kyivToday() && (
           <button
             type="button"
-            onClick={handleSaveMembers}
-            disabled={saving}
-            className="btn-primary w-full py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+            onClick={() => onAddAt(slot.localDate, slot.slotTime)}
+            className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
           >
-            {saving ? "Зачекайте..." : "Зберегти"}
+            + Додати тренування на {slot.slotTime}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={handleCancelSlot}
-          disabled={saving}
-          className="btn-ghost hover-danger w-full py-3 rounded-lg border text-sm transition-colors disabled:opacity-60"
-        >
-          Скасувати тренування {slot.slotTime}
-        </button>
-      </div>
+        )
+      ) : (
+        <div className="flex flex-col space-y-2">
+          {assigned && (
+            <button
+              type="button"
+              onClick={handleSaveMembers}
+              disabled={saving}
+              className="btn-primary w-full py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              {saving ? "Зачекайте..." : "Зберегти"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleCancelSlot}
+            disabled={saving}
+            className="btn-ghost hover-danger w-full py-3 rounded-lg border text-sm transition-colors disabled:opacity-60"
+          >
+            Скасувати тренування {slot.slotTime}
+          </button>
+        </div>
+      )}
     </Modal>
   );
 }

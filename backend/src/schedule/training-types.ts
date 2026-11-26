@@ -37,3 +37,12 @@ export function slotStartsAt(localDate: string, slotTime: string) {
 export function slotOverAt(localDate: string, slotTime: string) {
   return slotStartsAt(localDate, slotTime).plus({ hours: 1 });
 }
+
+// One training a time on a day, as the members' page and the trainer's calendar show it: an active one, else the
+// cancelled one («Скасовано», so a member who expected it sees why it is gone). A cancelled time added again is a new
+// row, so its cancelled copy is left out. Keeps the order
+export function shownSlots<T extends { slotTime: string; status: string }>(slots: T[]): T[] {
+  return slots.filter((s, i) =>
+    s.status === 'ACTIVE' ? true : !slots.some((o, j) => o.slotTime === s.slotTime && (o.status === 'ACTIVE' || j < i)),
+  );
+}

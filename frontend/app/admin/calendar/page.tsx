@@ -67,6 +67,7 @@ export default function CalendarPage() {
   // Computed, not stored: matches a schedule time while auto-creation is on
   const repeatsWeekly = (s: CalendarSlot) =>
     s.trainingType === "group" &&
+    s.status === "ACTIVE" &&
     !!schedule?.autoCreate &&
     schedule.times.some((t) => t.weekday === weekdayOf(s.localDate) && t.slotTime === s.slotTime);
 
@@ -112,10 +113,12 @@ export default function CalendarPage() {
   const events = slots.map((s) => {
     const start = `${s.localDate}T${s.slotTime}:00`;
     const end = new Date(new Date(start).getTime() + 60 * 60 * 1000);
+    const cancelled = s.status === "CANCELLED";
     const colors = TYPE_COLORS[s.trainingType];
     // Group: seats taken. Assigned: members, ✓ = paid
-    const detail =
-      s.trainingType === "group"
+    const detail = cancelled
+      ? "скасовано"
+      : s.trainingType === "group"
         ? `${s.bookedCount}/${s.norm}`
         : s.members
             .map((m) => `${m.displayName}${m.booked && (m.spent || m.packageLeft > 0) ? " ✓" : ""}`)
@@ -127,8 +130,9 @@ export default function CalendarPage() {
       start,
       end,
       // v7 names; v6 backgroundColor/borderColor/textColor are silently ignored
-      color: colors.bg,
-      contrastColor: colors.text,
+      // A cancelled one is greyed out (the page's tokens), as members see «Скасовано»
+      color: cancelled ? "var(--color-surface)" : colors.bg,
+      contrastColor: cancelled ? "var(--color-subtle)" : colors.text,
       extendedProps: { slot: s },
     };
   });
@@ -266,6 +270,7 @@ export default function CalendarPage() {
           members={members}
           onDone={done}
           onClose={() => setModal(null)}
+          onAddAt={(date, time) => setModal({ mode: "add", date, time })}
         />
       )}
     </PageLayout>

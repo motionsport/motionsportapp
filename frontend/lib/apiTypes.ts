@@ -498,6 +498,8 @@ export interface CalendarSlot {
   localDate: string;
   slotId: string;
   slotTime: string;
+  // A cancelled group training is shown as members see it («Скасовано»), unless its time was added again
+  status: "ACTIVE" | "CANCELLED";
   trainingType: TrainingType;
   bookedCount: number;
   capacity: number;

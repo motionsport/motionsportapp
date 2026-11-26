@@ -17,7 +17,7 @@ import { EntitlementsService } from '../purchases/entitlements.service';
 import { loadTrainerSchedule } from '../trainer-schedule/trainer-schedule.store';
 import { requireOwnSlot } from '../schedule/default-trainer';
 import { slotOpensAt } from '../trainer-schedule/rules';
-import { GROUP_TYPE, KY_ZONE, isAssignedType, slotNorm, slotStartsAt } from '../schedule/training-types';
+import { GROUP_TYPE, KY_ZONE, isAssignedType, shownSlots, slotNorm, slotStartsAt } from '../schedule/training-types';
 import { markOf, memberCancellations, toCancellationView } from './admin-views';
 
 const HISTORY_PAGE_DAYS = 14;
@@ -218,7 +218,7 @@ export class AdminScheduleService {
     const lastDay = new Date(year, m, 0).getDate();
     const end = `${month}-${String(lastDay).padStart(2, '0')}`;
 
-    const rows = await this.database.db
+    const found = await this.database.db
       .select({
         localDate: trainingDays.localDate,
         dayStatus: trainingDays.status,
@@ -235,12 +235,17 @@ export class AdminScheduleService {
         and(
           gte(trainingDays.localDate, start),
           lte(trainingDays.localDate, end),
-          eq(trainingSlots.status, 'ACTIVE'),
+          // Cancelled group trainings too: members see them («Скасовано»), so the trainer does
+          or(eq(trainingSlots.status, 'ACTIVE'), eq(trainingSlots.trainingType, GROUP_TYPE)),
           eq(trainingSlots.trainerId, adminId),
           eq(trainingDays.status, 'SCHEDULED'),
         ),
       )
       .orderBy(trainingDays.localDate, trainingSlots.slotTime);
+    // As on the members' page: a cancelled time added again shows only the new one
+    const rows = [...new Set(found.map((r) => r.localDate))].flatMap((d) =>
+      shownSlots(found.filter((r) => r.localDate === d).map((r) => ({ ...r, status: r.slotStatus }))),
+    );
 
     const assignedIds = rows.filter((r) => isAssignedType(r.trainingType)).map((r) => r.slotId);
     const assigned =
@@ -267,6 +272,7 @@ export class AdminScheduleService {
       localDate: r.localDate,
       slotId: r.slotId,
       slotTime: r.slotTime,
+      status: r.status,
       trainingType: r.trainingType,
       bookedCount: r.bookedCount,
       capacity: r.capacity,
