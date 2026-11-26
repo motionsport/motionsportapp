@@ -71,8 +71,9 @@ export class CronService {
       if (now < openAt) continue;
       await this.notifications.enqueueAndProcess('BOOKING_OPEN', `booking-open:${today}:${trainerId}`, {
         localDate: today,
-        // The days whose trainings opened (tomorrow: its morning ones)
-        dates,
+        // What opened: today's evening times, tomorrow's morning ones (opening-text.ts words them)
+        evening: opening.filter((t) => t.date === today).map((t) => t.slotTime),
+        morning: opening.filter((t) => t.date === tomorrow).map((t) => t.slotTime),
         trainerIds: [trainerId],
         // Members without a trainer see the first trainer's group trainings
         includeUnassigned: trainerId === firstTrainerId,

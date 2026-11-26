@@ -236,7 +236,7 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
       [
         'BOOKING_OPEN',
         'booking-open:2026-10-23:t1',
-        { localDate: '2026-10-23', dates: ['2026-10-23'], trainerIds: ['t1'], includeUnassigned: true },
+        { localDate: '2026-10-23', evening: ['18:00'], morning: [], trainerIds: ['t1'], includeUnassigned: true },
       ],
     ]);
   });
@@ -295,7 +295,7 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
       [
         'BOOKING_OPEN',
         'booking-open:2026-10-23:t1',
-        { localDate: '2026-10-23', dates: ['2026-10-24'], trainerIds: ['t1'], includeUnassigned: true },
+        { localDate: '2026-10-23', evening: [], morning: ['09:00'], trainerIds: ['t1'], includeUnassigned: true },
       ],
     ]);
     expect(order).toEqual(['booking-open:2026-10-23:t1']);
@@ -308,7 +308,7 @@ describe('InternalCronController — «Записуйтесь» at each trainer 
       [{ trainerId: 't1', slotTime: '18:00' }],
       [{ trainerId: 't1', slotTime: '09:00' }],
     );
-    expect(calls.map((c) => (c[2] as { dates: string[] }).dates)).toEqual([['2026-10-23', '2026-10-24']]);
+    expect(calls.map((c) => c[2])).toMatchObject([{ evening: ['18:00'], morning: ['09:00'] }]);
   });
 
   it("tomorrow's evening training does not open today", async () => {
