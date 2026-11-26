@@ -1,27 +1,23 @@
-import { DateTime } from 'luxon';
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
 import {
   admins,
-  bookings,
   clubCards,
   freezeItems,
   freezes,
   members,
   packages,
   purchases,
-  trainingDays,
-  trainingSlots,
   vacancyAlerts,
 } from '../database/schema';
 import { EntitlementsService, USED } from '../purchases/entitlements.service';
 import { cardState, passState } from '../purchases/validity';
 import { NotificationService } from '../notifications/notification.service';
-import { slotStartsAt } from '../schedule/training-types';
 import { openFreeze } from './freeze.store';
-import { cancelGuests, freeSeats, lockMember } from '../booking/group-booking';
+import { lockMember } from '../booking/group-booking';
+import { cancelBookingsAhead } from '../booking/cancel-ahead';
 import { FREEZE_DAYS, daysBetween, plusDays } from './rules';
 import { requireVisibleMember, visibleTo } from '../schedule/default-trainer';
 import { apiError } from '../common/api-error';
@@ -190,7 +186,7 @@ export class FreezesService {
 
       await this.pushDates(tx, freezeId, done.memberId, today, FREEZE_DAYS);
 
-      const freed = await this.cancelBookingsAhead(tx, done.memberId, today, endsOn, now);
+      const freed = await cancelBookingsAhead(tx, done.memberId, now, endsOn);
       // No vacancy alerts while frozen
       await tx.update(vacancyAlerts).set({ active: false }).where(eq(vacancyAlerts.memberId, done.memberId));
       return { memberId: done.memberId, freed };
@@ -313,42 +309,6 @@ export class FreezesService {
 
   // System-cancels (no reason) bookings not started before endsOn, with guests. Slots locked as BookingService does.
   // Returns the ones whose slot was full, for vacancy pushes
-  private async cancelBookingsAhead(tx: Tx, memberId: string, today: string, endsOn: string, now: DateTime) {
-    const toCancel = await tx
-      .select({
-        id: bookings.id,
-        slotId: bookings.slotId,
-        slotTime: trainingSlots.slotTime,
-        localDate: trainingDays.localDate,
-      })
-      .from(bookings)
-      .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
-      .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
-      .where(
-        and(
-          eq(bookings.memberId, memberId),
-          eq(bookings.status, 'ACTIVE'),
-          gte(trainingDays.localDate, today),
-          lt(trainingDays.localDate, endsOn),
-        ),
-      )
-      .for('update', { of: trainingSlots });
-    const ahead = toCancel.filter((b) => slotStartsAt(b.localDate, b.slotTime) > now);
-    if (ahead.length === 0) return [];
-    const ids = ahead.map((b) => b.id);
-    const at = now.toJSDate();
-    await tx
-      .update(bookings)
-      .set({ status: 'CANCELLED', cancelledAt: at })
-      .where(and(inArray(bookings.id, ids), eq(bookings.status, 'ACTIVE')));
-    const withGuest = await cancelGuests(tx, ids, at);
-    const freed: typeof ahead = [];
-    for (const b of ahead) {
-      if (await freeSeats(tx, b.slotId, withGuest.has(b.id) ? 2 : 1)) freed.push(b);
-    }
-    return freed;
-  }
-
   // Pushes valid_until (active) or activate_by (waiting) of every card and package; recorded in freeze_items
   // so an early unfreeze can move them back
   private async pushDates(tx: Tx, freezeId: string, memberId: string, from: string, days: number) {

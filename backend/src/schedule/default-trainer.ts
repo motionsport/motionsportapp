@@ -27,8 +27,9 @@ export async function getMemberTrainerId(db: Q, memberId?: string): Promise<stri
 }
 
 // Condition on `members`: own clients plus unassigned ones. Anyone else's client answers 404
+// A client the owner disabled is no trainer's any more (404 like a missing one); their history stays
 export function visibleTo(trainerId: string) {
-  return or(eq(members.trainerId, trainerId), isNull(members.trainerId))!;
+  return and(or(eq(members.trainerId, trainerId), isNull(members.trainerId)), isNull(members.disabledAt))!;
 }
 
 // A disabled trainer answers 404 like a missing one

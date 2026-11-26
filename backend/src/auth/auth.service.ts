@@ -66,6 +66,7 @@ export class AuthService {
       .limit(1);
 
     const valid = await secretMatches(dto.pin, member?.pinHash);
+    // A client the owner disabled gets the same answer as a wrong PIN: nothing tells whether the account exists
     if (!member || member.disabledAt || !valid) throw new UnauthorizedException('Invalid credentials');
 
     const sessionToken = await this.createSession('member', member.id);

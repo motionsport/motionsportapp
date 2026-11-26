@@ -8,6 +8,8 @@ import { AdminMembersController } from './admin-members.controller';
 import { AdminMembersService } from './admin-members.service';
 import { AdminTrainersController, OwnerTrainersController } from './admin-trainers.controller';
 import { AdminTrainersService } from './admin-trainers.service';
+import { OwnerMembersController } from './owner-members.controller';
+import { OwnerMembersService } from './owner-members.service';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EntitlementsModule } from '../purchases/entitlements.module';
@@ -20,6 +22,7 @@ import { EntitlementsModule } from '../purchases/entitlements.module';
     AdminMembersController,
     AdminTrainersController,
     OwnerTrainersController,
+    OwnerMembersController,
   ],
   providers: [
     AdminScheduleService,
@@ -27,6 +30,7 @@ import { EntitlementsModule } from '../purchases/entitlements.module';
     AdminAttendanceService,
     AdminMembersService,
     AdminTrainersService,
+    OwnerMembersService,
   ],
 })
 export class AdminScheduleModule {}

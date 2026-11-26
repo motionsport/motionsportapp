@@ -593,10 +593,13 @@ describe('Clients per trainer', () => {
     await expect(makeMembers(db).getMemberCancellations('trainer-1', M1)).rejects.toThrow(NotFoundException);
   });
 
-  it('a trainer sees own and unassigned clients only', () => {
+  it('a trainer sees own and unassigned clients only, not disabled ones', () => {
     const where = visibleTo('trainer-1');
     const { sql, params } = new PgDialect().sqlToQuery(where);
-    expect(sql).toBe('("members"."trainer_id" = $1 or "members"."trainer_id" is null)');
+    // A client the owner disabled is nobody's
+    expect(sql).toBe(
+      '(("members"."trainer_id" = $1 or "members"."trainer_id" is null) and "members"."disabled_at" is null)',
+    );
     expect(params).toEqual(['trainer-1']);
   });
 

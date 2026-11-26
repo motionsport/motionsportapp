@@ -22,6 +22,7 @@ import type {
   MeResponse,
   MyFreeze,
   MyPurchases,
+  OwnerMember,
   PermanentDiscountState,
   PermanentKind,
   PaymentStatus,
@@ -155,6 +156,10 @@ export const api = {
   revokeTrainerInvite: (id: string) => del(`/owner/trainer-invites/${id}`),
 
   getOwnerTrainers: () => get<Trainer[]>("/owner/trainers"),
+  // The owner's «Клієнти»: by name or member code, disabled ones too
+  getOwnerMembers: (q: string) => get<OwnerMember[]>(`/owner/members?q=${encodeURIComponent(q)}`),
+  disableMember: (id: string) => post(`/owner/members/${id}/disable`),
+  enableMember: (id: string) => post(`/owner/members/${id}/enable`),
 
   // Clients and pending cash purchases move to transferToId; trainings not over yet are cancelled
   disableTrainer: (id: string, transferToId: string) =>

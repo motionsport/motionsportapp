@@ -44,6 +44,8 @@ export const members = pgTable(
     permanentDiscount: text('permanent_discount'),
     permanentDiscountSetBy: uuid('permanent_discount_set_by').references((): AnyPgColumn => admins.id),
     permanentDiscountSetAt: timestamp('permanent_discount_set_at', { withTimezone: true }),
+    // «Вимкнути» by the owner (disabled_at above): who did it; cleared on «Увімкнути»
+    disabledByOwnerId: uuid('disabled_by_owner_id').references((): AnyPgColumn => owners.id),
   },
   () => [oneOf('members_permanent_discount_check', 'permanent_discount', ['ZSU', 'STUDENT', 'PENSIONER', 'FAMILY'])],
 );

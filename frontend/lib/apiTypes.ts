@@ -186,6 +186,16 @@ export interface MemberPurchases {
 }
 
 // «Постійна знижка» (backend permanent-discounts/rules.ts): a trainer's mark on the client
+// The owner's «Клієнти» row; disabledAt set = «вимкнено» (can't sign in, trainers don't see them)
+export interface OwnerMember {
+  id: string;
+  displayName: string;
+  memberCode: string;
+  trainer: string | null; // the trainer's username
+  createdAt: string;
+  disabledAt: string | null;
+}
+
 export type PermanentKind = "ZSU" | "STUDENT" | "PENSIONER" | "FAMILY";
 export type DiscountKind = PermanentKind | "BIRTHDAY";
 // «Знижка іменинника»: valid only on givenOn, once a calendar year
