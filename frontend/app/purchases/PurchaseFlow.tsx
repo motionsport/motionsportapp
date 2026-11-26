@@ -270,17 +270,6 @@ export function PurchaseFlow({
           )}
         </div>
         {noMethod && <p className="text-body text-sm">Оплата зараз недоступна. Зверніться до тренера в залі.</p>}
-        {data.methods.transfer && (
-          <p className="text-muted text-xs mt-3">
-            Переказ: після «Переказ на рахунок» ви побачите реквізити й кнопку, що відкриє банк. Тренер підтвердить,
-            коли гроші прийдуть.
-          </p>
-        )}
-        {data.methods.cash && (
-          <p className="text-muted text-xs mt-3">
-            Готівка: тренер побачить запит і підтвердить, коли отримає гроші. Ціна зафіксована зараз.
-          </p>
-        )}
         {error && (
           <p role="alert" className="text-danger text-sm mt-3">
             {error}
