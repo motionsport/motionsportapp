@@ -360,19 +360,22 @@ describe('ScheduleService — booking window flag', () => {
     expect(result?.localDate).toBe('2026-10-21');
   });
 
-  it('a day whose group trainings are all cancelled still shows («Скасовано») until their time', async () => {
+  // Thursday 21:00 cancelled, Friday 9:00 opened on Thursday: the home page shows Friday at once
+  it('a day whose group trainings are all cancelled is skipped: the next day shows', async () => {
+    const tomorrow = { id: 'day-2', localDate: '2026-10-21', status: 'SCHEDULED' };
     const { db } = makeDb([
       TRAINER,
-      [trainingDay],
+      [trainingDay, tomorrow],
       [
         { dayId: 'day-1', slotTime: '19:00', status: 'CANCELLED' },
         { dayId: 'day-1', slotTime: '20:00', status: 'CANCELLED' },
+        { dayId: 'day-2', slotTime: '19:00', status: 'ACTIVE' },
       ],
       slots,
       [],
     ]);
     const result = await makeService(db, kyivAt(15)).getNext();
-    expect(result?.localDate).toBe(TODAY);
+    expect(result?.localDate).toBe('2026-10-21');
   });
 
   it('bookingWindowOpen is false once the last group training started', async () => {

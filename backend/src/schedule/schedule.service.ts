@@ -276,8 +276,9 @@ export class ScheduleService {
     };
   }
 
-  // Days with this trainer's group slots (any status, cancelled ones are shown), each with its last ACTIVE time,
-  // so a cancelled last slot doesn't keep the day "next". All cancelled: the last one, so it shows until then
+  // Days with an ACTIVE group slot of this trainer, each with its last ACTIVE time, so a cancelled last slot doesn't
+  // keep the day "next". A day whose group slots are all cancelled is skipped: nothing to book there, and it would
+  // hide the next day (Friday's 9:00 opening on Thursday); the booked ones got «Тренування скасовано»
   private async withGroupSlots(trainerId: string | null, days: DayRow[]) {
     if (days.length === 0 || !trainerId) return [];
     const rows = await this.database.db
@@ -296,8 +297,7 @@ export class ScheduleService {
     const latest = (times: string[]) => [...times].sort().at(-1);
     return days.flatMap((d) => {
       const own = rows.filter((r) => r.dayId === d.id);
-      const lastTime =
-        latest(own.filter((r) => r.status === 'ACTIVE').map((r) => r.slotTime)) ?? latest(own.map((r) => r.slotTime));
+      const lastTime = latest(own.filter((r) => r.status === 'ACTIVE').map((r) => r.slotTime));
       return lastTime ? [{ ...d, lastTime }] : [];
     });
   }
