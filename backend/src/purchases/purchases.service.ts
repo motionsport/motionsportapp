@@ -24,6 +24,7 @@ import { nbuBankLinks } from '../payment/nbu-qr';
 import { discountable, discountUahFor, REVIEW_DISCOUNT_PERCENT } from '../review-discounts/rules';
 import { holdDiscountForPurchase, loadDiscount } from '../review-discounts/discount.store';
 import { isNewClient, offerItems, specialOfferFor } from './special-offer';
+import { getDefaultTrainerId } from '../schedule/default-trainer';
 
 // Same errors as BookingService.book
 function bookingError(reason: Extract<GroupBookingResult, { ok: false }>['reason']) {
@@ -120,9 +121,9 @@ export class PurchasesService {
       reviewDiscount: await loadDiscount(this.database.db, memberId, this.clock.now().toISODate()!),
       specialOffer: await specialOfferFor(this.database.db, memberId),
       pending: pendingView && { ...pendingView, transfer: transferDetails(pendingView) },
-      // Cash for anything; without a trainer only for a club card alone (see insertPurchase)
-      canPayCash: !!member?.trainerId,
-      // Switched on (PAYMENT_METHODS); cash also needs canPayCash, or a club card alone
+      // Cash goes to the member's trainer, or without one to any trainer in the gym (the screens say so)
+      hasTrainer: !!member?.trainerId,
+      // Switched on (PAYMENT_METHODS)
       methods: {
         liqpay: methods.includes('LIQPAY'),
         cash: methods.includes('CASH'),
@@ -162,13 +163,18 @@ export class PurchasesService {
     if (dto.method === 'LIQPAY') {
       return { purchaseId, checkout: await this.payments.checkoutPurchase(purchaseId, memberId) };
     }
-    // Cash or transfer: the trainer confirms when the money is there
-    await this.notifications.enqueueAndProcess('CASH_REQUESTED', `cash-requested:${purchaseId}`, {
-      trainerId,
-      displayName,
-      totalUah,
-      method: dto.method,
-    });
+    // Cash or transfer: the trainer confirms when the money is there. Without a trainer every trainer sees the request
+    // on «Клієнти» and whoever got the money confirms it (it goes to their stats); the push goes only to the first
+    // trainer for a transfer (someone has to check the bank), for cash to nobody (the trainer who took it confirms)
+    const notify = trainerId ?? (dto.method === 'TRANSFER' ? await getDefaultTrainerId(this.database.db) : null);
+    if (notify) {
+      await this.notifications.enqueueAndProcess('CASH_REQUESTED', `cash-requested:${purchaseId}`, {
+        trainerId: notify,
+        displayName,
+        totalUah,
+        method: dto.method,
+      });
+    }
     return { purchaseId, transfer: transferDetails({ id: purchaseId, method: dto.method, totalUah }) };
   }
 
@@ -266,11 +272,6 @@ export class PurchasesService {
       // Freeze approval pushes the dates of what exists; a new purchase would miss that
       if (await openFreeze(tx, memberId, this.clock.now().toISODate()!)) {
         throw new ConflictException(apiError('MEMBERSHIP_FROZEN'));
-      }
-      // Without a trainer cash is only for a club card alone: every trainer sees that request.
-      // A transfer goes to the gym's one account, so any trainer confirms it
-      if (dto.method === 'CASH' && !member.trainerId && lines.some((l) => l.section !== 'club_card')) {
-        throw new BadRequestException(apiError('NO_TRAINER_FOR_CASH'));
       }
       // Again under the member lock: a card added at the reception meanwhile makes the client not new
       if (dto.specialOffer && !(await isNewClient(tx, memberId))) {

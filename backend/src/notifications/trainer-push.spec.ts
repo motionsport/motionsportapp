@@ -170,12 +170,11 @@ describe('Trainer push — cash requested', () => {
     expect(subs.findAllAdmin).not.toHaveBeenCalled();
   });
 
-  it('a member without a trainer: goes to every trainer', async () => {
+  it('no trainer in the payload: nobody (PurchasesService picks the one trainer, or none for cash)', async () => {
     const { svc, push, subs } = makeNotifications();
     await (svc as any).sendCashRequested({ trainerId: null, displayName: 'Оля', totalUah: 1400 });
-    expect(subs.findAllAdmin).toHaveBeenCalled();
-    expect(subs.findAdminByAdminId).not.toHaveBeenCalled();
-    expect(push.send).toHaveBeenCalledWith(adminSub, expect.objectContaining({ body: 'Оля: 1400 ₴' }));
+    expect(subs.findAllAdmin).not.toHaveBeenCalled();
+    expect(push.send).not.toHaveBeenCalled();
   });
 });
 

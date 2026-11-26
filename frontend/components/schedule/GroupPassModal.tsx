@@ -143,23 +143,17 @@ export function GroupPassModal({
                       Оплатити переказом
                     </button>
                   )}
-                  {data.methods.cash &&
-                    (data.canPayCash ? (
-                      <button
-                        type="button"
-                        onClick={() => choose("CASH")}
-                        disabled={busy}
-                        className="btn-ghost w-full py-3 rounded-lg border text-sm transition-colors disabled:opacity-60"
-                      >
-                        Оплатити готівкою
-                      </button>
-                    ) : (
-                      <p className="text-muted text-xs">
-                        Оплата тренувань готівкою з&apos;явиться, коли за вами закріплять тренера. Попросіть про це в
-                        залі.
-                      </p>
-                    ))}
-                  {!data.methods.liqpay && !data.methods.transfer && !(data.methods.cash && data.canPayCash) && (
+                  {data.methods.cash && (
+                    <button
+                      type="button"
+                      onClick={() => choose("CASH")}
+                      disabled={busy}
+                      className="btn-ghost w-full py-3 rounded-lg border text-sm transition-colors disabled:opacity-60"
+                    >
+                      Оплатити готівкою
+                    </button>
+                  )}
+                  {!data.methods.liqpay && !data.methods.transfer && !data.methods.cash && (
                     <p className="text-body text-sm">Оплата зараз недоступна. Зверніться до тренера в залі.</p>
                   )}
                 </>

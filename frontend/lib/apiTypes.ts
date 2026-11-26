@@ -189,8 +189,8 @@ export interface MyPurchases {
     | null;
   packages: TrainingPackage[];
   pending: (Purchase & { transfer: TransferDetails | null }) | null;
-  canPayCash: boolean; // has a trainer: cash for anything; without one only a club card alone
-  methods: { liqpay: boolean; cash: boolean; transfer: boolean }; // switched on; cash also needs canPayCash
+  hasTrainer: boolean; // cash goes to the member's trainer, or without one to any trainer in the gym
+  methods: { liqpay: boolean; cash: boolean; transfer: boolean }; // switched on
   reviewDiscount: DiscountView | null;
   reviewDiscountPercent: number;
   // «Спеціальна пропозиція» for a new client (never had a club card or package): the single trainer services it is
