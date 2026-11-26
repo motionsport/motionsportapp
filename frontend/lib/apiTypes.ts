@@ -476,6 +476,9 @@ export interface AdminSlotView {
   bookedCount: number;
   participants: AdminParticipant[];
   cancellations: Cancellation[];
+  // Today page, group trainings only: when booking opens (a morning one: the day before), for the booking badge
+  bookingOpenAt?: string;
+  started?: boolean;
 }
 
 export interface AdminSchedule {

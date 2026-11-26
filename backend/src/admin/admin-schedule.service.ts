@@ -73,7 +73,16 @@ export class AdminScheduleService {
       bookingOpenAt: openAt.toUTC().toISO(),
       bookingCloseAt: closeAt.toUTC().toISO(),
       serverTime: now.toUTC().toISO(),
-      slots: await this.buildSlotViews(slots),
+      // A group one's opening (a morning one: the day before), so the shared badge says «ранкове» / «вечірні»
+      slots: (await this.buildSlotViews(slots)).map((v) =>
+        v.trainingType === GROUP_TYPE
+          ? {
+              ...v,
+              bookingOpenAt: slotOpensAt(targetDay.localDate, v.slotTime, opensAt).toUTC().toISO(),
+              started: now >= slotStartsAt(targetDay.localDate, v.slotTime),
+            }
+          : v,
+      ),
     };
   }
 

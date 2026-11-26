@@ -1,5 +1,5 @@
 "use client";
-import { opensText } from "@/lib/bookingOpens";
+import { BookingBadge } from "@/components/schedule/BookingBadge";
 import { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import { api, AdminSchedule, Announcement, AnnouncementExample } from "@/lib/api";
@@ -108,9 +108,6 @@ export default function AdminPage() {
     );
   }
 
-  const now = new Date(schedule.serverTime);
-  const closeAt = new Date(schedule.bookingCloseAt);
-  const afterWindow = now >= closeAt;
   // A day with only assigned trainings shows no booking badge
   const hasGroup = schedule.slots.some((s) => s.trainingType === "group");
 
@@ -130,18 +127,14 @@ export default function AdminPage() {
       <div className="flex items-center space-x-2 mb-6">
         {schedule.status === "CANCELLED" ? (
           <Badge tone="danger">День скасовано</Badge>
-        ) : !hasGroup ? null : schedule.bookingWindowOpen ? (
-          <span className="text-sm font-semibold uppercase tracking-wide text-teal bg-teal/10 border border-teal/30 rounded-full px-4 py-1.5 flex items-center space-x-1.5">
-            <span className="relative flex w-3 h-3 shrink-0 items-center justify-center mr-1.5">
-              <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-teal opacity-75"></span>
-              <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-teal"></span>
-            </span>
-            Запис відкрито
-          </span>
-        ) : afterWindow ? (
-          <Badge>Запис закрито</Badge>
-        ) : (
-          <Badge>{opensText(schedule.bookingOpenAt, schedule.serverTime)}</Badge>
+        ) : !hasGroup ? null : (
+          <BookingBadge
+            localDate={schedule.localDate}
+            serverTime={schedule.serverTime}
+            bookingOpenAt={schedule.bookingOpenAt}
+            bookingCloseAt={schedule.bookingCloseAt}
+            slots={schedule.slots}
+          />
         )}
       </div>
 
