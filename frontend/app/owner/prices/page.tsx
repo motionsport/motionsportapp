@@ -183,14 +183,8 @@ export default function OwnerPricesPage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-between space-x-3 py-0.5">
-                  <span className="text-body">
-                    {item.optionLabel}
-                    {item.updatedBy && item.updatedAt && (
-                      <span className="text-muted text-xs ml-2">
-                        {item.updatedBy}, {kyivDateTime(item.updatedAt)}
-                      </span>
-                    )}
-                  </span>
+                  {/* Who changed it and when: only in «Історія змін» below */}
+                  <span className="text-body">{item.optionLabel}</span>
                   <button
                     type="button"
                     onClick={() => startEdit(item)}
