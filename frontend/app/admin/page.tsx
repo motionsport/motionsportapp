@@ -141,7 +141,7 @@ export default function AdminPage() {
         ) : afterWindow ? (
           <Badge>Запис закрито</Badge>
         ) : (
-          <Badge>{opensBadge(schedule.bookingOpenAt, schedule.localDate)}</Badge>
+          <Badge>{opensBadge(schedule.bookingOpenAt, schedule.localDate, schedule.serverTime)}</Badge>
         )}
       </div>
 

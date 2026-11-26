@@ -37,7 +37,7 @@ export default function GroupDayBlock({
       <div className="flex items-center">
         {beforeWindow && bookingOpenAt ? (
           <span className="text-xs text-muted bg-surface border border-line rounded-full px-3 py-1">
-            {opensBadge(bookingOpenAt, localDate)}
+            {opensBadge(bookingOpenAt, localDate, serverTime)}
           </span>
         ) : afterWindow ? (
           <span className="text-xs text-muted bg-surface border border-line rounded-full px-3 py-1">Запис закрито</span>
@@ -58,6 +58,7 @@ export default function GroupDayBlock({
           allSlots={slots}
           groupPassLeft={groupPassLeft}
           localDate={localDate}
+          serverTime={serverTime}
           afterWindow={afterWindow}
           frozen={frozen}
           onMutate={onMutate}
