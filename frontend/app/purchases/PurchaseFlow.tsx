@@ -7,6 +7,8 @@ import { TYPE_LABEL } from "@/lib/trainingTypes";
 import { formatUah, groupByTitle, lineName } from "@/lib/prices";
 import { TransferDetails } from "@/components/purchases/TransferDetails";
 import { buyableServiceTypes } from "./buyable";
+import { recommendedCard } from "./recommend";
+import { Badge } from "@/components/ui/Badge";
 import { DiscountToggle } from "@/components/discount/DiscountToggle";
 import { discountPreview, showDiscountToggle } from "@/lib/reviewDiscount";
 import { DISCOUNT_NAME, permanentPreview } from "@/lib/permanentDiscount";
@@ -44,7 +46,17 @@ const SERVICE_GROUPS: { type: AssignedType; title: string }[] = [
   { type: "split", title: TYPE_LABEL.split },
 ];
 
-function Option({ item, selected, onSelect }: { item: CatalogItem; selected: boolean; onSelect: () => void }) {
+function Option({
+  item,
+  selected,
+  onSelect,
+  recommended = false,
+}: {
+  item: CatalogItem;
+  selected: boolean;
+  onSelect: () => void;
+  recommended?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -54,7 +66,14 @@ function Option({ item, selected, onSelect }: { item: CatalogItem; selected: boo
         selected ? "border-teal bg-teal/10" : "border-line bg-surface hover:border-muted"
       }`}
     >
-      <span className="text-heading">{item.optionLabel ?? item.title}</span>
+      <span className="text-heading">
+        {item.optionLabel ?? item.title}
+        {recommended && (
+          <Badge tone="ok" className="ml-2">
+            Рекомендовано
+          </Badge>
+        )}
+      </span>
       <span className="font-geologica text-heading tabular-nums whitespace-nowrap">{formatUah(item.amountUah)}</span>
     </button>
   );
@@ -403,7 +422,13 @@ export function PurchaseFlow({
             <h2 className={sectionTitle}>{g.title}</h2>
             <div className="flex flex-col space-y-2">
               {g.items.map((c) => (
-                <Option key={c.id} item={c} selected={c.id === clubId} onSelect={() => setClubId(c.id)} />
+                <Option
+                  key={c.id}
+                  item={c}
+                  selected={c.id === clubId}
+                  onSelect={() => setClubId(c.id)}
+                  recommended={recommendedCard(c, service)}
+                />
               ))}
             </div>
           </section>
