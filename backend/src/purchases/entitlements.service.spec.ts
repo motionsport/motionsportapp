@@ -249,10 +249,23 @@ describe('Entitlements — spends', () => {
   it('the first mark activates the package from the training date', async () => {
     const { db, updates } = makeDb([[booking({})], [pack({})], []]);
     await makeService(db).syncSpend(db, 'b1');
-    expect(updates[0]).toEqual({ table: packages, set: { activatedOn: '2026-10-25', validUntil: '2026-11-25' } });
-    // «Спеціальна пропозиція»: a gift card of that purchase starts the same day
-    expect(updates[1]).toMatchObject({ table: clubCards, set: { validFrom: '2026-10-25' } });
-    expect(updates).toHaveLength(2);
+    expect(updates).toEqual([{ table: packages, set: { activatedOn: '2026-10-25', validUntil: '2026-11-25' } }]);
+  });
+
+  it('✓ on a personal / split training starts a waiting club card that day (a gift one too)', async () => {
+    // the card update takes a result of its own
+    const { db, updates } = makeDb([[booking({ presence: 'PRESENT' })], [], [pack({})], []]);
+    await makeService(db).syncSpend(db, 'b1');
+    expect(updates[0]).toMatchObject({ table: clubCards, set: { validFrom: '2026-10-25' } });
+    expect(updates[1]).toEqual({ table: packages, set: { activatedOn: '2026-10-25', validUntil: '2026-11-25' } });
+  });
+
+  it('✗ or a group training: the club card keeps waiting', async () => {
+    for (const over of [{ presence: 'ABSENT' }, { presence: 'PRESENT', trainingType: 'group' }]) {
+      const { db, updates } = makeDb([[booking(over)], [pack({})], []]);
+      await makeService(db).syncSpend(db, 'b1');
+      expect(updates.some((u) => u.table === clubCards)).toBe(false);
+    }
   });
 
   it('nothing is spent on a frozen day', async () => {
@@ -276,8 +289,7 @@ describe('Entitlements — spends', () => {
       table: freezeItems,
       values: { freezeId: 'f1', packageId: 'p', field: 'valid_until' },
     });
-    expect(updates[0]).toEqual({ table: packages, set: { activatedOn: '2026-10-25', validUntil: '2026-12-25' } });
-    expect(updates[1]).toMatchObject({ table: clubCards, set: { validFrom: '2026-10-25' } });
+    expect(updates).toEqual([{ table: packages, set: { activatedOn: '2026-10-25', validUntil: '2026-12-25' } }]);
   });
 
   it('a package already activated is not activated again', async () => {
@@ -375,11 +387,7 @@ describe('Entitlements — «Не списувати» on the late cancellation 
 
   it('nothing else spent from it: the package waits for its first training again', async () => {
     const updates = await waive([spent, started(), [], []]);
-    expect(updates).toEqual([
-      { table: packages, set: { activatedOn: null, validUntil: null } },
-      // the gift card started that day waits again with it
-      { table: clubCards, set: { validFrom: null, validUntil: null } },
-    ]);
+    expect(updates).toEqual([{ table: packages, set: { activatedOn: null, validUntil: null } }]);
   });
 
   it('another training already spent from it: stays active', async () => {

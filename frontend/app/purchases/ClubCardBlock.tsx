@@ -11,7 +11,7 @@ export function ClubCardBlock({ data }: { data: MyPurchases }) {
           "warn" as const,
           "Чекає активації",
           card.label,
-          `Тренер активує абонемент, коли прийдете в зал. Встигніть до ${ddmm(card.activateBy)}`,
+          `Абонемент почне діяти, коли прийдете в зал. Встигніть до ${ddmm(card.activateBy)}`,
         ]
     : lastCard?.state === "burned"
       ? ["danger" as const, "Згоріла", lastCard.label, "Не активована вчасно. Купіть нову, щоб займатися в залі"]

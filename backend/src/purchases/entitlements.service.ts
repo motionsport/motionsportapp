@@ -16,17 +16,37 @@ import {
   trainingDays,
   trainingSlots,
 } from '../database/schema';
-import { GROUP_TYPE, KY_ZONE, PASS_TYPES } from '../schedule/training-types';
+import { GROUP_TYPE, isAssignedType, KY_ZONE, PASS_TYPES } from '../schedule/training-types';
 import { tryBookGroup } from '../booking/group-booking';
 import { activateByFor, cardState, endsInDays, passState, PassState, passUsableOn, validUntilFor } from './validity';
 import { loadFreezes } from '../freezes/freeze.store';
 import { daysBetween, frozenOn, plusDays } from '../freezes/rules';
 import { discountUahFor } from '../review-discounts/rules';
-import { startGiftCard, unstartGiftCard } from './special-offer';
 
 type Db = DatabaseService['db'];
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 type Q = Db | Tx;
+
+// A waiting club card (bought in the app, a gift or from the reception; not burned, bought by that day) starts on
+// the day of the member's first ✓ on a personal / split training, so the trainer doesn't press «Активувати з сьогодні».
+// A card already started (by hand too) is left alone; clearing the mark keeps it, like a package's activation
+export async function startWaitingCard(tx: Tx, memberId: string, date: string) {
+  await tx
+    .update(clubCards)
+    .set({
+      validFrom: date,
+      // Matches validity.ts and activateCard
+      validUntil: sql`(${date}::date + make_interval(months => ${clubCards.durationMonths}))::date`,
+    })
+    .where(
+      and(
+        eq(clubCards.memberId, memberId),
+        isNull(clubCards.validFrom),
+        gte(clubCards.activateBy, date),
+        sql`(${clubCards.createdAt} at time zone 'Europe/Kyiv')::date <= ${date}::date`,
+      ),
+    );
+}
 
 // Batch marks lock members' packages (syncSpend); a fixed order stops two batches deadlocking
 export function inLockOrder<T extends { id: string; memberId: string }>(rows: T[]): T[] {
@@ -292,6 +312,7 @@ export class EntitlementsService {
         trainingType: trainingSlots.trainingType,
         localDate: trainingDays.localDate,
         marked: attendance.bookingId,
+        presence: attendance.status,
         spentFrom: packageSpends.packageId,
         status: bookings.status,
         cancelFee: bookings.cancelFee,
@@ -305,6 +326,10 @@ export class EntitlementsService {
       .where(eq(bookings.id, bookingId))
       .limit(1);
     if (!booking || !PASS_TYPES.includes(booking.trainingType)) return;
+    // ✓ on a personal / split training: the member is in the gym, so a waiting club card starts that day
+    if (booking.presence === 'PRESENT' && isAssignedType(booking.trainingType)) {
+      await startWaitingCard(tx, booking.memberId, booking.localDate);
+    }
 
     // A late-cancellation fee spends too, unless waived (booking/cancel-fee.ts)
     const lateCancel = booking.status === 'CANCELLED' && !!booking.cancelFee && !booking.feeWaivedAt;
@@ -335,8 +360,6 @@ export class EntitlementsService {
         .update(packages)
         .set({ activatedOn: booking.localDate, validUntil })
         .where(and(eq(packages.id, from.id), isNull(packages.activatedOn)));
-      // «Спеціальна пропозиція»: the gift gym visit is that training's day
-      await startGiftCard(tx, from.purchaseId, booking.localDate);
     }
   }
 
@@ -382,15 +405,10 @@ export class EntitlementsService {
 
     // Locked, so a mark at the same moment either spends after this or is already counted below
     const [pack] = await tx
-      .select({
-        activatedOn: packages.activatedOn,
-        activateBy: packages.activateBy,
-        purchaseId: purchaseItems.purchaseId,
-      })
+      .select({ activatedOn: packages.activatedOn, activateBy: packages.activateBy })
       .from(packages)
-      .innerJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
       .where(eq(packages.id, spent.packageId))
-      .for('update', { of: packages });
+      .for('update');
     if (!pack || pack.activatedOn !== spent.localDate || pack.activateBy < this.today()) return;
     const [otherSpend] = await tx
       .select({ bookingId: packageSpends.bookingId })
@@ -405,7 +423,6 @@ export class EntitlementsService {
       .limit(1);
     if (movedByFreeze) return;
     await tx.update(packages).set({ activatedOn: null, validUntil: null }).where(eq(packages.id, spent.packageId));
-    await unstartGiftCard(tx, pack.purchaseId, spent.localDate);
   }
 
   // The package bought for this booking, else the oldest usable one with trainings left; null if none.
