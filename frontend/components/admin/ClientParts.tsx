@@ -233,7 +233,7 @@ export function TrainerPicker({
           value={member.trainerId ?? ""}
           disabled={saving}
           onChange={(e) => assign(e.target.value)}
-          className="bg-transparent text-body border-b border-line focus:outline-none focus:border-accent"
+          className="select-inline bg-transparent text-body border-b border-line rounded-none focus:outline-none focus:border-accent"
         >
           {!member.trainerId && <option value="">не вибрано</option>}
           {/* A disabled trainer can't get clients */}
