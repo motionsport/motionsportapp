@@ -234,7 +234,7 @@ export default function CalendarPage() {
             dateClick={handleDateClick}
             dayCellClass={clickableDayClass}
             dayLaneClass={clickableDayClass}
-            headerToolbar={{ left: "prev,next", center: "title", right: "timeGridWeek,dayGridMonth" }}
+            headerToolbar={{ left: "prev,next", center: "title", right: "timeGridDay,timeGridWeek,dayGridMonth" }}
             firstDay={1}
             slotMinTime={`${pad(minHour)}:00:00`}
             slotMaxTime={`${pad(maxHour)}:00:00`}
@@ -243,6 +243,7 @@ export default function CalendarPage() {
             views={{
               // Short title: the default (with years) pushed the view buttons to a new row
               timeGridWeek: { titleFormat: { day: "numeric", month: "short" } },
+              timeGridDay: { titleFormat: { day: "numeric", month: "short" } },
             }}
             eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             fixedWeekCount={false}
