@@ -13,7 +13,7 @@ import type { DatesSetInfo, EventClickInfo, DateClickInfo } from "@fullcalendar/
 import { api, AdminMember, CalendarSlot, TrainerSchedule, TrainingType } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { useIsClient } from "@/lib/clientStore";
-import { TYPE_COLORS, TYPE_LABEL_PLURAL } from "@/lib/trainingTypes";
+import { CANCELLED_COLORS, TYPE_COLORS, TYPE_LABEL_PLURAL } from "@/lib/trainingTypes";
 import { AdminMenu } from "@/components/admin/AdminMenu";
 import { AddSlotModal } from "./AddSlotModal";
 import { EditSlotModal } from "./EditSlotModal";
@@ -114,7 +114,7 @@ export default function CalendarPage() {
     const start = `${s.localDate}T${s.slotTime}:00`;
     const end = new Date(new Date(start).getTime() + 60 * 60 * 1000);
     const cancelled = s.status === "CANCELLED";
-    const colors = TYPE_COLORS[s.trainingType];
+    const colors = cancelled ? CANCELLED_COLORS : TYPE_COLORS[s.trainingType];
     // Group: seats taken. Assigned: members, ✓ = paid
     const detail = cancelled
       ? "скасовано"
@@ -130,9 +130,8 @@ export default function CalendarPage() {
       start,
       end,
       // v7 names; v6 backgroundColor/borderColor/textColor are silently ignored
-      // A cancelled one is greyed out (the page's tokens), as members see «Скасовано»
-      color: cancelled ? "var(--color-surface)" : colors.bg,
-      contrastColor: cancelled ? "var(--color-subtle)" : colors.text,
+      color: colors.bg,
+      contrastColor: colors.text,
       extendedProps: { slot: s },
     };
   });

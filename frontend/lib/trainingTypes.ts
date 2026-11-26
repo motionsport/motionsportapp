@@ -7,6 +7,9 @@ export const TYPE_COLORS: Record<TrainingType, { bg: string; border: string; tex
   split: { bg: "#7c2d12", border: "#fb923c", text: "#fed7aa" },
 };
 
+// A cancelled group training in the calendar, greyed whatever its type: the brand's surface / line / subtle tokens
+export const CANCELLED_COLORS = { bg: "#0d1019", border: "#1a2040", text: "#8a9bc0" };
+
 // Singular, for one training
 export const TYPE_LABEL: Record<TrainingType, string> = {
   group: "Групове",
