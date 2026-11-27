@@ -161,7 +161,8 @@ export default function InviteClientPage() {
                         .filter((p) => p.trainingType === t)
                         .map((p) => (
                           <option key={p.id} value={p.id}>
-                            {lineName(p)}
+                            {/* «Пакет · 10 занять» reads oddly under the field's own «Пакет» label */}
+                            {t === "group" ? `Групові · ${p.optionLabel ?? p.title}` : lineName(p)}
                           </option>
                         ))}
                     </optgroup>

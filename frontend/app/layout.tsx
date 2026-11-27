@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
+    // The iPhone home screen icon (it ignores the manifest's); dropped by mistake on 2026-10-20, back on 2026-11-27
+    apple: "/motion-gym-logo-app.png",
   },
 };
 
