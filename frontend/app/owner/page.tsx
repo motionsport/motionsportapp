@@ -6,11 +6,8 @@ import { PageLayout } from "@/components/ui/PageLayout";
 import { Badge } from "@/components/ui/Badge";
 import { OwnerMenu } from "@/components/owner/OwnerMenu";
 import { RevenueRows } from "@/components/stats/RevenueRows";
-import { DiscountRows } from "@/components/stats/DiscountRows";
-import { RefundRows } from "@/components/stats/RefundRows";
 import { GiftRow } from "@/components/stats/GiftRow";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
-import { formatUah } from "@/lib/prices";
 import { useAdminData } from "@/lib/useAdminData";
 import { monthKeysUpToNow } from "@/lib/statsMonths";
 import { discountSummaryIn, discountSummaryText, gymCards, gymMonthsWithData, type GymCard } from "./gymStats";
@@ -24,15 +21,16 @@ function Card({ card }: { card: GymCard }) {
           {card.title}
           {card.disabled && <Badge className="ml-2">вимкнено</Badge>}
         </span>
-        <span className="font-geologica text-heading tabular-nums text-sm">{formatUah(card.revenue.total)}</span>
       </div>
       <RevenueRows revenue={card.revenue} fromReception={card.reception} />
-      <RefundRows revenue={card.revenue} />
-      <DiscountRows revenue={card.revenue} withTotal />
       <GiftRow revenue={card.revenue} />
       {card.present !== null && (
         <div className="flex justify-between space-x-3 mt-3 pt-3 border-t border-line">
-          <span className="text-subtle">Прийшло ✓</span>
+          <span className="text-subtle">
+            Відвідувань
+            {/* Visits, not people: one client coming 8 times is 8 */}
+            <span className="block text-xs">тренування з ✓, гості теж, без сьогодні</span>
+          </span>
           <span className={`tabular-nums ${card.present ? "text-body" : "text-muted"}`}>{card.present}</span>
         </div>
       )}
@@ -66,7 +64,7 @@ export default function OwnerStatsPage() {
       </h1>
       <p className="text-subtle text-xs mb-6">
         Покупки через застосунок (готівка, переказ, онлайн) за датою оплати. Абонементи з рецепції це гроші залу: лише у
-        «Весь зал», за датою додавання. І скільки людей прийшло (✓, гості теж) на тренування кожного тренера.
+        «Весь зал», за датою додавання. І скільки відвідувань (✓, гості теж) було на тренуваннях кожного тренера.
         Сьогоднішній день зʼявиться завтра. Повернення за пізнє скасування віднімаються в місяці, коли їх віддали.
       </p>
 

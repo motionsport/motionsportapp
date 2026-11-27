@@ -7,8 +7,6 @@ import { formatUah } from "@/lib/prices";
 import { useAdminData } from "@/lib/useAdminData";
 import { monthKeysUpToNow, monthName } from "@/lib/statsMonths";
 import { RevenueRows } from "@/components/stats/RevenueRows";
-import { DiscountRows } from "@/components/stats/DiscountRows";
-import { RefundRows } from "@/components/stats/RefundRows";
 import { GiftRow } from "@/components/stats/GiftRow";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 
@@ -150,17 +148,9 @@ function RevenueBlock({
       )}
 
       <div className="rounded-xl border border-line bg-surface p-4">
-        <div className="flex items-baseline justify-between space-x-3 mb-3">
-          <span className={chart ? "text-heading font-semibold" : "text-subtle"}>
-            {chart ? monthName(month.month) : "Разом отримано"}
-          </span>
-          <span className="font-geologica text-heading tabular-nums text-sm">
-            {formatUah(allTime && !chart ? revenue.allTime.total : month.total)}
-          </span>
-        </div>
+        {/* Just the month picked on the chart; the money ends with «Фактично отримано» */}
+        {chart && <p className="text-heading font-semibold mb-3">{monthName(month.month)}</p>}
         <RevenueRows revenue={allTime && !chart ? revenue.allTime : month} />
-        <RefundRows revenue={allTime && !chart ? revenue.allTime : month} />
-        <DiscountRows revenue={allTime && !chart ? revenue.allTime : month} withTotal={chart} />
         <GiftRow revenue={allTime && !chart ? revenue.allTime : month} />
         {fromReception > 0 && (
           <div className="mt-3 pt-3 border-t border-line">
@@ -168,7 +158,7 @@ function RevenueBlock({
               <span className="text-subtle">Абонементи з рецепції</span>
               <span className="tabular-nums text-body">{formatUah(fromReception)}</span>
             </div>
-            <p className="text-subtle text-xs mt-1">Гроші залу, у «Разом отримано» не входять</p>
+            <p className="text-subtle text-xs mt-1">Гроші залу, у «Фактично отримано» не входять</p>
           </div>
         )}
       </div>

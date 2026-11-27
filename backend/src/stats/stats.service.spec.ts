@@ -102,6 +102,30 @@ describe('stats — revenue by month', () => {
   });
 });
 
+describe('stats — columns at price list prices, total what was actually received', () => {
+  it('a discounted club card counts in «Абонементи» at its price list amount; total is net of the discounts', () => {
+    const r = summarizeRevenue([
+      // 1400 at the price list, −70 review, −140 permanent: 1190 paid
+      {
+        month: '2026-11',
+        section: 'club_card',
+        trainingType: null,
+        amount: 1190,
+        discount: 70,
+        permanentDiscount: 140,
+      },
+      { month: '2026-11', section: 'assigned', trainingType: 'personal', amount: 800, discount: 0 },
+    ]);
+    expect(r.allTime).toMatchObject({
+      clubCards: 1400,
+      personal: 800,
+      discount: 70,
+      permanentDiscount: 140,
+      total: 1990,
+    });
+  });
+});
+
 describe('stats — refunds after a late cancellation', () => {
   it('a separate line in the month given back; the total is net of it, the columns stay what was received', () => {
     const r = summarizeRevenue([

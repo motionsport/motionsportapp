@@ -22,8 +22,9 @@ import { KY_ZONE } from '../schedule/training-types';
 
 const TOP_DAYS = 5;
 
-// total = money the gym actually has: received (net of discounts) minus the refunds handed back; discount = what was
-// knocked off, discounted = purchases with one. The columns are what was received, before refunds
+// The columns (clubCards … group) are at price list prices, before any discount or refund, so their sum is «Разом»;
+// total = «Фактично отримано», what the gym actually has: that minus the review and permanent discounts and the
+// refunds handed back. discount = what the review discounts knocked off, discounted = purchases with one
 export type Revenue = {
   clubCards: number;
   personal: number;
@@ -86,7 +87,8 @@ export function summarizeRevenue(rows: RevenueRow[]): RevenueSummary {
     // discounted: the rows are grouped by column, so the query counts the items; a bare row is one item if it has a discount
     const discounted = r.discounted ?? (r.discount > 0 ? 1 : 0);
     for (const t of [m, allTime]) {
-      t[key] += r.amount;
+      // amount is what was paid (every discount off): the column gets the price list amount back
+      t[key] += r.amount + r.discount + (r.permanentDiscount ?? 0);
       t.total += r.amount;
       t.discount += r.discount;
       t.discounted += discounted;
