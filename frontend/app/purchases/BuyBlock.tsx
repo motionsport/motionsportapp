@@ -64,8 +64,8 @@ function BuyTile({
       className="flex-1 min-w-0 rounded-xl border border-line bg-surface p-4 text-left hover:border-subtle transition-colors"
     >
       <span className="block text-accent">{icon}</span>
-      <span className="block text-heading font-semibold mt-3">{title}</span>
-      <span className="block text-subtle text-xs mt-0.5">{price}</span>
+      <span className="block text-heading font-semibold max-sm:text-[16px] mt-3">{title}</span>
+      <span className="block text-subtle text-xs max-sm:text-base mt-0.5">{price}</span>
     </button>
   );
 }
@@ -105,8 +105,10 @@ export function BuyBlock({
             <GiftIcon />
             <span>Спеціальна пропозиція</span>
           </span>
-          <span className="block mt-2">Персональне або спліт-тренування + разове відвідування залу в подарунок</span>
-          <span className="block text-xs mt-1">{fromPrice(offerServices)}</span>
+          <span className="block max-sm:text-[16px] mt-2">
+            Персональне або спліт-тренування + разове відвідування залу в подарунок
+          </span>
+          <span className="block text-xs max-sm:text-base mt-1">{fromPrice(offerServices)}</span>
           <button
             type="button"
             onClick={() => onBuy("offer")}
@@ -131,8 +133,8 @@ export function BuyBlock({
           className="btn-primary w-full rounded-lg p-4 text-left transition-colors"
         >
           <PersonIcon />
-          <span className="block font-semibold mt-3">З тренером</span>
-          <span className="block text-xs mt-0.5">
+          <span className="block font-semibold max-sm:text-[16px] mt-3">З тренером</span>
+          <span className="block text-xs max-sm:text-base mt-0.5">
             {serviceTypes.length === 2 ? "Персональні та спліт" : TYPE_LABEL_PLURAL[serviceTypes[0]]} ·{" "}
             {fromPrice(services)}
           </span>

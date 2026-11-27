@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { api, SlotView } from "@/lib/api";
-import { ensurePushSubscribed } from "@/lib/pushUtils";
+import { ensurePushSubscribed, pushPermission } from "@/lib/pushUtils";
 import { CancellationReasonModal } from "./CancellationReasonModal";
 import { GroupPassModal } from "./GroupPassModal";
 import { OverNormModal } from "./OverNormModal";
@@ -40,6 +40,7 @@ export function SlotCard({
   // The slot a group pass is being bought for (this one, or the time suggested by the over-norm warning)
   const [buying, setBuying] = useState<SlotView | null>(null);
   const [overNormOpen, setOverNormOpen] = useState(false);
+  const [pushOff, setPushOff] = useState<"denied" | "unsupported" | null>(null);
   // null = guest name field closed
   const [guestName, setGuestName] = useState<string | null>(null);
 
@@ -75,7 +76,12 @@ export function SlotCard({
   };
   const subscribeVacancy = async () => {
     setOverNormOpen(false);
-    await ensurePushSubscribed();
+    // No pushes on this phone: the alert would say «увімкнено» and never come, so it isn't turned on
+    if (!(await ensurePushSubscribed())) {
+      setPushOff(pushPermission() === "unsupported" ? "unsupported" : "denied");
+      return;
+    }
+    setPushOff(null);
     await onMutate(() => api.subscribeVacancy(slot.id));
     onRefresh();
   };
@@ -85,22 +91,33 @@ export function SlotCard({
   };
 
   // The alert waits for a seat within the norm (fewer than 8)
-  const alertToggle = slot.isMyVacancyAlert ? (
-    <button
-      type="button"
-      onClick={unsubscribeVacancy}
-      className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
-    >
-      🔔 Сповіщення увімкнено
-    </button>
-  ) : (
-    <button
-      type="button"
-      onClick={subscribeVacancy}
-      className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
-    >
-      🔕 Сповістити про вільне місце
-    </button>
+  const alertToggle = (
+    <>
+      {slot.isMyVacancyAlert ? (
+        <button
+          type="button"
+          onClick={unsubscribeVacancy}
+          className="btn-secondary w-full py-3 rounded-lg border text-sm transition-colors"
+        >
+          🔔 Сповіщення увімкнено
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={subscribeVacancy}
+          className="btn-ghost text-subtle border-subtle/40 hover:text-accent hover:border-teal w-full py-3 rounded-lg border text-sm transition-colors"
+        >
+          🔕 Сповістити про вільне місце
+        </button>
+      )}
+      {pushOff && (
+        <p className="text-subtle text-xs text-center mt-2">
+          {pushOff === "denied"
+            ? "Сповіщення вимкнені в налаштуваннях телефона"
+            : "Сповіщення працюють лише у встановленому застосунку"}
+        </p>
+      )}
+    </>
   );
 
   // Also for a member booked at another time: a freed seat shows them «Перейти на …» here

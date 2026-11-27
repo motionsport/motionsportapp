@@ -42,14 +42,16 @@ export function PackageCard({ p }: { p: TrainingPackage }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
       <div className="flex items-baseline justify-between space-x-3">
-        <span className="text-heading font-semibold">{packageTitle(p)}</span>
+        <span className="text-heading font-semibold max-sm:text-[16px]">{packageTitle(p)}</span>
         {/* Ending soon: the date turns warn, with a hint under the dots */}
-        <span className={`text-xs whitespace-nowrap ${p.endsInDays ? "text-warn font-semibold" : "text-subtle"}`}>
+        <span
+          className={`text-xs max-sm:text-base whitespace-nowrap ${p.endsInDays ? "text-warn font-semibold" : "text-subtle"}`}
+        >
           {p.state === "active" ? `діє до ${ddmm(p.validUntil)}` : `почати до ${ddmm(p.activateBy)}`}
         </span>
       </div>
       <TrainingDots done={p.total - p.left} total={p.total} />
-      <p className="text-body text-xs mt-3">
+      <p className="text-body text-xs max-sm:text-base mt-3">
         {p.total - p.left > 0 ? (
           <>
             Пройдено <span className="text-accent font-semibold">{p.total - p.left}</span> з {p.total} · ще {p.left}{" "}
@@ -62,7 +64,7 @@ export function PackageCard({ p }: { p: TrainingPackage }) {
           `Почнеться з першого тренування · ${p.total} попереду`
         )}
       </p>
-      {p.endsInDays && <p className="text-warn text-xs mt-2">{endingHint(p.endsInDays, p.left)}</p>}
+      {p.endsInDays && <p className="text-warn text-xs max-sm:text-base mt-2">{endingHint(p.endsInDays, p.left)}</p>}
     </div>
   );
 }

@@ -13,10 +13,15 @@ export async function syncSubscription(sub: PushSubscription) {
   await api.subscribePush({ endpoint: json.endpoint, p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "" });
 }
 
-// Logout switched it off on the server; this turns it back on without a new permission prompt
+// Logout switched it off on the server; this turns it back on without a new permission prompt. Allowed but with no
+// subscription (the browser dropped it): subscribe again, still with no prompt
 export async function resyncExistingSubscription() {
   try {
     if (!("serviceWorker" in navigator)) return;
+    if ("Notification" in window && Notification.permission === "granted") {
+      await ensurePushSubscribed();
+      return;
+    }
     const reg = await navigator.serviceWorker.getRegistration();
     const existing = await reg?.pushManager?.getSubscription();
     if (existing) await syncSubscription(existing);
@@ -25,7 +30,24 @@ export async function resyncExistingSubscription() {
   }
 }
 
+// Whether this browser can get pushes at all (Safari on iPhone outside the installed app can't) and what the person
+// said; «pushchange» tells the home page's status line that it may have changed (a tap on «Сповістити про вільне місце»)
+export type PushPermission = "unsupported" | NotificationPermission;
+export function pushPermission(): PushPermission {
+  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  return supported ? Notification.permission : "unsupported";
+}
+export const PUSH_CHANGE = "pushchange";
+
 export async function ensurePushSubscribed(): Promise<boolean> {
+  try {
+    return await subscribe();
+  } finally {
+    window.dispatchEvent(new Event(PUSH_CHANGE));
+  }
+}
+
+async function subscribe(): Promise<boolean> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
   if (Notification.permission === "denied") return false;
 

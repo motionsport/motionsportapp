@@ -6,6 +6,7 @@ import { api, DiscountView, ScheduleNext, statusOf } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { AssignedSlotCard } from "@/components/schedule/AssignedSlotCard";
 import { resyncExistingSubscription } from "@/lib/pushUtils";
+import { PushStatus } from "./PushStatus";
 import { nextPollDelay } from "@/lib/schedulePoll";
 import { errorText } from "@/lib/apiErrors";
 import { ddmm, longDay } from "@/lib/dates";
@@ -268,6 +269,8 @@ export default function SchedulePage({ signedIn }: { signedIn: boolean }) {
           {reviewDiscount?.discount && (
             <ReviewDiscountCard discount={reviewDiscount.discount} percent={reviewDiscount.percent} className="mt-8" />
           )}
+
+          <PushStatus />
 
           {mutateError && (
             <p role="alert" className="text-danger text-sm mt-4 text-center">

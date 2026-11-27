@@ -28,7 +28,9 @@ export function FreezeBlock({ data, onChanged }: { data: MyFreeze; onChanged: ()
     }
   };
 
-  const link = "block mx-auto text-subtle text-xs underline hover:text-body py-2 transition-colors disabled:opacity-60";
+  // Bigger text on a phone, the box the same height (less padding)
+  const link =
+    "block mx-auto text-subtle text-xs max-sm:text-base underline hover:text-body py-2 max-sm:py-1.5 transition-colors disabled:opacity-60";
 
   if (!freeze) {
     return (

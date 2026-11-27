@@ -22,13 +22,13 @@ export function ClubCardBlock({ data }: { data: MyPurchases }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
       <div className="flex items-center justify-between space-x-3">
-        <span className="text-heading font-semibold">Абонемент (клубна карта)</span>
+        <span className="text-heading font-semibold max-sm:text-[16px]">Абонемент (клубна карта)</span>
         <Badge tone={badge} size="status" className="whitespace-nowrap">
           {badgeText}
         </Badge>
       </div>
-      {label && <p className="text-body mt-2">{label}</p>}
-      <p className="text-subtle text-xs mt-2">{hint}</p>
+      {label && <p className="text-body mt-2 max-sm:text-[16px]">{label}</p>}
+      <p className="text-subtle text-xs max-sm:text-base mt-2">{hint}</p>
     </div>
   );
 }
