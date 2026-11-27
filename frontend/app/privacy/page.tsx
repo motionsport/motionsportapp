@@ -32,8 +32,8 @@ export default function PrivacyPage() {
 
         <h2 className={SECTION}>Хто їх бачить</h2>
         <p>
-          Ваш тренер і власник залу. Дані зберігаються на серверах хостингу (Vercel) і бази даних (Neon); оплату карткою
-          онлайн обробляє платіжний сервіс.
+          {/* Online payment (LiqPay) is off: when it is switched on, add that the payment service handles card payments */}
+          Ваш тренер і власник залу. Дані зберігаються на серверах хостингу (Vercel) і бази даних (Neon).
         </p>
 
         <h2 className={SECTION}>Ваші права</h2>
