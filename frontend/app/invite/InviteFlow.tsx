@@ -109,9 +109,7 @@ export function InviteFlow({ token }: { token: string }) {
     return (
       <PageLayout>
         <h1 className={title}>Збережіть коди</h1>
-        <p className="text-muted text-sm mb-6">
-          Код учасника потрібен для входу. Код відновлення більше не покажеться.
-        </p>
+        <p className="text-muted text-sm mb-6">Збережіть ці дані. Код відновлення більше не покажеться.</p>
         <SavedCodes memberCode={codes.memberCode} recoveryCode={codes.recoveryCode} />
         {env === "installed" ? (
           <button

@@ -20,7 +20,9 @@ export function SavedCodes({ memberCode, recoveryCode }: { memberCode: string; r
     <>
       <div className="bg-surface rounded-xl p-5 mb-4 space-y-4">
         <div>
-          <p className="text-muted text-xs mb-1">Ваш код учасника</p>
+          <p className="text-muted text-xs mb-1">
+            Ваш код учасника <span className="font-semibold text-body">(потрібен для входу)</span>
+          </p>
           <div className="flex items-center justify-between">
             <span className="font-geologica font-semibold text-xl text-heading">{memberCode}</span>
             <button
