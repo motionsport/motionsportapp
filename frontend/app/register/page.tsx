@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
 import { SavedCodes } from "@/components/auth/SavedCodes";
+import { PrivacyNote } from "@/components/auth/PrivacyNote";
 
 export default function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
@@ -122,6 +123,7 @@ export default function RegisterPage() {
         >
           {loading ? "Зачекайте..." : "Зареєструватись"}
         </button>
+        <PrivacyNote />
       </form>
     </PageLayout>
   );

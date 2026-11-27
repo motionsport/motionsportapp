@@ -5,6 +5,7 @@ import { PageLayout } from "@/components/ui/PageLayout";
 import { WarnNote } from "@/components/ui/WarnNote";
 import { QrCode } from "@/components/ui/QrCode";
 import { SavedCodes } from "@/components/auth/SavedCodes";
+import { PrivacyNote } from "@/components/auth/PrivacyNote";
 import { InstallSteps } from "@/components/pwa/InstallSteps";
 import { errorText } from "@/lib/apiErrors";
 import { installEnv, type InstallEnv } from "@/lib/installEnv";
@@ -205,6 +206,7 @@ export function InviteFlow({ token }: { token: string }) {
         >
           {busy ? "Зачекайте..." : "Далі"}
         </button>
+        <PrivacyNote />
       </form>
     </PageLayout>
   );
