@@ -20,8 +20,7 @@ const WEEKDAYS = [
 ];
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-const TIME_FIELD =
-  "input-field border rounded-lg px-3 py-2 text-sm focus:outline-none block min-w-0 appearance-none [color-scheme:dark] [&::-webkit-date-and-time-value]:text-left";
+const TIME_FIELD = "input-field border rounded-lg px-3 py-2 text-sm focus:outline-none";
 
 const SKIP_REASONS: Record<SkippedTraining["reason"], string> = {
   cancelled: "скасовано в календарі",

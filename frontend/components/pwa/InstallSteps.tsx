@@ -62,6 +62,7 @@ export function InstallSteps({ env }: { env: InstallEnv }) {
           <>
             Виберіть <AddIcon /> «На Початковий екран»
           </>,
+          "Натисніть «Додати» угорі праворуч",
           "Відкрийте Motion Gym з екрана телефона",
         ]
       : [

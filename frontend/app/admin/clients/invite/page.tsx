@@ -14,7 +14,9 @@ import { PERMANENT_KINDS } from "@/lib/permanentDiscount";
 type PackageRow = { priceItemId: string; left: string; validUntil: string };
 
 const label = "block text-body text-sm mb-1.5";
-const field = "input-field w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none";
+// One fixed height: iPhone Safari draws a date field lower than a text one, so «Лишилось» and «Діє до» didn't match
+const field = "input-field w-full h-12 border rounded-lg px-3 text-sm focus:outline-none";
+
 const section = "font-geologica font-semibold text-heading uppercase text-xs tracking-wide mt-6 mb-2";
 
 // «Запросити нового клієнта»: what a client who already paid before the app has; the link brings it over (no money in

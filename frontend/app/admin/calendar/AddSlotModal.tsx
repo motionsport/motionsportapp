@@ -129,8 +129,7 @@ export function AddSlotModal({
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          // iOS Safari ignores w-full on a time input without these
-          className={`${FIELD_CLASS} block min-w-0 appearance-none [color-scheme:dark] [&::-webkit-date-and-time-value]:text-left`}
+          className={FIELD_CLASS}
         />
         {!assigned && opensAt && TIME_RE.test(time) && time <= opensAt && (
           <p className="text-muted text-xs mt-2">Запис на це тренування відкриється напередодні о {opensAt}</p>

@@ -66,7 +66,7 @@ export function InviteFlow({ token }: { token: string }) {
 
   if (invalid)
     return (
-      <PageLayout>
+      <PageLayout className="text-center">
         <h1 className={title}>Запрошення недійсне</h1>
         <p className="text-body text-sm">Попросіть тренера нове.</p>
       </PageLayout>
@@ -75,7 +75,7 @@ export function InviteFlow({ token }: { token: string }) {
   // A computer: the link is for the phone
   if (env === "desktop")
     return (
-      <PageLayout>
+      <PageLayout className="text-center">
         <h1 className={title}>Відкрийте на телефоні</h1>
         <p className="text-subtle text-sm mb-5">Наведіть камеру телефона на код.</p>
         <QrCode value={link} size={200} label="QR-код запрошення" />
