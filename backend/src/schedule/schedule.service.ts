@@ -47,6 +47,12 @@ export type GroupSlotsResult = { added: number; skipped: SkippedTraining[] };
 
 const GROUP_HORIZON_DAYS = 21;
 
+// What the home page lists: a group training that has started is no use to a member not on it (nothing to book), so it
+// goes. The member's own stays all day: it says they were there, and one group booking a day keeps the others closed.
+// The day's badge and the reminder still count every training (computed before this)
+const shownToMember = <T extends { started: boolean; isMyBooking: boolean }>(slots: T[]) =>
+  slots.filter((s) => !s.started || s.isMyBooking);
+
 @Injectable()
 export class ScheduleService {
   private readonly logger = new Logger(ScheduleService.name);
@@ -123,7 +129,7 @@ export class ScheduleService {
       bookingWindowOpen,
       bookingOpenAt: openAt.toUTC().toISO(),
       bookingCloseAt: closeAt.toUTC().toISO(),
-      slots,
+      slots: shownToMember(slots),
       assignedSlots,
       // 0 = booking offers to buy a group pass
       groupPassLeft: memberId ? await this.entitlements.groupPassLeft(memberId, targetDay.localDate) : 0,
@@ -164,7 +170,7 @@ export class ScheduleService {
       bookingWindowOpen: now >= openAt && now < closeAt,
       bookingOpenAt: openAt.toUTC().toISO(),
       bookingCloseAt: closeAt.toUTC().toISO(),
-      slots,
+      slots: shownToMember(slots),
       groupPassLeft: memberId ? await this.entitlements.groupPassLeft(memberId, date) : 0,
       frozen,
     };

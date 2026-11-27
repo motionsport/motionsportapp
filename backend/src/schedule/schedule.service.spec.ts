@@ -207,6 +207,22 @@ describe('ScheduleService — «Сьогодні тренування» reminder
     expect(result.bookingReminder).toBeNull();
   });
 
+  it('a started training stays listed for the member booked on it, all day', async () => {
+    const { db } = makeDb([
+      [],
+      [{ trainerId: 'trainer-1' }],
+      [trainingDay],
+      HAS_GROUP,
+      slots,
+      [{ id: 'b1', slotId: 'slot-1' }],
+    ]);
+    const result = await makeService(db, kyivAt(19, 30), [], 4, 4).getNext('member-1');
+    expect(result.slots.map((s) => [s.slotTime, s.isMyBooking])).toEqual([
+      ['19:00', true],
+      ['20:00', false],
+    ]);
+  });
+
   it('once the first group training started: none', async () => {
     const result = await makeService(notBooked(), kyivAt(19, 5), [], 4, 4).getNext('member-1');
     expect(result.bookingReminder).toBeNull();
@@ -265,7 +281,8 @@ describe('ScheduleService — booking window flag', () => {
     const result = await makeService(db, kyivAt(19)).getNext();
     expect(result?.bookingWindowOpen).toBe(true);
     expect(result?.bookingCloseAt).toBe('2026-10-20T17:00:00.000Z'); // 20:00 Kyiv (UTC+3 until 25 Oct)
-    expect(result?.slots.map((s) => s.started)).toEqual([true, false]);
+    // 19:00 has started and the member isn't on it: only 20:00 is listed
+    expect(result?.slots.map((s) => [s.slotTime, s.started])).toEqual([['20:00', false]]);
   });
 
   it('opens at the time of the trainer whose trainings the member sees (a visitor: the first trainer)', async () => {
@@ -298,10 +315,8 @@ describe('ScheduleService — booking window flag', () => {
     const result = await service.getNext();
     expect(result?.localDate).toBe(TODAY);
     expect(result?.bookingWindowOpen).toBe(true);
-    expect(result?.slots.map((s) => [s.slotTime, s.started])).toEqual([
-      ['10:00', true],
-      ['19:00', false],
-    ]);
+    // 10:00 has started (not listed), 19:00 open
+    expect(result?.slots.map((s) => [s.slotTime, s.started])).toEqual([['19:00', false]]);
   });
 
   // Opening 10:00: 9:00 opened the day before (Monday 10:00), 19:00 opens on the day at 10:00
@@ -342,7 +357,8 @@ describe('ScheduleService — booking window flag', () => {
     const result = await service.getNext();
     expect(result?.bookingWindowOpen).toBe(false);
     expect(result?.bookingOpenAt).toBe('2026-10-20T07:00:00.000Z'); // 10:00 Kyiv
-    expect(result?.slots.map((s) => s.bookingOpen)).toEqual([false, false]);
+    // 9:00 has started (not listed); 19:00 waits for 10:00
+    expect(result?.slots.map((s) => [s.slotTime, s.bookingOpen])).toEqual([['19:00', false]]);
   });
 
   // Opening 10:00: today's 19:00 / 20:00 and tomorrow's 9:00 open together, so tomorrow's morning comes as a block
