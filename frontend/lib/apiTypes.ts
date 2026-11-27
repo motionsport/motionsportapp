@@ -186,6 +186,32 @@ export interface MemberPurchases {
 }
 
 // «Постійна знижка» (backend permanent-discounts/rules.ts): a trainer's mark on the client
+// «Запросити нового клієнта»: what the trainer fills in (clubCard.validUntil null = waits for activation)
+export interface MemberInviteForm {
+  displayName: string;
+  clubCard: { priceItemId: string; validUntil: string | null } | null;
+  packages: { trainingType: TrainingType; left: number; validUntil: string }[];
+  permanentDiscount: PermanentKind | null;
+}
+// The link's token is shown only here (create, or «QR» on a waiting invite, which replaces the link)
+export interface MemberInviteLink {
+  id: string;
+  token: string;
+  displayName: string;
+  expiresAt: string;
+}
+export interface MemberInviteRow {
+  id: string;
+  displayName: string;
+  expiresAt: string;
+}
+// The client's page before the PIN
+export interface MemberInvitePreview {
+  displayName: string;
+  clubCard: { label: string; validUntil: string | null } | null;
+  packages: { trainingType: TrainingType; left: number; validUntil: string }[];
+}
+
 // The owner's «Клієнти» row; disabledAt set = «вимкнено» (can't sign in, trainers don't see them)
 export interface OwnerMember {
   id: string;

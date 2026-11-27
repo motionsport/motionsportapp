@@ -16,6 +16,7 @@ import { FreezesModule } from './freezes/freezes.module';
 import { StatsModule } from './stats/stats.module';
 import { ReviewDiscountsModule } from './review-discounts/review-discounts.module';
 import { PermanentDiscountsModule } from './permanent-discounts/permanent-discounts.module';
+import { MemberInvitesModule } from './member-invites/member-invites.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { PermanentDiscountsModule } from './permanent-discounts/permanent-discou
     StatsModule,
     ReviewDiscountsModule,
     PermanentDiscountsModule,
+    MemberInvitesModule,
   ],
 })
 export class AppModule {}

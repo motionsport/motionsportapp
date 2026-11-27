@@ -37,6 +37,8 @@ export const ERROR_TEXT: Record<string, string> = {
   BIRTHDAY_DISCOUNT_GIVEN: "Знижку іменинника цього року вже видано",
   BIRTHDAY_DISCOUNT_NOT_FREE: "Знижка іменинника вже використана або не діє сьогодні",
   DISCOUNT_CHANGED: "Знижка щойно змінилась. Оновіть сторінку і спробуйте ще раз.",
+  INVITE_INVALID: "Запрошення недійсне. Попросіть тренера нове.",
+  INVITE_FORM_INVALID: "Перевірте дані: дата не може бути в минулому.",
   SPECIAL_OFFER_USED: "Спеціальна пропозиція діє лише для першої покупки",
   // Trainer: calendar, schedule, marks, refunds
   TIME_TAKEN: "На цей час уже є тренування",

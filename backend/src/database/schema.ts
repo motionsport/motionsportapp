@@ -533,6 +533,28 @@ export const birthdayDiscounts = pgTable(
   (table) => [index('birthday_discounts_member_id_idx').on(table.memberId)],
 );
 
+// «Запросити нового клієнта»: a trainer brings over a client who already paid (club card, packages) before the app.
+// One use, 7 days; only the token's SHA-256 is kept (like trainer invites). payload: MemberInvitePayload
+// (member-invites/invite.store.ts). Nothing here counts as money
+export const memberInvites = pgTable(
+  'member_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tokenHash: text('token_hash').notNull().unique(),
+    createdByAdminId: uuid('created_by_admin_id')
+      .notNull()
+      .references(() => admins.id),
+    displayName: text('display_name').notNull(),
+    payload: jsonb('payload').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    usedByMemberId: uuid('used_by_member_id').references(() => members.id),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => [index('member_invites_created_by_admin_id_idx').on(table.createdByAdminId)],
+);
+
 // One review discount per member, ever. Held by a PENDING purchase, used by a PAID one (purchase_id)
 // or at the reception / bar (used_via)
 export const reviewDiscounts = pgTable(
@@ -571,9 +593,11 @@ export const packages = pgTable(
     memberId: uuid('member_id')
       .notNull()
       .references(() => members.id),
-    purchaseItemId: uuid('purchase_item_id')
-      .notNull()
-      .references(() => purchaseItems.id),
+    // null = brought over by a trainer's invite (paid before the app: no purchase, no money in stats)
+    purchaseItemId: uuid('purchase_item_id').references(() => purchaseItems.id),
+    // The name of a brought-over package (a bought one takes its purchase line's title)
+    label: text('label'),
+    addedBy: uuid('added_by').references(() => admins.id),
     trainingType: text('training_type').notNull(),
     total: integer('total').notNull(),
     durationMonths: integer('duration_months').notNull().default(1),

@@ -22,6 +22,10 @@ import type {
   MeResponse,
   MyFreeze,
   MyPurchases,
+  MemberInviteForm,
+  MemberInviteLink,
+  MemberInvitePreview,
+  MemberInviteRow,
   OwnerMember,
   PermanentDiscountState,
   PermanentKind,
@@ -105,6 +109,15 @@ export const api = {
   me: () => get<MeResponse>("/auth/me"),
 
   register: (displayName: string, pin: string) => post<RegisterResponse>("/auth/member/register", { displayName, pin }),
+  // «Запросити нового клієнта»: the client's page (404 = not valid), then the PIN
+  getMemberInvite: (token: string) => get<MemberInvitePreview>(`/auth/member/invite/${encodeURIComponent(token)}`),
+  registerByInvite: (token: string, pin: string) =>
+    post<RegisterResponse>("/auth/member/register-invite", { token, pin }),
+  // The trainer's own invites
+  createMemberInvite: (form: MemberInviteForm) => post<MemberInviteLink>("/admin/member-invites", form),
+  getMemberInvites: () => get<MemberInviteRow[]>("/admin/member-invites"),
+  relinkMemberInvite: (id: string) => post<MemberInviteLink>(`/admin/member-invites/${id}/link`),
+  revokeMemberInvite: (id: string) => del(`/admin/member-invites/${id}`),
 
   login: (memberCode: string, pin: string) => post<LoginResponse>("/auth/member/login", { memberCode, pin }),
 

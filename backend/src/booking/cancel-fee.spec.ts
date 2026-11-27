@@ -47,3 +47,11 @@ describe('frequent cancel', () => {
     expect(frequentCancel({ total: 10, validUntil: null }, 0)).toEqual({ cancelNumber: 1, packUntil: null });
   });
 });
+
+describe('cancelFee — a package brought over by an invite', () => {
+  const H = 60 * 60 * 1000;
+  it('its last training counts as a pass: spent under 12 hours, never half back (no money was paid in the app)', () => {
+    expect(cancelFee('personal', 5 * H, 1, false)).toBe('FULL');
+    expect(cancelFee('personal', 12 * H, 1, false)).toBeNull();
+  });
+});

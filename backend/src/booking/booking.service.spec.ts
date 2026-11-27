@@ -51,7 +51,7 @@ function makeDb(results: unknown[][] = [], writeResult: () => unknown = () => un
   function readLink(): any {
     const then = (resolve: (v: unknown) => void) => resolve(next());
     const chain: any = { then };
-    for (const m of ['from', 'innerJoin', 'where', 'for', 'orderBy', 'limit']) {
+    for (const m of ['from', 'innerJoin', 'leftJoin', 'where', 'for', 'orderBy', 'limit']) {
       chain[m] = jest.fn().mockImplementation(() => readLink());
     }
     return chain;

@@ -233,14 +233,15 @@ export class EntitlementsService {
       .select({
         id: packages.id,
         trainingType: packages.trainingType,
-        title: purchaseItems.title,
+        // A brought-over package (no purchase) has its own label
+        title: sql<string>`coalesce(${purchaseItems.title}, ${packages.label}, '')`,
         total: packages.total,
         used: USED,
         ...PASS_DATES,
         createdAt: packages.createdAt,
       })
       .from(packages)
-      .innerJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
+      .leftJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
       .where(eq(packages.memberId, memberId))
       .orderBy(asc(packages.createdAt));
     const today = this.today();
@@ -470,8 +471,9 @@ export class EntitlementsService {
         purchaseId: purchases.id,
       })
       .from(packages)
-      .innerJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
-      .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
+      // A brought-over package has no purchase: amountUah / purchaseId null
+      .leftJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
+      .leftJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
       .where(and(eq(packages.memberId, booking.memberId), eq(packages.trainingType, booking.trainingType)))
       .orderBy(asc(packages.createdAt));
     const own = lock ? await query.for('update', { of: packages }) : await query;

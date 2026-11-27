@@ -13,12 +13,18 @@ export const NO_REFUND_HOURS = 2;
 
 const HOUR_MS = 60 * 60 * 1000;
 
-// packTotal: size of what pays (1 = single training); null = nothing pays, so free
-export function cancelFee(trainingType: string, msBeforeStart: number, packTotal: number | null): CancelFee | null {
+// packTotal: size of what pays (1 = single training); null = nothing pays, so free. refundable: false for a package
+// brought over by an invite (paid before the app: no money to give half of), so its last training counts as a pass
+export function cancelFee(
+  trainingType: string,
+  msBeforeStart: number,
+  packTotal: number | null,
+  refundable = true,
+): CancelFee | null {
   if (packTotal === null) return null;
   if (trainingType === GROUP_TYPE) return msBeforeStart < GROUP_FREE_HOURS * HOUR_MS ? 'FULL' : null;
   if (msBeforeStart >= ASSIGNED_FREE_HOURS * HOUR_MS) return null;
-  if (packTotal > 1) return 'FULL';
+  if (packTotal > 1 || !refundable) return 'FULL';
   return msBeforeStart < NO_REFUND_HOURS * HOUR_MS ? 'FULL' : 'HALF';
 }
 

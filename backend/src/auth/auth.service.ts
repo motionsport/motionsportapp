@@ -12,7 +12,10 @@ import * as crypto from 'crypto';
 import { eq, and, isNull, gt, ne } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
-import { members, admins, owners, sessions, trainerInvites } from '../database/schema';
+import { members, admins, owners, sessions, trainerInvites, memberInvites } from '../database/schema';
+import { grantInvite, invitePreview, liveInvite, type MemberInvitePayload } from '../member-invites/invite.store';
+import { apiError } from '../common/api-error';
+import type { RegisterMemberInviteDto } from './dto/register-member-invite.dto';
 import { loginTarget } from './login-target';
 import { byRole, type Role, type SessionUser } from './roles';
 import { newToken, hashToken } from './token';
@@ -53,6 +56,55 @@ export class AuthService {
       .insert(members)
       .values({ memberCode, displayName: dto.displayName, pinHash, recoveryHash })
       .returning();
+
+    const sessionToken = await this.createSession('member', member.id);
+    return { memberCode, recoveryCode: rawRecoveryCode, sessionToken };
+  }
+
+  // «Запросити нового клієнта»: the client's page before the PIN (name and what is waiting); null = not valid
+  async memberInvitePreview(token: string) {
+    return invitePreview(this.database.db, token, this.clock.now().toJSDate());
+  }
+
+  // One transaction: the invite taken compare-and-set (one link, one client), the member with the inviting trainer and
+  // the permanent discount, then the club card and packages they already paid for (no money in stats)
+  async registerMemberInvite(dto: RegisterMemberInviteDto) {
+    const pinHash = await bcrypt.hash(dto.pin, BCRYPT_ROUNDS);
+    const rawRecoveryCode = crypto.randomBytes(20).toString('base64url');
+    const recoveryHash = await bcrypt.hash(rawRecoveryCode, BCRYPT_ROUNDS);
+    const memberCode = await this.generateUniqueMemberCode();
+    const now = this.clock.now();
+
+    const member = await this.database.db.transaction(async (tx) => {
+      const [invite] = await tx
+        .update(memberInvites)
+        .set({ usedAt: now.toJSDate() })
+        .where(liveInvite(dto.token, now.toJSDate()))
+        .returning({
+          id: memberInvites.id,
+          trainerId: memberInvites.createdByAdminId,
+          displayName: memberInvites.displayName,
+          payload: memberInvites.payload,
+        });
+      if (!invite) throw new BadRequestException(apiError('INVITE_INVALID'));
+      const payload = invite.payload as MemberInvitePayload;
+      const [created] = await tx
+        .insert(members)
+        .values({
+          memberCode,
+          displayName: invite.displayName,
+          pinHash,
+          recoveryHash,
+          trainerId: invite.trainerId,
+          permanentDiscount: payload.permanentDiscount,
+          permanentDiscountSetBy: payload.permanentDiscount ? invite.trainerId : null,
+          permanentDiscountSetAt: payload.permanentDiscount ? now.toJSDate() : null,
+        })
+        .returning({ id: members.id });
+      await tx.update(memberInvites).set({ usedByMemberId: created.id }).where(eq(memberInvites.id, invite.id));
+      await grantInvite(tx, created.id, invite.trainerId, payload, now.toISODate()!);
+      return created;
+    });
 
     const sessionToken = await this.createSession('member', member.id);
     return { memberCode, recoveryCode: rawRecoveryCode, sessionToken };

@@ -38,6 +38,9 @@ export const API_ERRORS = {
   BIRTHDAY_DISCOUNT_GIVEN: 'Birthday discount already given this year',
   BIRTHDAY_DISCOUNT_NOT_FREE: 'Birthday discount is not available',
   DISCOUNT_CHANGED: 'The discount changed meanwhile',
+  // «Запросити нового клієнта»: a link used, revoked or expired; a form with a past date or a wrong club card
+  INVITE_INVALID: 'Invite is not valid',
+  INVITE_FORM_INVALID: 'Invite form is not valid',
   // «Спеціальна пропозиція»: only a client who never had a club card or package
   SPECIAL_OFFER_USED: 'Special offer is for the first purchase only',
   // Trainer: calendar, weekly schedule, marks, refunds

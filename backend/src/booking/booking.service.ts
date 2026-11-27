@@ -293,12 +293,12 @@ export class BookingService {
       row.id,
     );
     const msBefore = slotStartsAt(row.localDate, row.slotTime).toMillis() - this.clock.now().toMillis();
-    const fee = cancelFee(row.trainingType, msBefore, payer?.total ?? null);
+    const fee = cancelFee(row.trainingType, msBefore, payer?.total ?? null, payer?.amountUah != null);
     return {
       fee,
       // A single training burns; a pass loses one
       single: payer?.total === 1,
-      refundUah: fee === 'HALF' && payer ? halfBack(payer.amountUah) : null,
+      refundUah: fee === 'HALF' && payer?.amountUah != null ? halfBack(payer.amountUah) : null,
       // «Скасувань за місяць: 3»: counted like the trainer's «Клієнти»
       ...frequentCancel(payer, await this.recentCancellations(memberId)),
     };
@@ -326,7 +326,7 @@ export class BookingService {
   ): Promise<number | null> {
     const msBefore = slotStartsAt(localDate, slotTime).toMillis() - this.clock.now().toMillis();
     const payer = await this.entitlements.payerFor(tx, { memberId, trainingType, localDate }, bookingId);
-    if (!cancelFee(trainingType, msBefore, payer?.total ?? null)) return null;
+    if (!cancelFee(trainingType, msBefore, payer?.total ?? null, payer?.amountUah != null)) return null;
 
     await tx.update(bookings).set({ cancelFee: 'FULL' }).where(eq(bookings.id, bookingId));
     await this.entitlements.syncSpend(tx, bookingId);
@@ -334,12 +334,13 @@ export class BookingService {
       .select({ total: packages.total, amountUah: purchaseItems.amountUah, purchaseId: purchaseItems.purchaseId })
       .from(packageSpends)
       .innerJoin(packages, eq(packages.id, packageSpends.packageId))
-      .innerJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
+      // A package brought over by an invite has no purchase: no money, so no half back
+      .leftJoin(purchaseItems, eq(purchaseItems.id, packages.purchaseItemId))
       .where(eq(packageSpends.bookingId, bookingId))
       .limit(1);
-    const fee = cancelFee(trainingType, msBefore, spent?.total ?? null);
+    const fee = cancelFee(trainingType, msBefore, spent?.total ?? null, spent?.amountUah != null);
     if (fee !== 'FULL') await tx.update(bookings).set({ cancelFee: fee }).where(eq(bookings.id, bookingId));
-    if (fee === 'HALF' && halfBack(spent.amountUah) > 0) {
+    if (fee === 'HALF' && spent.amountUah != null && spent.purchaseId && halfBack(spent.amountUah) > 0) {
       await tx.insert(cancelRefunds).values({
         bookingId,
         memberId,

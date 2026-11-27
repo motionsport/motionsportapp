@@ -5,6 +5,7 @@ import { reloadTo } from "@/lib/loginRedirect";
 import { api } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { errorText } from "@/lib/apiErrors";
+import { SavedCodes } from "@/components/auth/SavedCodes";
 
 export default function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
@@ -16,19 +17,6 @@ export default function RegisterPage() {
     memberCode: string;
     recoveryCode: string;
   } | null>(null);
-
-  const [copied, setCopied] = useState<"code" | "recovery" | null>(null);
-
-  const copyToClipboard = async (text: string, key: "code" | "recovery") => {
-    // No clipboard (old browser, no https): the code stays on screen to copy by hand
-    const ok = await navigator.clipboard.writeText(text).then(
-      () => true,
-      () => false,
-    );
-    if (!ok) return;
-    setCopied(key);
-    setTimeout(() => setCopied(null), 2000);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,39 +47,7 @@ export default function RegisterPage() {
         </h1>
         <p className="text-muted text-sm mb-6">Збережіть ці дані. Код відновлення більше не покажеться.</p>
 
-        <div className="bg-surface rounded-xl p-5 mb-4 space-y-4">
-          <div>
-            <p className="text-muted text-xs mb-1">Ваш код учасника</p>
-            <div className="flex items-center justify-between">
-              <span className="font-geologica font-semibold text-xl text-heading">{result.memberCode}</span>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(result.memberCode, "code")}
-                className="text-accent text-sm hover:underline ml-2"
-              >
-                {copied === "code" ? "Скопійовано ✓" : "Копіювати"}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-muted text-xs mb-1">Код відновлення</p>
-            <div className="flex items-center justify-between space-x-2">
-              <span className="font-mono text-sm text-body break-all">{result.recoveryCode}</span>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(result.recoveryCode, "recovery")}
-                className="text-accent text-sm hover:underline shrink-0"
-              >
-                {copied === "recovery" ? "Скопійовано ✓" : "Копіювати"}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-danger text-sm mb-6">
-          ⚠ Збережіть код відновлення зараз. Якщо забудете PIN, він потрібен для відновлення доступу.
-        </p>
+        <SavedCodes memberCode={result.memberCode} recoveryCode={result.recoveryCode} />
 
         <button
           type="button"

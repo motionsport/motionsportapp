@@ -1,4 +1,17 @@
-import { Controller, Post, Get, Body, Param, Res, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Res,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common';
+import { apiError } from '../common/api-error';
+import { RegisterMemberInviteDto } from './dto/register-member-invite.dto';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { SessionGuard, SessionUser } from './session.guard';
@@ -20,6 +33,21 @@ export class AuthController {
   @Post('member/register')
   async registerMember(@Body() dto: RegisterMemberDto, @Res({ passthrough: true }) res: Response) {
     const { memberCode, recoveryCode, sessionToken } = await this.authService.registerMember(dto);
+    setSessionCookies(res, sessionToken, 'member');
+    return { memberCode, recoveryCode };
+  }
+
+  // «Запросити нового клієнта»: the client's page before the PIN
+  @Get('member/invite/:token')
+  async memberInvite(@Param('token') token: string) {
+    const preview = await this.authService.memberInvitePreview(token.slice(0, 200));
+    if (!preview) throw new NotFoundException(apiError('INVITE_INVALID'));
+    return preview;
+  }
+
+  @Post('member/register-invite')
+  async registerMemberInvite(@Body() dto: RegisterMemberInviteDto, @Res({ passthrough: true }) res: Response) {
+    const { memberCode, recoveryCode, sessionToken } = await this.authService.registerMemberInvite(dto);
     setSessionCookies(res, sessionToken, 'member');
     return { memberCode, recoveryCode };
   }
