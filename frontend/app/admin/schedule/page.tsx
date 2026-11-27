@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api, SkippedTraining, TrainerSchedule } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { AdminMenu } from "@/components/admin/AdminMenu";
+import { Badge } from "@/components/ui/Badge";
 import { errorText } from "@/lib/apiErrors";
 import { trainingsCount } from "@/lib/plural";
 import { useAdminData } from "@/lib/useAdminData";
@@ -281,10 +282,13 @@ export default function GroupSchedulePage() {
           )}
 
           {/* On a phone stuck to the bottom of the screen: after «+ час» up the page, «Зберегти» was out of sight */}
-          <div className="max-sm:sticky max-sm:bottom-0 max-sm:-mx-5 max-sm:px-5 max-sm:pt-3 max-sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] max-sm:bg-background">
+          <div className="max-sm:sticky max-sm:bottom-0 max-sm:-mx-5 max-sm:px-5 max-sm:pt-3 max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-sm:bg-surface max-sm:border-t max-sm:border-line">
             {dirty && (
-              <p role="status" className="text-warn text-xs text-center mb-2">
-                Є незбережені зміни
+              // A warn badge, so it stands out over the button
+              <p role="status" className="text-center mb-2">
+                <Badge tone="warn" size="status">
+                  ⚠ Є незбережені зміни
+                </Badge>
               </p>
             )}
             <button
