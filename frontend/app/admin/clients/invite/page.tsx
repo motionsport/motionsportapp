@@ -146,12 +146,13 @@ export default function InviteClientPage() {
         <div className="flex flex-col space-y-3">
           {rows.map((r, i) => (
             <div key={i} className="rounded-xl border border-line bg-surface p-3 flex flex-col space-y-2">
-              <div className="flex space-x-2">
+              {/* The package on its own line; under it «Лишилось» and «Діє до» side by side, same height */}
+              <label className="text-subtle text-xs">
+                Пакет
                 <select
-                  aria-label="Пакет"
                   value={r.priceItemId}
                   onChange={(e) => setRow(i, { priceItemId: e.target.value })}
-                  className={`${field} flex-1 min-w-0`}
+                  className={`${field} mt-1`}
                 >
                   <option value="">Виберіть пакет</option>
                   {(["personal", "split", "group"] as TrainingType[]).map((t) => (
@@ -166,7 +167,9 @@ export default function InviteClientPage() {
                     </optgroup>
                   ))}
                 </select>
-                <label className="w-28 text-subtle text-xs">
+              </label>
+              <div className="flex space-x-2">
+                <label className="w-28 shrink-0 text-subtle text-xs">
                   Лишилось
                   <input
                     type="number"
@@ -178,17 +181,17 @@ export default function InviteClientPage() {
                     className={`${field} mt-1`}
                   />
                 </label>
+                <label className="flex-1 min-w-0 text-subtle text-xs">
+                  Діє до
+                  <input
+                    type="date"
+                    value={r.validUntil}
+                    min={today}
+                    onChange={(e) => setRow(i, { validUntil: e.target.value })}
+                    className={`${field} mt-1`}
+                  />
+                </label>
               </div>
-              <label className="text-subtle text-xs">
-                Діє до
-                <input
-                  type="date"
-                  value={r.validUntil}
-                  min={today}
-                  onChange={(e) => setRow(i, { validUntil: e.target.value })}
-                  className={`${field} mt-1`}
-                />
-              </label>
               <button
                 type="button"
                 onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
