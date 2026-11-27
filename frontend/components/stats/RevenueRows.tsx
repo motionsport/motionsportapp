@@ -13,7 +13,8 @@ const REVENUE_ROWS: [keyof Omit<Revenue, "total">, string, string][] = [
 
 // A revenue card's money, the same on the trainer's «Статистика» and every card of the owner's «Статистика залу»: the
 // columns at price list prices, then (only when something was taken off) «Разом», the discounts and the refunds with
-// a minus, and last, always, «Фактично отримано» (revenue.total, what the gym actually has). `fromReception`: the part
+// a minus, and last, always, «Отримано» (revenue.total, what the gym actually has: the big sum in the card's header,
+// which has no label). `fromReception`: the part
 // of «Абонементи» added at the reception, as «з них з рецепції» under it (the owner's «Весь зал» only)
 export function RevenueRows({
   revenue,
@@ -74,7 +75,7 @@ export function RevenueRows({
           )}
         </>
       )}
-      <Line label="Фактично отримано" value={formatUah(revenue.total)} strong top={gross === revenue.total} />
+      <Line label="Отримано" value={formatUah(revenue.total)} strong top={gross === revenue.total} />
     </div>
   );
 }

@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/Badge";
 import { OwnerMenu } from "@/components/owner/OwnerMenu";
 import { RevenueRows } from "@/components/stats/RevenueRows";
 import { GiftRow } from "@/components/stats/GiftRow";
+import { VisitsRow } from "@/components/stats/VisitsRow";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
+import { formatUah } from "@/lib/prices";
 import { useAdminData } from "@/lib/useAdminData";
 import { monthKeysUpToNow } from "@/lib/statsMonths";
 import { discountSummaryIn, discountSummaryText, gymCards, gymMonthsWithData, type GymCard } from "./gymStats";
@@ -21,19 +23,12 @@ function Card({ card }: { card: GymCard }) {
           {card.title}
           {card.disabled && <Badge className="ml-2">вимкнено</Badge>}
         </span>
+        {/* The big sum, no label: the rows end with «Отримано», the same number */}
+        <span className="font-geologica text-heading tabular-nums text-sm">{formatUah(card.revenue.total)}</span>
       </div>
       <RevenueRows revenue={card.revenue} fromReception={card.reception} />
       <GiftRow revenue={card.revenue} />
-      {card.present !== null && (
-        <div className="flex justify-between space-x-3 mt-3 pt-3 border-t border-line">
-          <span className="text-subtle">
-            Відвідувань
-            {/* Visits, not people: one client coming 8 times is 8 */}
-            <span className="block text-xs">тренування з ✓, гості теж, без сьогодні</span>
-          </span>
-          <span className={`tabular-nums ${card.present ? "text-body" : "text-muted"}`}>{card.present}</span>
-        </div>
-      )}
+      {card.present !== null && <VisitsRow count={card.present} />}
     </div>
   );
 }

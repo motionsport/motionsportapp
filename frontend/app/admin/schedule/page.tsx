@@ -218,8 +218,9 @@ export default function GroupSchedulePage() {
             })}
           </div>
 
-          <div className="flex items-center justify-between space-x-4 rounded-xl border border-line p-4">
-            <label htmlFor="opens-at" className="text-heading text-sm">
+          {/* The time under the text, not beside it: on a phone the long hint squeezed the field until 15:00 was cut */}
+          <div className="rounded-xl border border-line p-4">
+            <label htmlFor="opens-at" className="block text-heading text-sm">
               Запис відкривається о
               <span className="block text-muted text-xs mt-1">
                 для всіх ваших групових, зокрема доданих у календарі. На тренування раніше за цей час (зранку) запис
@@ -232,7 +233,7 @@ export default function GroupSchedulePage() {
               step={900}
               value={schedule.bookingOpensAt}
               onChange={(e) => change({ ...schedule, bookingOpensAt: e.target.value })}
-              className={`${TIME_FIELD} w-36`}
+              className={`${TIME_FIELD} w-36 mt-3`}
             />
           </div>
 

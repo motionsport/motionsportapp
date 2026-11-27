@@ -156,15 +156,19 @@ type GymRevenueRow = RevenueRow & { payee: string | null };
 type GymPresentRow = { trainerId: string; month: string; present: number };
 
 // The owner's page: one entry per trainer (zeros included), and money no trainer is credited with
+// «Відвідувань»: ✓ marks (guests too) on one trainer's trainings per month and all time, newest month first. Visits,
+// not people: one client coming 8 times is 8. The trainer's «Статистика» and the owner's cards alike
+export function summarizePresent(presentRows: GymPresentRow[], trainerId: string) {
+  const byMonth = new Map<string, number>();
+  for (const r of presentRows.filter((p) => p.trainerId === trainerId)) {
+    byMonth.set(r.month, (byMonth.get(r.month) ?? 0) + r.present);
+  }
+  const months = [...byMonth].sort(([a], [b]) => b.localeCompare(a)).map(([month, n]) => ({ month, present: n }));
+  return { allTime: months.reduce((sum, m) => sum + m.present, 0), months };
+}
+
 export function buildGymStats(trainers: GymTrainer[], revenueRows: GymRevenueRow[], presentRows: GymPresentRow[]) {
-  const present = (trainerId: string) => {
-    const byMonth = new Map<string, number>();
-    for (const r of presentRows.filter((p) => p.trainerId === trainerId)) {
-      byMonth.set(r.month, (byMonth.get(r.month) ?? 0) + r.present);
-    }
-    const months = [...byMonth].sort(([a], [b]) => b.localeCompare(a)).map(([month, n]) => ({ month, present: n }));
-    return { allTime: months.reduce((sum, m) => sum + m.present, 0), months };
-  };
+  const present = (trainerId: string) => summarizePresent(presentRows, trainerId);
   return {
     trainers: trainers.map((t) => ({
       id: t.id,
@@ -199,6 +203,7 @@ export class StatsService {
       ]),
       // Cards this trainer added at the reception: shown apart, the gym's money, not in their total
       reception: summarizeRevenue(await this.receptionRows(eq(clubCards.addedBy, trainerId))),
+      present: summarizePresent(await this.presentByMonth(trainerId), trainerId),
       ...(await this.load(trainerId)),
     };
   }
@@ -323,10 +328,15 @@ export class StatsService {
   }
 
   // People marked ✓ (members and guests) per trainer and month, days before today, as in load()
-  private async presentByMonth(): Promise<GymPresentRow[]> {
+  // `trainerId`: one trainer's only (their «Статистика»)
+  private async presentByMonth(trainerId?: string): Promise<GymPresentRow[]> {
     const today = this.clock.now().toISODate()!;
     const month = sql<string>`substr(${trainingDays.localDate}::text, 1, 7)`;
-    const past = and(eq(trainingSlots.status, 'ACTIVE'), lt(trainingDays.localDate, today));
+    const past = and(
+      eq(trainingSlots.status, 'ACTIVE'),
+      lt(trainingDays.localDate, today),
+      trainerId ? eq(trainingSlots.trainerId, trainerId) : undefined,
+    );
     const members = await this.database.db
       .select({ trainerId: trainingSlots.trainerId, month, present: sql<number>`count(*)::int` })
       .from(attendance)

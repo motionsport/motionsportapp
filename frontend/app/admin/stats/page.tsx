@@ -8,6 +8,7 @@ import { useAdminData } from "@/lib/useAdminData";
 import { monthKeysUpToNow, monthName } from "@/lib/statsMonths";
 import { RevenueRows } from "@/components/stats/RevenueRows";
 import { GiftRow } from "@/components/stats/GiftRow";
+import { VisitsRow } from "@/components/stats/VisitsRow";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 
 const sectionTitle = "font-geologica font-semibold text-heading uppercase mb-3";
@@ -50,12 +51,12 @@ function dayName(localDate: string) {
   });
 }
 
-// 1 людина, 3 людини, 5 людей
-function people(n: number) {
+// 1 відвідування, 3 відвідування, 5 відвідувань
+function visits(n: number) {
   const tens = n % 100;
   const ones = n % 10;
-  const word = tens >= 11 && tens <= 14 ? "людей" : ones === 1 ? "людина" : ones >= 2 && ones <= 4 ? "людини" : "людей";
-  return `${n} ${word}`;
+  const many = tens >= 11 && tens <= 14 ? true : ones === 0 || ones >= 5;
+  return `${n} ${many ? "відвідувань" : "відвідування"}`;
 }
 
 const BarsIcon = () => (
@@ -68,14 +69,16 @@ const BarsIcon = () => (
 function RevenueBlock({
   revenue,
   reception,
+  present,
 }: {
   revenue: TrainerStats["revenue"];
   reception: TrainerStats["reception"];
+  present: TrainerStats["present"];
 }) {
-  const months = monthsUpToNow(
-    revenue.months,
-    reception.months.map((m) => m.month),
-  );
+  const months = monthsUpToNow(revenue.months, [
+    ...reception.months.map((m) => m.month),
+    ...present.months.map((m) => m.month),
+  ]);
   const [chart, setChart] = useState(false);
   const [allTime, setAllTime] = useState(false);
   const [selected, setSelected] = useState(months.length - 1);
@@ -148,17 +151,27 @@ function RevenueBlock({
       )}
 
       <div className="rounded-xl border border-line bg-surface p-4">
-        {/* Just the month picked on the chart; the money ends with «Фактично отримано» */}
-        {chart && <p className="text-heading font-semibold mb-3">{monthName(month.month)}</p>}
+        {/* The period and the big sum, no label: the rows end with «Отримано», the same number */}
+        <div className="flex items-baseline justify-between space-x-3 mb-3">
+          <span className="text-heading font-semibold">{allTime && !chart ? "Весь час" : monthName(month.month)}</span>
+          <span className="font-geologica text-heading tabular-nums text-sm">
+            {formatUah(allTime && !chart ? revenue.allTime.total : month.total)}
+          </span>
+        </div>
         <RevenueRows revenue={allTime && !chart ? revenue.allTime : month} />
         <GiftRow revenue={allTime && !chart ? revenue.allTime : month} />
+        <VisitsRow
+          count={
+            allTime && !chart ? present.allTime : (present.months.find((m) => m.month === month.month)?.present ?? 0)
+          }
+        />
         {fromReception > 0 && (
           <div className="mt-3 pt-3 border-t border-line">
             <div className="flex justify-between space-x-3">
               <span className="text-subtle">Абонементи з рецепції</span>
               <span className="tabular-nums text-body">{formatUah(fromReception)}</span>
             </div>
-            <p className="text-subtle text-xs mt-1">Гроші залу, у «Фактично отримано» не входять</p>
+            <p className="text-subtle text-xs mt-1">Гроші залу, в «Отримано» не входять</p>
           </div>
         )}
       </div>
@@ -193,13 +206,13 @@ export default function StatsPage() {
               гроші залу.
             </p>
 
-            <RevenueBlock revenue={stats.revenue} reception={stats.reception} />
+            <RevenueBlock revenue={stats.revenue} reception={stats.reception} present={stats.present} />
           </section>
 
           <section>
             <h2 className={sectionTitle}>Завантаженість</h2>
             <p className="text-subtle text-xs mb-3">
-              Скільки людей прийшло (✓) на ваші тренування, гості теж. Сьогоднішній день зʼявиться завтра.
+              Скільки відвідувань (✓) було на ваших тренуваннях, гості теж. Сьогоднішній день зʼявиться завтра.
             </p>
 
             {stats.busiestDays.length === 0 ? (
@@ -207,7 +220,7 @@ export default function StatsPage() {
             ) : (
               <div className="flex flex-col space-y-6">
                 <div>
-                  <h3 className={label}>Найбільше людей</h3>
+                  <h3 className={label}>Найбільше відвідувань</h3>
                   <div className="flex flex-col">
                     {stats.busiestDays.map((d) => (
                       <div
@@ -215,7 +228,7 @@ export default function StatsPage() {
                         className="flex justify-between space-x-3 py-1.5 border-b border-line last:border-0"
                       >
                         <span className="text-heading">{dayName(d.localDate)}</span>
-                        <span className="text-body tabular-nums">{people(d.present)}</span>
+                        <span className="text-body tabular-nums">{visits(d.present)}</span>
                       </div>
                     ))}
                   </div>
