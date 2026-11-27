@@ -9,6 +9,7 @@ import {
   attendance,
   bookingGuests,
   bookings,
+  cancelRefunds,
   clubCards,
   priceItems,
   purchaseItems,
@@ -21,7 +22,8 @@ import { KY_ZONE } from '../schedule/training-types';
 
 const TOP_DAYS = 5;
 
-// total = money actually received (net of discounts); discount = what was knocked off, discounted = purchases with one
+// total = money the gym actually has: received (net of discounts) minus the refunds handed back; discount = what was
+// knocked off, discounted = purchases with one. The columns are what was received, before refunds
 export type Revenue = {
   clubCards: number;
   personal: number;
@@ -34,6 +36,9 @@ export type Revenue = {
   permanentDiscount: number;
   // «Спеціальна пропозиція»: single gym visits given free (purchase_items.gift), not money
   gifts: number;
+  // Half refunds after a late cancellation handed back («Повернення за скасування»), by the month given back; total is
+  // already net of them
+  refunds: number;
 };
 type RevenueColumn = 'clubCards' | 'personal' | 'split' | 'group';
 
@@ -47,6 +52,7 @@ const emptyRevenue = (): Revenue => ({
   discounted: 0,
   permanentDiscount: 0,
   gifts: 0,
+  refunds: 0,
 });
 
 // Revenue column: price list section, split by type for trainer services
@@ -65,6 +71,8 @@ type RevenueRow = {
   discounted?: number;
   permanentDiscount?: number;
   gifts?: number;
+  // A refund row: money given back (amount 0)
+  refunds?: number;
 };
 export type RevenueSummary = { allTime: Revenue; months: ({ month: string } & Revenue)[] };
 
@@ -84,6 +92,8 @@ export function summarizeRevenue(rows: RevenueRow[]): RevenueSummary {
       t.discounted += discounted;
       t.permanentDiscount += r.permanentDiscount ?? 0;
       t.gifts += r.gifts ?? 0;
+      t.refunds += r.refunds ?? 0;
+      t.total -= r.refunds ?? 0;
     }
     byMonth.set(r.month, m);
   }
@@ -181,7 +191,10 @@ export class StatsService {
 
   async forTrainer(trainerId: string) {
     return {
-      revenue: summarizeRevenue(await this.revenueRows(eq(payee, trainerId))),
+      revenue: summarizeRevenue([
+        ...(await this.revenueRows(eq(payee, trainerId))),
+        ...(await this.refundRows(eq(payee, trainerId))),
+      ]),
       // Cards this trainer added at the reception: shown apart, the gym's money, not in their total
       reception: summarizeRevenue(await this.receptionRows(eq(clubCards.addedBy, trainerId))),
       ...(await this.load(trainerId)),
@@ -195,7 +208,11 @@ export class StatsService {
       .from(admins)
       .orderBy(asc(admins.createdAt));
     return {
-      ...buildGymStats(trainers, await this.revenueRows(), await this.presentByMonth()),
+      ...buildGymStats(
+        trainers,
+        [...(await this.revenueRows()), ...(await this.refundRows())],
+        await this.presentByMonth(),
+      ),
       // The gym's money, no trainer's: only in «Весь зал», as «з них з рецепції»
       reception: { revenue: summarizeRevenue(await this.receptionRows()) },
       reviewDiscounts: summarizeDiscounts(await this.discountRows()),
@@ -261,6 +278,26 @@ export class StatsService {
       })),
       ...bought.map((r) => ({ kind: 'purchase' as const, month: r.month, count: r.count, uah: r.uah })),
     ];
+  }
+
+  // Refunds handed back (DONE, any way), taken off the money of whoever the purchase counts for (its payee), in the
+  // Kyiv month given back. Amount 0: the columns stay what was received
+  private refundRows(only?: SQL) {
+    const month = sql<string>`to_char(${cancelRefunds.doneAt} at time zone 'Europe/Kyiv', 'YYYY-MM')`;
+    return this.database.db
+      .select({
+        payee,
+        month,
+        section: sql<string>`'assigned'`,
+        trainingType: sql<string | null>`null`,
+        amount: sql<number>`0`,
+        discount: sql<number>`0`,
+        refunds: sql<number>`sum(${cancelRefunds.amountUah})::int`,
+      })
+      .from(cancelRefunds)
+      .innerJoin(purchases, eq(purchases.id, cancelRefunds.purchaseId))
+      .where(and(only, eq(cancelRefunds.status, 'DONE'), isNotNull(cancelRefunds.doneAt)))
+      .groupBy(payee, month);
   }
 
   private revenueRows(only?: SQL) {

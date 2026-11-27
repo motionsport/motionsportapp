@@ -22,6 +22,7 @@ const zero = (): Revenue => ({
   discount: 0,
   discounted: 0,
   permanentDiscount: 0,
+  refunds: 0,
   gifts: 0,
 });
 
@@ -29,8 +30,8 @@ function revenueIn(r: RevenueByMonth, period: GymPeriod): Revenue {
   if (period === "all") return r.allTime;
   const m = r.months.find((x) => x.month === period);
   if (!m) return zero();
-  const { clubCards, personal, split, group, total, discount, discounted, permanentDiscount, gifts } = m;
-  return { clubCards, personal, split, group, total, discount, discounted, permanentDiscount, gifts };
+  const { clubCards, personal, split, group, total, discount, discounted, permanentDiscount, gifts, refunds } = m;
+  return { clubCards, personal, split, group, total, discount, discounted, permanentDiscount, gifts, refunds };
 }
 
 function presentIn(p: GymStats["trainers"][number]["present"], period: GymPeriod) {
@@ -48,6 +49,7 @@ function add(a: Revenue, b: Revenue): Revenue {
     discounted: a.discounted + b.discounted,
     permanentDiscount: a.permanentDiscount + b.permanentDiscount,
     gifts: a.gifts + b.gifts,
+    refunds: a.refunds + b.refunds,
   };
 }
 
@@ -63,7 +65,7 @@ export function gymCards(stats: GymStats, period: GymPeriod): GymCard[] {
   }));
   const unassigned = revenueIn(stats.unassigned.revenue, period);
   const rest: GymCard[] =
-    unassigned.total > 0
+    unassigned.total !== 0 || unassigned.refunds > 0
       ? [{ key: "unassigned", title: "Без тренера", disabled: false, revenue: unassigned, present: null, reception: 0 }]
       : [];
   const all = [...trainers, ...rest];

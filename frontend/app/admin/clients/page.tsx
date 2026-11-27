@@ -6,27 +6,20 @@ import { AdminMenu } from "@/components/admin/AdminMenu";
 import { CashRequests } from "./CashRequests";
 import { MemberInvites } from "./MemberInvites";
 import { FreezeRequests } from "./FreezeRequests";
-import { CancelRefunds } from "./CancelRefunds";
 import { NoteCell, PurchaseSummary, TrainerPicker } from "@/components/admin/ClientParts";
 import { FREQUENT_CANCELLATIONS } from "@/lib/cancelFee";
 import { useAdminData } from "@/lib/useAdminData";
 
 const loadClientsPage = () =>
-  Promise.all([
-    api.getMembers(),
-    api.getTrainers(),
-    api.me(),
-    api.getPendingCash(),
-    api.getPendingFreezes(),
-    api.getPendingCancelRefunds(),
-  ]).then(([members, trainers, me, cash, freezes, refunds]) => ({
-    members,
-    trainers,
-    myId: me.id,
-    cash,
-    freezes,
-    refunds,
-  }));
+  Promise.all([api.getMembers(), api.getTrainers(), api.me(), api.getPendingCash(), api.getPendingFreezes()]).then(
+    ([members, trainers, me, cash, freezes]) => ({
+      members,
+      trainers,
+      myId: me.id,
+      cash,
+      freezes,
+    }),
+  );
 
 export default function ClientsPage() {
   // reload after a decision; on failure the old lists stay, marked stale
@@ -114,7 +107,6 @@ export default function ClientsPage() {
           <MemberInvites />
           <CashRequests requests={data?.cash ?? []} onDecided={reload} />
           <FreezeRequests requests={data?.freezes ?? []} onDecided={reload} />
-          <CancelRefunds refunds={data?.refunds ?? []} onDone={reload} />
 
           {unassigned.length > 0 && (
             <section>

@@ -1,11 +1,13 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { PageLayout } from "@/components/ui/PageLayout";
 import { Badge } from "@/components/ui/Badge";
 import { OwnerMenu } from "@/components/owner/OwnerMenu";
 import { RevenueRows } from "@/components/stats/RevenueRows";
 import { DiscountRows } from "@/components/stats/DiscountRows";
+import { RefundRows } from "@/components/stats/RefundRows";
 import { GiftRow } from "@/components/stats/GiftRow";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 import { formatUah } from "@/lib/prices";
@@ -25,6 +27,7 @@ function Card({ card }: { card: GymCard }) {
         <span className="font-geologica text-heading tabular-nums text-sm">{formatUah(card.revenue.total)}</span>
       </div>
       <RevenueRows revenue={card.revenue} fromReception={card.reception} />
+      <RefundRows revenue={card.revenue} />
       <DiscountRows revenue={card.revenue} withTotal />
       <GiftRow revenue={card.revenue} />
       {card.present !== null && (
@@ -47,6 +50,14 @@ export default function OwnerStatsPage() {
   const selected = picked ?? months.length - 1; // the current month until one is picked
   const period = allTime ? "all" : months[selected];
   const discountLine = stats ? discountSummaryText(discountSummaryIn(stats, period)) : null;
+  // Cash waiting to be handed back (the owner gets no pushes)
+  const [refundsWaiting, setRefundsWaiting] = useState(0);
+  useEffect(() => {
+    api
+      .getOwnerRefunds()
+      .then((r) => setRefundsWaiting(r.length))
+      .catch(() => undefined);
+  }, []);
 
   return (
     <PageLayout variant="top" loading={!stats && !loadError} action={<OwnerMenu />}>
@@ -56,8 +67,17 @@ export default function OwnerStatsPage() {
       <p className="text-subtle text-xs mb-6">
         Покупки через застосунок (готівка, переказ, онлайн) за датою оплати. Абонементи з рецепції це гроші залу: лише у
         «Весь зал», за датою додавання. І скільки людей прийшло (✓, гості теж) на тренування кожного тренера.
-        Сьогоднішній день зʼявиться завтра.
+        Сьогоднішній день зʼявиться завтра. Повернення за пізнє скасування віднімаються в місяці, коли їх віддали.
       </p>
+
+      {refundsWaiting > 0 && (
+        <Link
+          href="/owner/refunds"
+          className="block bg-warn-bg border border-warn-line rounded-xl px-4 py-3 mb-4 text-sm text-warn"
+        >
+          Чекають повернення: {refundsWaiting} →
+        </Link>
+      )}
 
       {loadError && (
         <p role="alert" className="text-danger text-sm">

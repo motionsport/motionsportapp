@@ -21,10 +21,10 @@ describe("feeWarning (the member's «Скасувати»)", () => {
 
   it("a single personal training 2–12 hours ahead gets half back, with the sum when known", () => {
     expect(feeWarning({ fee: "HALF", single: true, refundUah: 300, cancelNumber: null, packUntil: null })).toBe(
-      "Тренування згорить, повернемо 50% (300 ₴).",
+      "Тренування згорить, повернемо 50% (300 ₴) готівкою.",
     );
     expect(feeWarning({ fee: "HALF", single: true, refundUah: null, cancelNumber: null, packUntil: null })).toBe(
-      "Тренування згорить, повернемо 50%.",
+      "Тренування згорить, повернемо 50% готівкою.",
     );
   });
 });
@@ -37,7 +37,7 @@ describe("feeLabel (the trainer's «Скасували»)", () => {
   });
 
   it("half to return, then returned", () => {
-    expect(feeLabel({ ...fee, kind: "HALF", refundUah: 300 })).toBe("повернути 300 ₴");
+    expect(feeLabel({ ...fee, kind: "HALF", refundUah: 300 })).toBe("поверне власник: 300 ₴");
     expect(feeLabel({ ...fee, kind: "HALF", refundUah: 300, refundDone: true })).toBe("повернено 300 ₴");
     expect(feeLabel({ ...fee, kind: "HALF", refundUah: 300, refundSending: true })).toBe("очікує повернення 300 ₴");
   });

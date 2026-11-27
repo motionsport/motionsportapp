@@ -8,6 +8,7 @@ import { useAdminData } from "@/lib/useAdminData";
 import { monthKeysUpToNow, monthName } from "@/lib/statsMonths";
 import { RevenueRows } from "@/components/stats/RevenueRows";
 import { DiscountRows } from "@/components/stats/DiscountRows";
+import { RefundRows } from "@/components/stats/RefundRows";
 import { GiftRow } from "@/components/stats/GiftRow";
 import { MonthStepper, PeriodSwitch } from "@/components/stats/PeriodPicker";
 
@@ -29,6 +30,7 @@ const noRevenue = (month: string): MonthRevenue => ({
   discount: 0,
   discounted: 0,
   permanentDiscount: 0,
+  refunds: 0,
   gifts: 0,
 });
 
@@ -157,6 +159,7 @@ function RevenueBlock({
           </span>
         </div>
         <RevenueRows revenue={allTime && !chart ? revenue.allTime : month} />
+        <RefundRows revenue={allTime && !chart ? revenue.allTime : month} />
         <DiscountRows revenue={allTime && !chart ? revenue.allTime : month} withTotal={chart} />
         <GiftRow revenue={allTime && !chart ? revenue.allTime : month} />
         {fromReception > 0 && (

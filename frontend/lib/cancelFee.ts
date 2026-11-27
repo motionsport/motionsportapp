@@ -7,7 +7,7 @@ export const FREQUENT_CANCELLATIONS = 3;
 // Member's warning before cancelling; null = free
 export function feeWarning(p: CancelFeePreview | null) {
   if (!p?.fee) return null;
-  if (p.fee === "HALF") return `Тренування згорить, повернемо 50%${p.refundUah ? ` (${p.refundUah} ₴)` : ""}.`;
+  if (p.fee === "HALF") return `Тренування згорить, повернемо 50%${p.refundUah ? ` (${p.refundUah} ₴)` : ""} готівкою.`;
   return p.single ? "Тренування згорить, гроші не повертаються." : "З пакета спишеться 1 тренування.";
 }
 
@@ -55,7 +55,8 @@ export function feeLabel(fee: NonNullable<Cancellation["fee"]>) {
     if (fee.refundDone) return `повернено ${fee.refundUah} ₴`;
     // Sent, the money not gone yet (LiqPay may wait for new payments)
     if (fee.refundSending) return `очікує повернення ${fee.refundUah} ₴`;
-    return `повернути ${fee.refundUah} ₴`;
+    // The owner hands it over («Повернення»), not the trainer
+    return `поверне власник: ${fee.refundUah} ₴`;
   }
   return "списано";
 }

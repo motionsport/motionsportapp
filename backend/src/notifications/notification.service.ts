@@ -150,7 +150,7 @@ export class NotificationService {
     const subscriptions = trainerId ? await this.subs.findAdminByAdminId(trainerId) : await this.subs.findAllAdmin();
     for (const sub of subscriptions) {
       const body =
-        `${displayName}: ${reason}` + smallGroupLine + (refundUah ? `\nПовернути ${refundUah} ₴: Клієнти` : '');
+        `${displayName}: ${reason}` + smallGroupLine + (refundUah ? `\nПоверне власник: ${refundUah} ₴` : '');
       const result = await this.push.send(sub, { title, body, icon: ICON, url: '/admin' });
       if (result === 'expired') await this.subs.disableAdminByEndpoint(sub.endpoint);
     }

@@ -38,9 +38,26 @@ export class CancelRefundsService {
     return [process.env.LIQPAY_PUBLIC_KEY ?? '', process.env.LIQPAY_PRIVATE_KEY ?? ''];
   }
 
-  async pending(trainerId: string) {
-    const rows = await pendingRefunds(this.database.db, trainerId);
+  // The owner's «Повернення»: every trainer's refunds still to hand over
+  async pendingForOwner() {
+    const rows = await pendingRefunds(this.database.db);
     return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  }
+
+  // «Віддано N ₴»: the owner handed the cash over (since 2026-11-27 every refund is cash and only the owner gives it,
+  // whatever the purchase was paid with). Compare-and-set from DUE: a waived one is gone (404), a given one 409
+  async ownerGive(ownerId: string, id: string) {
+    const row = await loadRefund(this.database.db, id);
+    if (!row || row.status === 'CANCELLED') throw new NotFoundException('Refund not found');
+    if (row.status !== 'DUE') throw new ConflictException(apiError('MONEY_RETURNED'));
+    const done = await moveRefund(this.database.db, id, 'DUE', {
+      status: 'DONE',
+      doneVia: 'CASH',
+      doneAt: this.clock.now().toJSDate(),
+      doneByOwnerId: ownerId,
+    });
+    if (!done) throw new ConflictException(apiError('MONEY_RETURNED'));
+    return { ok: true };
   }
 
   async refund(trainerId: string, id: string): Promise<{ status: 'DUE' | 'SENDING' | 'DONE' }> {
@@ -123,21 +140,19 @@ export class CancelRefundsService {
     return { status: 'DONE' };
   }
 
-  // Cash handed over or sent back by transfer; or an online refund stuck in SENDING the trainer found in the LiqPay cabinet
+  // An online refund stuck in SENDING the trainer found in the LiqPay cabinet. Online only: cash is the owner's
+  // («Віддано», ownerGive). Kept for when LiqPay is switched on again (no UI while it is off)
   async markDone(trainerId: string, id: string) {
     const row = await this.load(trainerId, id);
+    if (row.method !== 'LIQPAY') throw new BadRequestException(apiError('NOT_ONLINE_PAYMENT'));
     if (row.status === 'DONE') throw new ConflictException(apiError('MONEY_RETURNED'));
-    const online = row.method === 'LIQPAY';
-    // Online: a stuck SENDING row, or one refused because the cabinet already had a refund
-    const from = online && row.lastError !== 'REFUNDED_ELSEWHERE' ? 'SENDING' : 'DUE';
-    if (row.status !== from) {
-      if (online) throw new BadRequestException('Send the refund first');
-      throw new ConflictException(apiError('MONEY_RETURNED'));
-    }
+    // A stuck SENDING row, or one refused because the cabinet already had a refund
+    const from = row.lastError !== 'REFUNDED_ELSEWHERE' ? 'SENDING' : 'DUE';
+    if (row.status !== from) throw new BadRequestException('Send the refund first');
     const at = this.clock.now().toJSDate();
     const done = await moveRefund(this.database.db, id, from, {
       status: 'DONE',
-      doneVia: online ? 'MANUAL' : row.method === 'TRANSFER' ? 'TRANSFER' : 'CASH',
+      doneVia: 'MANUAL',
       doneAt: at,
       doneBy: trainerId,
     });

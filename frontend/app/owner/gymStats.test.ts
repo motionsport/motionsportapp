@@ -3,7 +3,15 @@ import type { GymStats } from "@/lib/api";
 import { formatUah } from "@/lib/prices";
 import { discountSummaryIn, discountSummaryText, gymCards, gymMonthsWithData } from "./gymStats";
 
-const rev = (total: number, month = "2026-11", discount = 0, discounted = 0, gifts = 0, permanentDiscount = 0) => {
+const rev = (
+  total: number,
+  month = "2026-11",
+  discount = 0,
+  discounted = 0,
+  gifts = 0,
+  permanentDiscount = 0,
+  refunds = 0,
+) => {
   const r = {
     clubCards: total,
     personal: 0,
@@ -14,6 +22,7 @@ const rev = (total: number, month = "2026-11", discount = 0, discounted = 0, gif
     discounted,
     permanentDiscount,
     gifts,
+    refunds,
   };
   return { allTime: r, months: [{ month, ...r }] };
 };
@@ -136,5 +145,16 @@ describe("gymMonthsWithData", () => {
       reviewDiscounts: { ...stats.reviewDiscounts, months: [{ ...none, month: "2026-08", given: 1 }] },
     };
     expect(gymMonthsWithData(only)).toContain("2026-08");
+  });
+
+  it("refunds: «Весь зал» sums them, and «Без тренера» shows with a refund only", () => {
+    const withRefunds: GymStats = {
+      ...stats,
+      trainers: [{ ...stats.trainers[0], revenue: rev(600, "2026-11", 0, 0, 0, 0, 400) }],
+      unassigned: { revenue: rev(-300, "2026-11", 0, 0, 0, 0, 300) },
+    };
+    const cards = gymCards(withRefunds, "all");
+    expect(cards.map((c) => c.key)).toContain("unassigned");
+    expect(cards[0].revenue.refunds).toBe(700);
   });
 });

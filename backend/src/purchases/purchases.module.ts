@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PurchasesController } from './purchases.controller';
+import { OwnerRefundsController } from './owner-refunds.controller';
 import { AdminPurchasesController } from './admin-purchases.controller';
 import { PurchasesService } from './purchases.service';
 import { AdminPurchasesService } from './admin-purchases.service';
@@ -11,7 +12,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [AuthModule, EntitlementsModule, PaymentModule, NotificationsModule],
-  controllers: [PurchasesController, AdminPurchasesController],
+  controllers: [PurchasesController, AdminPurchasesController, OwnerRefundsController],
   providers: [PurchasesService, AdminPurchasesService, CancelRefundsService],
   exports: [PurchasesService],
 })

@@ -308,11 +308,12 @@ export interface Revenue {
   personal: number;
   split: number;
   group: number;
-  total: number; // money actually received, every discount already taken off
+  total: number; // money the gym actually has: received (every discount already off) minus the refunds handed back
   discount: number; // what the review discounts knocked off
   discounted: number; // purchase lines with a review discount
   permanentDiscount: number; // what «Постійні знижки» and «Знижка іменинника» knocked off
   gifts: number; // «Спеціальна пропозиція»: single gym visits given free
+  refunds: number; // half refunds after a late cancellation handed back, in the month given back
 }
 
 export type RevenueByMonth = { allTime: Revenue; months: (Revenue & { month: string })[] }; // months: "2026-10", newest first
@@ -378,20 +379,13 @@ export interface CancelFeePreview {
   packUntil: string | null;
 }
 
-// Half refund of a late-cancelled single assigned training. Online: sent from the app («Повернути»),
-// SENDING until LiqPay confirms; cash: handed over
-export interface CancelRefund {
+// The owner's «Повернення»: half refund of a late-cancelled single assigned training, still to hand over in cash
+export interface OwnerRefund {
   id: string;
-  bookingId: string;
-  status: "DUE" | "SENDING";
-  // Error code of the last failed attempt (ERROR_TEXT)
-  lastError: string | null;
-  // To find the payment in the cabinet while SENDING
-  liqpayPaymentId: string | null;
   memberId: string;
   displayName: string;
+  trainer: string; // the training's trainer (username)
   amountUah: number;
-  method: PurchaseMethod;
   createdAt: string;
   localDate: string;
   slotTime: string;

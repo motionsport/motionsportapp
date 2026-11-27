@@ -1,14 +1,24 @@
-import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
-import { bookings, cancelRefunds, members, payments, purchases, trainingDays, trainingSlots } from '../database/schema';
+import {
+  admins,
+  bookings,
+  cancelRefunds,
+  members,
+  payments,
+  purchases,
+  trainingDays,
+  trainingSlots,
+} from '../database/schema';
 
 type Db = DatabaseService['db'];
 type Q = Db | Parameters<Parameters<Db['transaction']>[0]>[0];
 
 export type RefundStatus = 'DUE' | 'SENDING' | 'DONE' | 'CANCELLED';
 
-// The training's trainer only (cancel_refunds.trainer_id); null = missing or another trainer's
-export async function loadRefund(q: Q, id: string, trainerId: string) {
+// trainerId: the training's trainer only (cancel_refunds.trainer_id), null = missing or another trainer's; none = the
+// owner, any trainer's
+export async function loadRefund(q: Q, id: string, trainerId?: string) {
   const [row] = await q
     .select({
       id: cancelRefunds.id,
@@ -27,7 +37,7 @@ export async function loadRefund(q: Q, id: string, trainerId: string) {
     .innerJoin(purchases, eq(purchases.id, cancelRefunds.purchaseId))
     // The one PAID payment of the purchase (payments move to PAID compare-and-set with the purchase)
     .leftJoin(payments, and(eq(payments.purchaseId, purchases.id), eq(payments.status, 'PAID')))
-    .where(and(eq(cancelRefunds.id, id), eq(cancelRefunds.trainerId, trainerId)))
+    .where(and(eq(cancelRefunds.id, id), trainerId ? eq(cancelRefunds.trainerId, trainerId) : undefined))
     .limit(1);
   return row ? { ...row, status: row.status as RefundStatus } : null;
 }
@@ -64,19 +74,15 @@ export async function appRefundedUah(q: Q, purchaseId: string): Promise<number> 
   return Number(row?.total ?? 0);
 }
 
-// «Повернути гроші»: the trainer's refunds still to do or on their way
-export async function pendingRefunds(q: Q, trainerId: string) {
+// The owner's «Повернення»: every trainer's refunds still to hand over, oldest first
+export async function pendingRefunds(q: Q) {
   return q
     .select({
       id: cancelRefunds.id,
-      bookingId: cancelRefunds.bookingId,
       memberId: cancelRefunds.memberId,
       displayName: members.displayName,
+      trainer: admins.username,
       amountUah: cancelRefunds.amountUah,
-      status: cancelRefunds.status,
-      lastError: cancelRefunds.lastError,
-      method: purchases.method,
-      liqpayPaymentId: payments.liqpayPaymentId,
       createdAt: cancelRefunds.createdAt,
       localDate: trainingDays.localDate,
       slotTime: trainingSlots.slotTime,
@@ -84,12 +90,11 @@ export async function pendingRefunds(q: Q, trainerId: string) {
     })
     .from(cancelRefunds)
     .innerJoin(members, eq(members.id, cancelRefunds.memberId))
-    .innerJoin(purchases, eq(purchases.id, cancelRefunds.purchaseId))
-    .leftJoin(payments, and(eq(payments.purchaseId, purchases.id), eq(payments.status, 'PAID')))
+    .innerJoin(admins, eq(admins.id, cancelRefunds.trainerId))
     .innerJoin(bookings, eq(bookings.id, cancelRefunds.bookingId))
     .innerJoin(trainingSlots, eq(trainingSlots.id, bookings.slotId))
     .innerJoin(trainingDays, eq(trainingDays.id, trainingSlots.trainingDayId))
-    .where(and(eq(cancelRefunds.trainerId, trainerId), inArray(cancelRefunds.status, ['DUE', 'SENDING'])))
+    .where(eq(cancelRefunds.status, 'DUE'))
     .orderBy(asc(cancelRefunds.createdAt));
 }
 

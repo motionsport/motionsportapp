@@ -93,11 +93,55 @@ describe('stats — revenue by month', () => {
       discounted: 0,
       permanentDiscount: 0,
       gifts: 0,
+      refunds: 0,
     });
     expect(r.months.map((m) => [m.month, m.total])).toEqual([
       ['2026-11', 300],
       ['2026-10', 1600],
     ]);
+  });
+});
+
+describe('stats — refunds after a late cancellation', () => {
+  it('a separate line in the month given back; the total is net of it, the columns stay what was received', () => {
+    const r = summarizeRevenue([
+      { month: '2026-10', section: 'assigned', trainingType: 'personal', amount: 800, discount: 0 },
+      { month: '2026-11', section: 'assigned', trainingType: 'personal', amount: 800, discount: 0 },
+      // the October training, cancelled late; half handed back in November
+      { month: '2026-11', section: 'assigned', trainingType: null, amount: 0, discount: 0, refunds: 400 },
+    ]);
+    expect(r.allTime).toMatchObject({ personal: 1600, refunds: 400, total: 1200 });
+    expect(r.months.map((m) => [m.month, m.personal, m.refunds, m.total])).toEqual([
+      ['2026-11', 800, 400, 400],
+      ['2026-10', 800, 0, 800],
+    ]);
+  });
+
+  it('a refund in a month with no purchase still makes that month, below zero', () => {
+    const r = summarizeRevenue([
+      { month: '2026-12', section: 'assigned', trainingType: null, amount: 0, discount: 0, refunds: 300 },
+    ]);
+    expect(r.months).toEqual([expect.objectContaining({ month: '2026-12', refunds: 300, total: -300 })]);
+  });
+
+  it('the owner: each refund goes to the payee of the purchase', () => {
+    const gym = buildGymStats(
+      [{ id: 't1', username: 'admin', disabledAt: null }],
+      [
+        { payee: 't1', month: '2026-11', section: 'assigned', trainingType: 'personal', amount: 800, discount: 0 },
+        {
+          payee: 't1',
+          month: '2026-11',
+          section: 'assigned',
+          trainingType: null,
+          amount: 0,
+          discount: 0,
+          refunds: 400,
+        },
+      ],
+      [],
+    );
+    expect(gym.trainers[0].revenue.allTime).toMatchObject({ personal: 800, refunds: 400, total: 400 });
   });
 });
 

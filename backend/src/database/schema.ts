@@ -757,6 +757,8 @@ export const cancelRefunds = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     doneAt: timestamp('done_at', { withTimezone: true }),
     doneBy: uuid('done_by').references(() => admins.id),
+    // The owner who handed the cash over (since 2026-11-27 only the owner gives refunds back); done_by = a trainer, before
+    doneByOwnerId: uuid('done_by_owner_id').references(() => owners.id),
     // The training's trainer, who refunds or waives; moves to another trainer when this one is disabled
     trainerId: uuid('trainer_id')
       .notNull()

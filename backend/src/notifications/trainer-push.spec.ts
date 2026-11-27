@@ -64,7 +64,7 @@ describe('Trainer push — member cancelled / moved', () => {
     });
     expect(push.send).toHaveBeenCalledWith(
       adminSub,
-      expect.objectContaining({ body: 'Оля: Захворіла\nПовернути 300 ₴: Клієнти' }),
+      expect.objectContaining({ body: 'Оля: Захворіла\nПоверне власник: 300 ₴' }),
     );
   });
 
@@ -115,7 +115,7 @@ describe('Trainer push — member cancelled / moved', () => {
 
     it('comes before the refund line', async () => {
       expect(await bodyFor({ count: 2, capacity: 8 }, 300)).toBe(
-        'Іра: Не встигаю\nМала група: на 19:00 лишилось 2 з 8\nПовернути 300 ₴: Клієнти',
+        'Іра: Не встигаю\nМала група: на 19:00 лишилось 2 з 8\nПоверне власник: 300 ₴',
       );
     });
   });

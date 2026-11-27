@@ -19,12 +19,8 @@ export class AdminPurchasesController {
     return this.adminPurchasesService.pendingCash(user.id);
   }
 
-  // «Повернути гроші»: the training's trainer only
-  @Get('cancel-refunds/pending')
-  pendingCancelRefunds(@CurrentUser() user: SessionUser) {
-    return this.cancelRefunds.pending(user.id);
-  }
-
+  // Online refunds (LiqPay), the training's trainer only; no UI while LiqPay is off. Cash is the owner's
+  // (owner-refunds.controller.ts)
   @Post('cancel-refunds/:id/refund')
   @HttpCode(200)
   refundCancelRefund(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: SessionUser) {

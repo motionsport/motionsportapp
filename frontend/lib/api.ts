@@ -8,7 +8,7 @@ import type {
   CalendarSlot,
   CancelFeePreview,
   Cancellation,
-  CancelRefund,
+  OwnerRefund,
   CashRequest,
   DiscountView,
   FreezeRequest,
@@ -208,11 +208,9 @@ export const api = {
   getOwnerStats: () => get<GymStats>("/owner/stats"),
 
   waiveCancelFee: (bookingId: string) => post(`/admin/bookings/${bookingId}/waive-fee`),
-  getPendingCancelRefunds: () => get<CancelRefund[]>("/admin/cancel-refunds/pending"),
-  markCancelRefundDone: (id: string) => post(`/admin/cancel-refunds/${id}/done`),
-  refundCancelRefund: (id: string) =>
-    post<{ status: "DUE" | "SENDING" | "DONE" }>(`/admin/cancel-refunds/${id}/refund`),
-  checkCancelRefund: (id: string) => post<{ status: "DUE" | "SENDING" | "DONE" }>(`/admin/cancel-refunds/${id}/check`),
+  // The owner's «Повернення» (cash, the owner only)
+  getOwnerRefunds: () => get<OwnerRefund[]>("/owner/cancel-refunds"),
+  giveOwnerRefund: (id: string) => post(`/owner/cancel-refunds/${id}/given`),
 
   getPendingFreezes: () => get<FreezeRequest[]>("/admin/freezes/pending"),
   decideFreeze: (freeze: FreezeRequest, approve: boolean) =>

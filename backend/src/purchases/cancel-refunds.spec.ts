@@ -228,16 +228,10 @@ describe('CancelRefundsService.check', () => {
 });
 
 describe('CancelRefundsService.markDone', () => {
-  it('cash DUE → DONE by CASH', async () => {
-    mockLoad.mockResolvedValue({ ...ROW, method: 'CASH', paymentId: null, orderId: null });
-    await makeService().markDone('t1', 'r1');
-    expect(moves()).toEqual([['DUE', expect.objectContaining({ status: 'DONE', doneVia: 'CASH', doneBy: 't1' })]]);
-  });
-
-  it('transfer DUE → DONE by TRANSFER (the trainer sent it back)', async () => {
-    mockLoad.mockResolvedValue({ ...ROW, method: 'TRANSFER', paymentId: null, orderId: null });
-    await makeService().markDone('t1', 'r1');
-    expect(moves()).toEqual([['DUE', expect.objectContaining({ status: 'DONE', doneVia: 'TRANSFER' })]]);
+  it.each(['CASH', 'TRANSFER'])("a %s purchase: 400, cash refunds are the owner's", async (method) => {
+    mockLoad.mockResolvedValue({ ...ROW, method, paymentId: null, orderId: null });
+    await expect(makeService().markDone('t1', 'r1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(mockMove).not.toHaveBeenCalled();
   });
 
   it('online SENDING → DONE by MANUAL', async () => {
@@ -260,6 +254,32 @@ describe('CancelRefundsService.markDone', () => {
   it('already DONE → 409', async () => {
     mockLoad.mockResolvedValue({ ...ROW, status: 'DONE' });
     await expect(makeService().markDone('t1', 'r1')).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('CancelRefundsService.ownerGive («Віддано», the owner only, always cash)', () => {
+  it.each(['CASH', 'TRANSFER', 'LIQPAY'])('a %s purchase: DUE → DONE by CASH, the owner recorded', async (method) => {
+    mockLoad.mockResolvedValue({ ...ROW, method });
+    await makeService().ownerGive('o1', 'r1');
+    expect(mockLoad).toHaveBeenCalledWith(expect.anything(), 'r1');
+    expect(moves()).toEqual([
+      ['DUE', expect.objectContaining({ status: 'DONE', doneVia: 'CASH', doneByOwnerId: 'o1' })],
+    ]);
+  });
+
+  it('already given → 409', async () => {
+    mockLoad.mockResolvedValue({ ...ROW, status: 'DONE' });
+    await expect(makeService().ownerGive('o1', 'r1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('waived by the trainer meanwhile («Не списувати») → 404', async () => {
+    mockLoad.mockResolvedValue({ ...ROW, status: 'CANCELLED' });
+    await expect(makeService().ownerGive('o1', 'r1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('lost the compare-and-set → 409, nothing given twice', async () => {
+    mockMove.mockResolvedValue(false);
+    await expect(makeService().ownerGive('o1', 'r1')).rejects.toBeInstanceOf(ConflictException);
   });
 });
 
