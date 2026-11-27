@@ -21,8 +21,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
-    // The iPhone home screen icon (it ignores the manifest's); dropped by mistake on 2026-10-20, back on 2026-11-27
-    apple: "/motion-gym-logo-app.png",
+    // The iPhone home screen icon (it ignores the manifest's): motion-gym-logo-app.png at 180px, the size iOS uses. The 1 MB
+    // original loaded so slowly that a quick «Додати» saved the black «M» instead
+    apple: "/apple-touch-icon.png",
   },
 };
 
