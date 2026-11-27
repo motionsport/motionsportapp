@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import type { InstallEnv } from "@/lib/installEnv";
 
 const iconProps = {
-  width: 18,
-  height: 18,
+  width: "1.15em",
+  height: "1.15em",
   viewBox: "0 0 24 24",
   fill: "none",
   stroke: "currentColor",
@@ -12,7 +12,7 @@ const iconProps = {
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
   "aria-hidden": true,
-  className: "inline-block align-text-bottom ml-1 text-heading",
+  className: "inline-block align-[-0.2em] ml-1 text-heading",
 };
 // The same shapes as Safari's own buttons, so the member finds them: a box with an arrow up, a box with a plus
 const ShareIcon = () => (
@@ -23,7 +23,7 @@ const ShareIcon = () => (
   </svg>
 );
 const AddIcon = () => (
-  <svg {...iconProps} strokeWidth={1.8} className="inline-block align-text-bottom mx-1 text-heading">
+  <svg {...iconProps} strokeWidth={1.8} className="inline-block align-[-0.2em] mx-1 text-heading">
     <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
     <line x1="12" y1="8" x2="12" y2="16" />
     <line x1="8" y1="12" x2="16" y2="12" />

@@ -56,7 +56,9 @@ describe('MemberInvitesService.create', () => {
     expect(inserts[0].values.expiresAt).toEqual(NOW.plus({ days: 7 }).toJSDate());
     expect(inserts[0].values.payload).toEqual({
       clubCard: { priceItemId: 'card-1', validUntil: '2026-12-15' },
-      packages: [{ trainingType: 'personal', label: 'Персональне · 8 тренувань', left: 5, validUntil: '2026-12-10' }],
+      packages: [
+        { trainingType: 'personal', label: 'Персональне · перенесений пакет', left: 5, validUntil: '2026-12-10' },
+      ],
       permanentDiscount: null,
     });
   });

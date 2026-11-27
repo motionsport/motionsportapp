@@ -55,6 +55,9 @@ export function PackageCard({ p }: { p: TrainingPackage }) {
             Пройдено <span className="text-accent font-semibold">{p.total - p.left}</span> з {p.total} · ще {p.left}{" "}
             попереду
           </>
+        ) : p.state === "active" ? (
+          // Already running with nothing marked yet (brought over by an invite): nothing left to start
+          `Ще ${p.left} попереду`
         ) : (
           `Почнеться з першого тренування · ${p.total} попереду`
         )}

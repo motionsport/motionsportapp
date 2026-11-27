@@ -221,6 +221,17 @@ h6 {
     background-size: 0.9rem;
     padding-right: 1.1rem;
   }
+  /* iPhone Safari: an empty date field collapses and a filled one is wider than its box; same height as text fields */
+  input[type="date"].input-field {
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+    min-width: 0;
+    height: calc(2.5rem + 2px);
+  }
+  input[type="date"].input-field::-webkit-date-and-time-value {
+    text-align: left;
+  }
   .input-field:focus {
     background-color: var(--color-surface);
     border-color: var(--color-accent);

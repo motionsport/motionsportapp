@@ -33,9 +33,14 @@ export function PageLayout({ children, variant = "centered", className, action, 
     );
   }
 
+  // Centered by auto margins, not justify-center: on a page taller than the screen (the invite with what is waiting)
+  // justify-center pushed the top, logo included, above the screen where it can't be scrolled to. The bottom padding
+  // lifts the content a little above the middle, as the old -mt-10 did, and leaves room for the iPhone home indicator
   return (
-    <div className={`flex-1 flex flex-col justify-center${className ? ` ${className}` : ""}`}>
-      <div className="-mt-10">
+    <div
+      className={`flex-1 flex flex-col pt-6 pb-[calc(4rem+env(safe-area-inset-bottom))]${className ? ` ${className}` : ""}`}
+    >
+      <div className="my-auto">
         <MotionGymLogo className="w-[100px] h-[100px] sm:w-[150px] sm:h-[150px] mx-auto mb-8" />
         {children}
       </div>

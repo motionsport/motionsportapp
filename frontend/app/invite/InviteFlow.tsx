@@ -131,26 +131,33 @@ export function InviteFlow({ token }: { token: string }) {
   return (
     <PageLayout>
       <h1 className={title}>Вітаємо, {preview?.displayName}!</h1>
+      {/* What the trainer brought over, as cards like on «Абонемент і пакети», so the client can check it is theirs */}
       {preview && (preview.clubCard || preview.packages.length > 0) && (
-        <div className="rounded-xl border border-line bg-surface px-4 py-2 mb-6">
-          <p className="text-subtle text-xs pt-1">Вже чекає на вас</p>
-          {preview.clubCard && (
-            <div className="flex justify-between space-x-3 py-2 border-b border-line last:border-b-0 text-sm">
-              <span className="text-body">Абонемент · {preview.clubCard.label}</span>
-              <span className="text-heading whitespace-nowrap">
-                {preview.clubCard.validUntil ? `до ${ddmm(preview.clubCard.validUntil)}` : "чекає активації"}
-              </span>
-            </div>
-          )}
-          {preview.packages.map((p, i) => (
-            <div key={i} className="flex justify-between space-x-3 py-2 border-b border-line last:border-b-0 text-sm">
-              <span className="text-body">{p.trainingType === "group" ? `Групові · ${p.label}` : p.label}</span>
-              <span className="text-heading whitespace-nowrap">
-                {trainingsCount(p.left)}, до {ddmm(p.validUntil)}
-              </span>
-            </div>
-          ))}
-        </div>
+        <section className="mb-6">
+          <h2 className="font-geologica font-semibold text-heading uppercase text-xs tracking-wide mb-2">
+            Вже чекає на вас
+          </h2>
+          <div className="flex flex-col space-y-2">
+            {preview.clubCard && (
+              <div className="rounded-xl border border-line bg-surface px-4 py-3">
+                <p className="text-heading font-semibold">Абонемент · {preview.clubCard.label}</p>
+                <p className="text-subtle text-xs mt-1">
+                  {preview.clubCard.validUntil ? `Діє до ${ddmm(preview.clubCard.validUntil)}` : "Чекає активації"}
+                </p>
+              </div>
+            )}
+            {preview.packages.map((p, i) => (
+              <div key={i} className="rounded-xl border border-line bg-surface px-4 py-3">
+                <p className="text-heading font-semibold">
+                  {p.trainingType === "group" ? `Групові · ${p.label}` : p.label}
+                </p>
+                <p className="text-subtle text-xs mt-1">
+                  Залишилось {trainingsCount(p.left)}, до {ddmm(p.validUntil)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       <form onSubmit={submit} className="space-y-4">

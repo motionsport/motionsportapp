@@ -7,6 +7,7 @@ import { hashToken, newToken } from '../auth/token';
 import { apiError } from '../common/api-error';
 import type { CreateMemberInviteDto } from './dto/create-member-invite.dto';
 import type { MemberInvitePayload } from './invite.store';
+import { GROUP_TYPE } from '../schedule/training-types';
 
 export const MEMBER_INVITE_DAYS = 7;
 
@@ -55,7 +56,9 @@ export class MemberInvitesService {
       if (!item?.trainingType || !item.trainingCount || p.left > item.trainingCount) {
         throw new BadRequestException(apiError('INVITE_FORM_INVALID'));
       }
-      const label = item.optionLabel ? `${item.title} · ${item.optionLabel}` : item.title;
+      // Only what is left comes over, so the price list's size («10 занять») would not match the client's dots. A group
+      // package gets «Групові · » in front on the client's screens; a trainer service's title names its type itself
+      const label = item.trainingType === GROUP_TYPE ? 'перенесений пакет' : `${item.title} · перенесений пакет`;
       return { trainingType: item.trainingType, label, left: p.left, validUntil: p.validUntil };
     });
 

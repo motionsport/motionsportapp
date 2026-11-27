@@ -80,7 +80,7 @@ export default function InviteClientPage() {
     return (
       <PageLayout variant="top" action={<AdminMenu />}>
         <h1 className="font-geologica font-semibold text-title text-heading uppercase mb-4">
-          Запрошення для {created.displayName}
+          Запрошення: {created.displayName}
         </h1>
         <InviteQr invite={created} />
         <Link
@@ -123,22 +123,29 @@ export default function InviteClientPage() {
           ))}
         </select>
         {cardId && (
-          <div className="flex items-center space-x-3 mt-2">
-            <label className="flex-1 text-subtle text-xs">
-              Діє до
+          // «Чекає активації» first: while it is on there is no date to fill, so the field goes away
+          <div className="mt-3 flex flex-col space-y-3">
+            <label className="flex items-center space-x-2 text-sm text-body">
               <input
-                type="date"
-                value={cardUntil}
-                min={today}
-                disabled={cardWaiting}
-                onChange={(e) => setCardUntil(e.target.value)}
-                className={`${field} mt-1 disabled:opacity-40`}
+                type="checkbox"
+                checked={cardWaiting}
+                onChange={(e) => setCardWaiting(e.target.checked)}
+                className="w-4 h-4 accent-accent"
               />
+              <span>Чекає активації</span>
             </label>
-            <label className="flex items-center space-x-2 text-sm text-body pt-4">
-              <input type="checkbox" checked={cardWaiting} onChange={(e) => setCardWaiting(e.target.checked)} />
-              <span>чекає активації</span>
-            </label>
+            {!cardWaiting && (
+              <label className="text-subtle text-xs">
+                Діє до
+                <input
+                  type="date"
+                  value={cardUntil}
+                  min={today}
+                  onChange={(e) => setCardUntil(e.target.value)}
+                  className={`${field} mt-1`}
+                />
+              </label>
+            )}
           </div>
         )}
 

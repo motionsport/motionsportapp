@@ -82,7 +82,7 @@ export function MemberInvites() {
       {shown && (
         <Modal onDismiss={() => setShown(null)} labelledBy="invite-qr-title" variant="card">
           <h2 id="invite-qr-title" className="font-geologica font-semibold text-lg text-heading mb-3 pr-8">
-            Запрошення для {shown.displayName}
+            Запрошення: {shown.displayName}
           </h2>
           <InviteQr invite={shown} />
         </Modal>
