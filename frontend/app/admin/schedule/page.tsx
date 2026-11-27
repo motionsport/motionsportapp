@@ -67,11 +67,14 @@ export default function GroupSchedulePage() {
   const [error, setError] = useState("");
   // Result of the last save; cleared on edit
   const [saved, setSaved] = useState<{ text: string; skipped: string[] } | null>(null);
+  // Changed since loaded or last saved: «Є незбережені зміни» over «Зберегти»
+  const [dirty, setDirty] = useState(false);
 
   const change = (next: TrainerSchedule) => {
     setSchedule(next);
     setSaved(null);
     setError("");
+    setDirty(true);
   };
 
   const timesOf = (weekday: number) =>
@@ -118,6 +121,7 @@ export default function GroupSchedulePage() {
       const { added, skipped, ...next } = await api.saveMySchedule({ ...schedule, topics });
       setSchedule(next);
       setSaved(savedText(next.autoCreate, added, skipped));
+      setDirty(false);
     } catch (err) {
       setError(errorText(err, "Не вдалося зберегти. Спробуйте ще раз."));
     } finally {
@@ -276,14 +280,22 @@ export default function GroupSchedulePage() {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="btn-primary w-full py-3.5 rounded-lg font-semibold transition-colors disabled:opacity-60"
-          >
-            {saving ? "Збереження..." : "Зберегти"}
-          </button>
+          {/* On a phone stuck to the bottom of the screen: after «+ час» up the page, «Зберегти» was out of sight */}
+          <div className="max-sm:sticky max-sm:bottom-0 max-sm:-mx-5 max-sm:px-5 max-sm:pt-3 max-sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] max-sm:bg-background">
+            {dirty && (
+              <p role="status" className="text-warn text-xs text-center mb-2">
+                Є незбережені зміни
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="btn-primary w-full py-3.5 rounded-lg font-semibold transition-colors disabled:opacity-60"
+            >
+              {saving ? "Збереження..." : "Зберегти"}
+            </button>
+          </div>
         </div>
       )}
     </PageLayout>
