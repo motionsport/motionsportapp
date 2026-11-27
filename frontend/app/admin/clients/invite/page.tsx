@@ -11,17 +11,18 @@ import { lineName } from "@/lib/prices";
 import { TYPE_LABEL_PLURAL } from "@/lib/trainingTypes";
 import { PERMANENT_KINDS } from "@/lib/permanentDiscount";
 
-type PackageRow = { trainingType: TrainingType; left: string; validUntil: string };
+type PackageRow = { priceItemId: string; left: string; validUntil: string };
 
 const label = "block text-body text-sm mb-1.5";
 const field = "input-field w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none";
 const section = "font-geologica font-semibold text-heading uppercase text-xs tracking-wide mt-6 mb-2";
-const TYPES: TrainingType[] = ["personal", "split", "group"];
 
 // «Запросити нового клієнта»: what a client who already paid before the app has; the link brings it over (no money in
 // the stats). Then the QR for the client to scan in the gym
 export default function InviteClientPage() {
   const [cards, setCards] = useState<PriceListItem[]>([]);
+  // Trainer services and group passes, as the price list sells them
+  const [packs, setPacks] = useState<PriceListItem[]>([]);
   const [name, setName] = useState("");
   const [cardId, setCardId] = useState("");
   const [cardUntil, setCardUntil] = useState("");
@@ -36,7 +37,10 @@ export default function InviteClientPage() {
   useEffect(() => {
     api
       .getPriceList()
-      .then((items) => setCards(items.filter((i) => i.section === "club_card")))
+      .then((items) => {
+        setCards(items.filter((i) => i.section === "club_card"));
+        setPacks(items.filter((i) => i.section !== "club_card" && (i.trainingCount ?? 0) > 0));
+      })
       .catch(() => setError("Не вдалося завантажити абонементи"));
   }, []);
 
@@ -48,15 +52,20 @@ export default function InviteClientPage() {
     setError("");
     if (name.trim().length < 2) return setError("Вкажіть ім'я клієнта.");
     if (cardId && !cardWaiting && !cardUntil) return setError("Вкажіть, до якої дати діє абонемент.");
-    if (rows.some((r) => !r.validUntil || !(Number(r.left) >= 1 && Number(r.left) <= 30)))
-      return setError("У пакеті вкажіть, скільки лишилось (1–30), і до якої дати.");
+    const sizeOf = (id: string) => packs.find((p) => p.id === id)?.trainingCount ?? 0;
+    if (
+      rows.some(
+        (r) => !r.priceItemId || !r.validUntil || !(Number(r.left) >= 1 && Number(r.left) <= sizeOf(r.priceItemId)),
+      )
+    )
+      return setError("У пакеті виберіть пакет, скільки лишилось (не більше, ніж у пакеті) і до якої дати.");
     setBusy(true);
     try {
       setCreated(
         await api.createMemberInvite({
           displayName: name.trim(),
           clubCard: cardId ? { priceItemId: cardId, validUntil: cardWaiting ? null : cardUntil } : null,
-          packages: rows.map((r) => ({ trainingType: r.trainingType, left: Number(r.left), validUntil: r.validUntil })),
+          packages: rows.map((r) => ({ priceItemId: r.priceItemId, left: Number(r.left), validUntil: r.validUntil })),
           permanentDiscount: discount,
         }),
       );
@@ -139,15 +148,22 @@ export default function InviteClientPage() {
             <div key={i} className="rounded-xl border border-line bg-surface p-3 flex flex-col space-y-2">
               <div className="flex space-x-2">
                 <select
-                  aria-label="Тип тренувань"
-                  value={r.trainingType}
-                  onChange={(e) => setRow(i, { trainingType: e.target.value as TrainingType })}
+                  aria-label="Пакет"
+                  value={r.priceItemId}
+                  onChange={(e) => setRow(i, { priceItemId: e.target.value })}
                   className={`${field} flex-1 min-w-0`}
                 >
-                  {TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {TYPE_LABEL_PLURAL[t]}
-                    </option>
+                  <option value="">Виберіть пакет</option>
+                  {(["personal", "split", "group"] as TrainingType[]).map((t) => (
+                    <optgroup key={t} label={TYPE_LABEL_PLURAL[t]}>
+                      {packs
+                        .filter((p) => p.trainingType === t)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {lineName(p)}
+                          </option>
+                        ))}
+                    </optgroup>
                   ))}
                 </select>
                 <label className="w-28 text-subtle text-xs">
@@ -156,7 +172,7 @@ export default function InviteClientPage() {
                     type="number"
                     inputMode="numeric"
                     min={1}
-                    max={30}
+                    max={packs.find((p) => p.id === r.priceItemId)?.trainingCount ?? 30}
                     value={r.left}
                     onChange={(e) => setRow(i, { left: e.target.value })}
                     className={`${field} mt-1`}
@@ -186,7 +202,7 @@ export default function InviteClientPage() {
         {rows.length < 5 && (
           <button
             type="button"
-            onClick={() => setRows((rs) => [...rs, { trainingType: "personal", left: "", validUntil: "" }])}
+            onClick={() => setRows((rs) => [...rs, { priceItemId: "", left: "", validUntil: "" }])}
             className="text-accent text-sm hover:underline mt-2"
           >
             + Додати пакет

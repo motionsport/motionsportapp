@@ -69,7 +69,11 @@ export interface SkippedTraining {
 
 // Member-facing: no trainer names
 // durationMonths: from activation, 0 = that day only («Разове відвідування»); null for items without one
-export type PriceListItem = Omit<PriceItem, "updatedBy" | "updatedAt"> & { durationMonths?: number | null };
+export type PriceListItem = Omit<PriceItem, "updatedBy" | "updatedAt"> & {
+  durationMonths?: number | null;
+  trainingCount?: number | null; // a package's size; null for a club card
+  trainingType?: TrainingType | null; // a package's type; null for a club card
+};
 
 export interface PriceChange {
   id: string;
@@ -190,7 +194,7 @@ export interface MemberPurchases {
 export interface MemberInviteForm {
   displayName: string;
   clubCard: { priceItemId: string; validUntil: string | null } | null;
-  packages: { trainingType: TrainingType; left: number; validUntil: string }[];
+  packages: { priceItemId: string; left: number; validUntil: string }[];
   permanentDiscount: PermanentKind | null;
 }
 // The link's token is shown only here (create, or «QR» on a waiting invite, which replaces the link)
@@ -209,7 +213,7 @@ export interface MemberInviteRow {
 export interface MemberInvitePreview {
   displayName: string;
   clubCard: { label: string; validUntil: string | null } | null;
-  packages: { trainingType: TrainingType; left: number; validUntil: string }[];
+  packages: { trainingType: TrainingType; label: string; left: number; validUntil: string }[];
 }
 
 // The owner's «Клієнти» row; disabledAt set = «вимкнено» (can't sign in, trainers don't see them)

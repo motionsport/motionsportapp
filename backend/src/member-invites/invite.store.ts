@@ -12,12 +12,10 @@ type Q = Db | Tx;
 // What the trainer filled in. clubCard.validUntil null = waits for activation (first ✓ or «Активувати з сьогодні»)
 export type MemberInvitePayload = {
   clubCard: { priceItemId: string; validUntil: string | null } | null;
-  packages: { trainingType: string; left: number; validUntil: string }[];
+  // label: the price list's name of the package («Персональне · 8 тренувань»), copied when the invite is made
+  packages: { trainingType: string; label: string; left: number; validUntil: string }[];
   permanentDiscount: PermanentKind | null;
 };
-
-// A brought-over package's name, as the price list calls them (the frontend prefixes group ones with «Групові ·»)
-const PACKAGE_LABEL: Record<string, string> = { personal: 'Персональне', split: 'Спліт', group: 'Пакет' };
 
 export const liveInvite = (token: string, now: Date) =>
   and(
@@ -50,7 +48,13 @@ export async function invitePreview(db: Q, token: string, now: Date) {
   return {
     displayName: invite.displayName,
     clubCard,
-    packages: payload.packages.map((p) => ({ trainingType: p.trainingType, left: p.left, validUntil: p.validUntil })),
+    packages: payload.packages.map((p) => ({
+      trainingType: p.trainingType,
+      // Invites made before 2026-11-27 had no name (test data)
+      label: p.label ?? '',
+      left: p.left,
+      validUntil: p.validUntil,
+    })),
   };
 }
 
@@ -93,7 +97,7 @@ export async function grantInvite(
     await tx.insert(packages).values({
       memberId,
       purchaseItemId: null,
-      label: PACKAGE_LABEL[p.trainingType] ?? p.trainingType,
+      label: p.label ?? null,
       addedBy: trainerId,
       trainingType: p.trainingType,
       total: p.left,

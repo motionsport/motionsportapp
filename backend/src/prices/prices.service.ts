@@ -70,6 +70,9 @@ export class PricesService {
         amountUah: priceItems.amountUah,
         // A club card's months (0 = «Разове відвідування»): the trainer's reception preview of the permanent discount
         durationMonths: priceItems.durationMonths,
+        // A package's size: the trainer's invite form caps «Лишилось» by it
+        trainingCount: priceItems.trainingCount,
+        trainingType: priceItems.trainingType,
       })
       .from(priceItems)
       .orderBy(asc(priceItems.sortOrder));

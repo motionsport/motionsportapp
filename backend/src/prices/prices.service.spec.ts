@@ -127,6 +127,8 @@ describe('Prices', () => {
       optionLabel: expect.anything(),
       amountUah: expect.anything(),
       durationMonths: expect.anything(),
+      trainingCount: expect.anything(),
+      trainingType: expect.anything(),
     });
   });
 

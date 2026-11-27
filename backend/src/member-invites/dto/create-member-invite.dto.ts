@@ -14,7 +14,6 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { PASS_TYPES } from '../../schedule/training-types';
 import { PERMANENT_KINDS, type PermanentKind } from '../../permanent-discounts/rules';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,10 +29,11 @@ class InviteClubCardDto {
 }
 
 class InvitePackageDto {
-  @IsIn(PASS_TYPES)
-  trainingType: string;
+  // The package as the price list sells it («Персональне · 8 тренувань»): its type and name come from there
+  @IsUUID('all')
+  priceItemId: string;
 
-  // Trainings left
+  // Trainings left (at most the package's size: checked by the service)
   @IsInt()
   @Min(1)
   @Max(30)

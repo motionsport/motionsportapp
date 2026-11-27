@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, gt, isNull } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ClockService } from '../clock/clock.service';
 import { memberInvites, priceItems } from '../database/schema';
@@ -37,12 +37,33 @@ export class MemberInvitesService {
     }
     const dates = [dto.clubCard?.validUntil, ...dto.packages.map((p) => p.validUntil)].filter((d): d is string => !!d);
     if (dates.some((d) => d < today)) throw new BadRequestException(apiError('INVITE_FORM_INVALID'));
+    // Each package as the price list sells it: a trainer service or group pass, and no more left than its size
+    const items = dto.packages.length
+      ? await this.database.db
+          .select({
+            id: priceItems.id,
+            title: priceItems.title,
+            optionLabel: priceItems.optionLabel,
+            trainingType: priceItems.trainingType,
+            trainingCount: priceItems.trainingCount,
+          })
+          .from(priceItems)
+          .where(inArray(priceItems.id, [...new Set(dto.packages.map((p) => p.priceItemId))]))
+      : [];
+    const packages = dto.packages.map((p) => {
+      const item = items.find((i) => i.id === p.priceItemId);
+      if (!item?.trainingType || !item.trainingCount || p.left > item.trainingCount) {
+        throw new BadRequestException(apiError('INVITE_FORM_INVALID'));
+      }
+      const label = item.optionLabel ? `${item.title} · ${item.optionLabel}` : item.title;
+      return { trainingType: item.trainingType, label, left: p.left, validUntil: p.validUntil };
+    });
 
     const payload: MemberInvitePayload = {
       clubCard: dto.clubCard
         ? { priceItemId: dto.clubCard.priceItemId, validUntil: dto.clubCard.validUntil ?? null }
         : null,
-      packages: dto.packages.map((p) => ({ trainingType: p.trainingType, left: p.left, validUntil: p.validUntil })),
+      packages,
       permanentDiscount: dto.permanentDiscount ?? null,
     };
     const token = newToken();

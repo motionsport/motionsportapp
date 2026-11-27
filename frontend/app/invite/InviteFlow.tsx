@@ -9,7 +9,6 @@ import { InstallSteps } from "@/components/pwa/InstallSteps";
 import { errorText } from "@/lib/apiErrors";
 import { installEnv, type InstallEnv } from "@/lib/installEnv";
 import { ddmm } from "@/lib/dates";
-import { TYPE_LABEL_PLURAL } from "@/lib/trainingTypes";
 import { trainingsCount } from "@/lib/plural";
 import { reloadTo } from "@/lib/loginRedirect";
 
@@ -147,7 +146,7 @@ export function InviteFlow({ token }: { token: string }) {
           )}
           {preview.packages.map((p, i) => (
             <div key={i} className="flex justify-between space-x-3 py-2 border-b border-line last:border-b-0 text-sm">
-              <span className="text-body">{TYPE_LABEL_PLURAL[p.trainingType]}</span>
+              <span className="text-body">{p.trainingType === "group" ? `Групові · ${p.label}` : p.label}</span>
               <span className="text-heading whitespace-nowrap">
                 {trainingsCount(p.left)}, до {ddmm(p.validUntil)}
               </span>

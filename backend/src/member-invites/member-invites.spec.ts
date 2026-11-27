@@ -34,19 +34,20 @@ function makeDb(reads: unknown[][], returning: unknown[] = [{ id: 'inv-1', expir
   return { db, inserts, updates };
 }
 
+const P8 = { id: 'p8', title: 'Персональне', optionLabel: '8 тренувань', trainingType: 'personal', trainingCount: 8 };
 const service = (db: any) => new MemberInvitesService({ db } as any, { now: () => NOW });
 const dto = (over: Record<string, unknown> = {}) =>
   ({
     displayName: ' Оля ',
     clubCard: { priceItemId: 'card-1', validUntil: '2026-12-15' },
-    packages: [{ trainingType: 'personal', left: 5, validUntil: '2026-12-10' }],
+    packages: [{ priceItemId: 'p8', left: 5, validUntil: '2026-12-10' }],
     permanentDiscount: null,
     ...over,
   }) as any;
 
 describe('MemberInvitesService.create', () => {
   it('keeps only the token hash, 7 days, the trimmed name and what the client already has', async () => {
-    const { db, inserts } = makeDb([[{ section: 'club_card' }]]);
+    const { db, inserts } = makeDb([[{ section: 'club_card' }], [P8]]);
     const result = await service(db).create('t1', dto());
     expect(result.token).toEqual(expect.any(String));
     expect(inserts[0].table).toBe(memberInvites);
@@ -55,16 +56,28 @@ describe('MemberInvitesService.create', () => {
     expect(inserts[0].values.expiresAt).toEqual(NOW.plus({ days: 7 }).toJSDate());
     expect(inserts[0].values.payload).toEqual({
       clubCard: { priceItemId: 'card-1', validUntil: '2026-12-15' },
-      packages: [{ trainingType: 'personal', left: 5, validUntil: '2026-12-10' }],
+      packages: [{ trainingType: 'personal', label: 'Персональне · 8 тренувань', left: 5, validUntil: '2026-12-10' }],
       permanentDiscount: null,
     });
+  });
+
+  it('400 when more are left than the package holds, or the item is not a package', async () => {
+    await expect(
+      service(makeDb([[{ section: 'club_card' }], [P8]]).db).create(
+        't1',
+        dto({ packages: [{ priceItemId: 'p8', left: 9, validUntil: '2026-12-10' }] }),
+      ),
+    ).rejects.toThrow('Invite form is not valid');
+    await expect(
+      service(makeDb([[{ section: 'club_card' }], [{ ...P8, trainingType: null }]]).db).create('t1', dto()),
+    ).rejects.toThrow('Invite form is not valid');
   });
 
   it('400 for a date in the past or a price item that is not a club card', async () => {
     await expect(
       service(makeDb([[{ section: 'club_card' }]]).db).create(
         't1',
-        dto({ packages: [{ trainingType: 'split', left: 2, validUntil: '2026-11-26' }] }),
+        dto({ packages: [{ priceItemId: 'p8', left: 2, validUntil: '2026-11-26' }] }),
       ),
     ).rejects.toThrow('Invite form is not valid');
     await expect(service(makeDb([[{ section: 'group' }]]).db).create('t1', dto())).rejects.toThrow(
@@ -96,7 +109,7 @@ describe('grantInvite (inside the sign-up transaction)', () => {
       't1',
       {
         clubCard: { priceItemId: 'card-1', validUntil: '2026-12-15' },
-        packages: [{ trainingType: 'group', left: 4, validUntil: '2026-12-10' }],
+        packages: [{ trainingType: 'group', label: 'Пакет · 10 занять', left: 4, validUntil: '2026-12-10' }],
         permanentDiscount: null,
       },
       '2026-11-27',
@@ -109,7 +122,7 @@ describe('grantInvite (inside the sign-up transaction)', () => {
       table: packages,
       values: {
         purchaseItemId: null,
-        label: 'Пакет',
+        label: 'Пакет · 10 занять',
         trainingType: 'group',
         total: 4,
         activatedOn: '2026-11-27',
