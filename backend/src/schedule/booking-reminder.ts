@@ -5,14 +5,9 @@ import { slotOpensAt } from '../trainer-schedule/rules';
 // «Сьогодні тренування»: a home banner (no push: «Запис відкрито» is enough) to members with a group package not
 // booked that day, from LEAD minutes before the trainer's first group training. It counts down to an hour before
 // it, then says «Запис ще відкритий, встигніть!» until it starts
-export const DEFAULT_REMINDER_LEAD_MINUTES = 180;
+// Fixed in code (no server setting since 2026-11-27, so a test value can't be left on); tests pass their own lead
+export const REMINDER_LEAD_MINUTES = 180;
 export const REMINDER_SOFT_MINUTES = 60;
-
-// BOOKING_REMINDER_LEAD_MINUTES moves the start (e.g. 480 to test at 11:00 for a 19:00 training)
-export function reminderLeadMinutes(env: Record<string, string | undefined> = process.env) {
-  const raw = env.BOOKING_REMINDER_LEAD_MINUTES;
-  return raw ? Number(raw) : DEFAULT_REMINDER_LEAD_MINUTES;
-}
 
 export type ReminderWindow = { from: DateTime; softDeadline: DateTime; firstStart: DateTime };
 
@@ -24,7 +19,7 @@ export function reminderWindow(
   slotTimes: string[],
   opensAt: string,
   now: DateTime,
-  leadMinutes = reminderLeadMinutes(),
+  leadMinutes = REMINDER_LEAD_MINUTES,
 ): ReminderWindow | null {
   const sorted = [...slotTimes].sort();
   const morning = sorted.find((t) => t <= opensAt);

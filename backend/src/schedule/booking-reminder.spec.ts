@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { reminderLeadMinutes, reminderWindow } from './booking-reminder';
+import { REMINDER_LEAD_MINUTES, reminderWindow } from './booking-reminder';
 
 const at = (h: number) => DateTime.fromISO(`2026-11-19T${String(h).padStart(2, '0')}:00`, { zone: 'Europe/Kyiv' });
 const hhmm = (d: { toFormat: (f: string) => string }) => d.toFormat('HH:mm');
@@ -26,9 +26,8 @@ describe('reminderWindow', () => {
     expect(reminderWindow('2026-11-19', [], '14:00', at(5), 180)).toBeNull();
   });
 
-  it('the lead comes from BOOKING_REMINDER_LEAD_MINUTES, 180 by default', () => {
-    expect(reminderLeadMinutes({})).toBe(180);
-    expect(reminderLeadMinutes({ BOOKING_REMINDER_LEAD_MINUTES: '480' })).toBe(480);
+  it('the lead is 3 hours, fixed in code; a longer one (a test) moves the start', () => {
+    expect(REMINDER_LEAD_MINUTES).toBe(180);
     const w = reminderWindow('2026-11-19', ['19:00'], '10:00', at(5), 480)!;
     expect(hhmm(w.from)).toBe('11:00');
   });
